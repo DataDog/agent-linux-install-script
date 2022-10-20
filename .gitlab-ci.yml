@@ -1,0 +1,58 @@
+stages:
+  - generate
+  - test
+  - deploy
+
+variables:
+  DATADOG_AGENT_BUILDERS: v9930706-ef9d493
+  DATADOG_AGENT_BUILDIMAGES: v9910873-5790982
+
+generate-scripts:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
+  tags: ["runner:main"]
+  stage: generate
+  script:
+    - make
+  artifacts:
+    expire_in: 2 weeks
+    paths:
+      - install_script.sh
+      - install_script_6.sh
+      - install_script_7.sh
+
+test:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
+  tags: ["runner:main"]
+  stage: test
+  dependencies: ["generate-scripts"]
+  parallel:
+    matrix:
+      - IMAGE: centos/centos7
+  script:
+    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
+
+.deploy:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
+  tags: ["runner:main"]
+  stage: deploy
+  dependencies: ["generate-scripts"]
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+    - when: never
+
+deploy_deprecated:
+  extends: .deploy
+  script:
+    - $S3_CP_CMD ./install_script.sh s3://dd-agent/scripts/install_script.sh --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
+
+deploy_6:
+  extends: .deploy
+  script:
+    - $S3_CP_CMD ./install_script_6.sh s3://dd-agent/scripts/install_script_6.sh --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
+
+deploy_7:
+  extends: .deploy
+  script:
+    - $S3_CP_CMD ./install_script_7.sh s3://dd-agent/scripts/install_script_7.sh --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
