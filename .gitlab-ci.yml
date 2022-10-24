@@ -77,8 +77,8 @@ test:
       - IMAGE: images/mirror/opensuse/leap:15.4
         FLAVOR: datadog-iot-agent
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION:-6}" --flavor "${FLAVOR}"
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION:-7}" --flavor "${FLAVOR}"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
 
 .deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
