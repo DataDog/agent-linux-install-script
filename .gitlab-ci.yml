@@ -26,11 +26,59 @@ test:
   stage: test
   dependencies: ["generate-scripts"]
   parallel:
+    # NOTE: to keept the matrix reasonably sized, we don't test everything everywhere
+    # for example, it's ok to test getting specific flavor/minor version only on
+    # CentOS 7 (yum) and Rocky 9 (dnf) and not on all versions of all RHEL derivatives
     matrix:
       - IMAGE: images/mirror/centos:centos7
+      - IMAGE: images/mirror/centos:centos7
+        MINOR_VERSION: 38
+      - IMAGE: images/mirror/centos:centos7
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: images/mirror/centos:centos7
+        FLAVOR: datadog-iot-agent
+      - IMAGE: images/mirror/rockylinux:9.0
+      - IMAGE: images/mirror/rockylinux:9.0
+        MINOR_VERSION: 38
+      - IMAGE: images/mirror/rockylinux:9.0
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: images/mirror/rockylinux:9.0
+        FLAVOR: datadog-iot-agent
+      - IMAGE: images/mirror/amazonlinux:2
+      - IMAGE: images/mirror/amazonlinux:2022
+      - IMAGE: images/mirror/debian:8.11
+      - IMAGE: images/mirror/debian:8.11
+        MINOR_VERSION: 38
+      - IMAGE: images/mirror/debian:8.11
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: images/mirror/debian:8.11
+        FLAVOR: datadog-iot-agent
+      - IMAGE: images/mirror/debian:10.9
+      - IMAGE: images/mirror/debian:10.9
+        MINOR_VERSION: 38
+      - IMAGE: images/mirror/debian:10.9
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: images/mirror/debian:10.9
+        FLAVOR: datadog-iot-agent
+      - IMAGE: images/mirror/ubuntu:14.04
+      - IMAGE: images/mirror/ubuntu:22.04
+      - IMAGE: images/mirror/opensuse/archive:42.3
+      - IMAGE: images/mirror/opensuse/archive:42.3
+        MINOR_VERSION: 38
+      - IMAGE: images/mirror/opensuse/archive:42.3
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: images/mirror/opensuse/archive:42.3
+        FLAVOR: datadog-iot-agent
+      - IMAGE: images/mirror/opensuse/leap:15.4
+      - IMAGE: images/mirror/opensuse/leap:15.4
+        MINOR_VERSION: 38
+      - IMAGE: images/mirror/opensuse/leap:15.4
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: images/mirror/opensuse/leap:15.4
+        FLAVOR: datadog-iot-agent
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION:-6}" --flavor "${FLAVOR}"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION:-7}" --flavor "${FLAVOR}"
 
 .deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
