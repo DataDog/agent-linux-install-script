@@ -27,7 +27,7 @@ test:
   dependencies: ["generate-scripts"]
   parallel:
     matrix:
-      - IMAGE: library/centos:centos7
+      - IMAGE: images/mirror/centos:centos7
   script:
     - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
     - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
