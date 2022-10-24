@@ -16,3 +16,17 @@ This repository contains 2 basic files, `install_script.sh.template` and `Makefi
 * `install_script_7.sh` - Install script that uses `DD_MAJOR_VERSION=7` by default.
 
 The generated files must never be committed to this repository. All changes must be done by modifications of the template file and Makefile.
+
+## Running tests
+
+Test can be run using Docker; for example to test installation of latest Agent 6 release with the `install_script_6.sh` file on Ubuntu 22.04 run:
+
+```
+./test/dockertest.sh --image ubuntu:22.04 --script install_script_6.sh
+```
+
+To test installation of the latest IoT Agent 7.38 release with the `install_script_7.sh` file on Ubuntu 22.04 run:
+
+```
+./test/dockertest.sh --image ubuntu:22.04 --script install_script_7.sh --minor_version "38" --flavor "datadog-iot-agent"
+```
