@@ -6,7 +6,7 @@ INSTALLED_VERSION=
 RESULT=0
 EXPECTED_FLAVOR=${DD_AGENT_FLAVOR:-datadog-agent}
 EXPECTED_MAJOR_VERSION=6
-if echo "${SCRIPT}" | grep "_7.sh$" >/dev/null || [ "${DD_AGENT_FLAVOR}" != "datadog-agent" ] ; then
+if echo "${SCRIPT}" | grep "_7.sh$" >/dev/null || [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] ; then
     EXPECTED_MAJOR_VERSION=7
 fi
 EXPECTED_MINOR_VERSION="${EXPECTED_MINOR_VERSION:-${DD_AGENT_MINOR_VERSION}}"
