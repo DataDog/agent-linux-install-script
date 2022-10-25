@@ -9,7 +9,7 @@ set -e
 
 DEPRECATION_MESSAGE_PLACEHOLDER
 
-install_script_version=SCRIPT_MAJOR_VERSION_PLACEHOLDER.10.0.post
+install_script_version=1.10.0.post
 logfile="ddagent-install.log"
 support_email=support@datadoghq.com
 
@@ -138,7 +138,7 @@ function verify_agent_version(){
     fi
 }
 
-echo -e "\033[34m\n* Datadog Agent install script v${install_script_version}\n\033[0m"
+echo -e "\033[34m\n* Datadog AgentINSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
 
 hostname=
 if [ -n "$DD_HOSTNAME" ]; then
@@ -750,7 +750,7 @@ $sudo_cmd chmod 640 "$config_file"
 install_info_content="---
 install_method:
   tool: install_script
-  tool_version: install_script
+  tool_version: install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
   installer_version: install_script-$install_script_version
 "
 $sudo_cmd sh -c "echo '$install_info_content' > $etcdir/install_info"

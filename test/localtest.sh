@@ -6,7 +6,7 @@ INSTALLED_VERSION=
 RESULT=0
 EXPECTED_FLAVOR=${DD_AGENT_FLAVOR:-datadog-agent}
 EXPECTED_MAJOR_VERSION=6
-if echo "${SCRIPT}" | grep "_7.sh$" >/dev/null || [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] ; then
+if echo "${SCRIPT}" | grep "agent7.sh$" >/dev/null || [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] ; then
     EXPECTED_MAJOR_VERSION=7
 fi
 EXPECTED_MINOR_VERSION="${EXPECTED_MINOR_VERSION:-${DD_AGENT_MINOR_VERSION}}"
@@ -47,29 +47,29 @@ else
     echo "[PASS] DD_AGENT_MINOR_VERSION not specified, not checking installed minor version"
 fi
 
-INSTALL_SCRIPT_MAJOR_VERSION=
-if echo "${SCRIPT}" | grep "_6.sh$" >/dev/null; then
-    INSTALL_SCRIPT_MAJOR_VERSION=6
-elif echo "${SCRIPT}" | grep "_7.sh$" >/dev/null; then
-    INSTALL_SCRIPT_MAJOR_VERSION=7
+EXPECTED_TOOL_VERSION=
+if echo "${SCRIPT}" | grep "agent6.sh$" >/dev/null; then
+    EXPECTED_TOOL_VERSION="install_script_agent6"
+elif echo "${SCRIPT}" | grep "agent7.sh$" >/dev/null; then
+    EXPECTED_TOOL_VERSION="install_script_agent7"
 elif echo "${SCRIPT}" | grep "script.sh$" >/dev/null; then
-    INSTALL_SCRIPT_MAJOR_VERSION=1
+    EXPECTED_TOOL_VERSION="install_script"
 else
-    echo "[ERROR] Unknow major version of script ${SCRIPT}"
+    echo "[ERROR] Don't know what install info to expect for script ${SCRIPT}"
     RESULT=1
 fi
 
-if [ -n "${INSTALL_SCRIPT_MAJOR_VERSION}" ]; then
+if [ -n "${EXPECTED_TOOL_VERSION}" ]; then
     INSTALL_INFO_FILE=/etc/datadog-agent/install_info
     if [ "${EXPECTED_FLAVOR}" = "datadog-dogstatsd" ]; then
         INSTALL_INFO_FILE=/etd/datadog-dogstatsd/install_info
     fi
 
-    INSTALLER_VERSION=$(cat $INSTALL_INFO_FILE | grep installer_version)
-    if echo "${INSTALLER_VERSION}" | grep "install_script-${INSTALL_SCRIPT_MAJOR_VERSION}" >/dev/null; then
-        echo "[OK] Correct script version found in install_info file"
+    TOOL_VERSION=$(cat "$INSTALL_INFO_FILE" | grep "tool_version:" | cut -d":" -f 2)
+    if echo "${TOOL_VERSION}" | grep "${EXPECTED_TOOL_VERSION}$" >/dev/null; then
+        echo "[OK] Correct tool_version found in install_info file"
     else
-        echo "[FAIL] Expected to find script major version ${INSTALL_SCRIPT_MAJOR_VERSION} in install_info, but found '${INSTALLER_VERSION}'"
+        echo "[FAIL] Expected to find tool_version ${EXPECTED_TOOL_VERSION} in install_info, but found '${TOOL_VERSION}'"
         RESULT=1
     fi
 fi

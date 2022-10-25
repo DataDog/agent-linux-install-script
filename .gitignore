@@ -2,5 +2,5 @@
 *.swo
 ddagent-install.log
 install_script.sh
-install_script_6.sh
-install_script_7.sh
+install_script_agent6.sh
+install_script_agent7.sh

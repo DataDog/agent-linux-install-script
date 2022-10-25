@@ -17,8 +17,8 @@ generate-scripts:
     expire_in: 2 weeks
     paths:
       - install_script.sh
-      - install_script_6.sh
-      - install_script_7.sh
+      - install_script_agent6.sh
+      - install_script_agent7.sh
 
 test:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
@@ -78,8 +78,8 @@ test:
       #- IMAGE: images/mirror/opensuse/leap:15.4
       #  FLAVOR: datadog-iot-agent
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
 
 .deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
@@ -99,9 +99,9 @@ deploy_deprecated:
 deploy_6:
   extends: .deploy
   script:
-    - $S3_CP_CMD ./install_script_6.sh s3://dd-agent/scripts/install_script_6.sh --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
+    - $S3_CP_CMD ./install_script_agent6.sh s3://dd-agent/scripts/install_script_agent6.sh --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
 
 deploy_7:
   extends: .deploy
   script:
-    - $S3_CP_CMD ./install_script_7.sh s3://dd-agent/scripts/install_script_7.sh --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
+    - $S3_CP_CMD ./install_script_agent7.sh s3://dd-agent/scripts/install_script_agent7.sh --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
