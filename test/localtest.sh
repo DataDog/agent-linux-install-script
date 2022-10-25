@@ -62,7 +62,7 @@ fi
 if [ -n "${EXPECTED_TOOL_VERSION}" ]; then
     INSTALL_INFO_FILE=/etc/datadog-agent/install_info
     if [ "${EXPECTED_FLAVOR}" = "datadog-dogstatsd" ]; then
-        INSTALL_INFO_FILE=/etd/datadog-dogstatsd/install_info
+        INSTALL_INFO_FILE=/etc/datadog-dogstatsd/install_info
     fi
 
     TOOL_VERSION=$(cat "$INSTALL_INFO_FILE" | grep "tool_version:" | cut -d":" -f 2)
