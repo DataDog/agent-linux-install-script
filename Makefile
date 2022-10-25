@@ -7,8 +7,8 @@ define DEPRECATION_MESSAGE
 \n\
 install_script.sh is deprecated. Please use one of\n\
 \n\
-* https://s3.amazonaws.com/dd-agent/scripts/install_script_6.sh to install Agent 6\n\
-* https://s3.amazonaws.com/dd-agent/scripts/install_script_7.sh to install Agent 7\n
+* https://s3.amazonaws.com/dd-agent/scripts/install_script_agent6.sh to install Agent 6\n\
+* https://s3.amazonaws.com/dd-agent/scripts/install_script_agent7.sh to install Agent 7\n
 endef
 
 install_script.sh: install_script.sh.template
