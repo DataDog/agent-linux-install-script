@@ -26,7 +26,7 @@ test:
   stage: test
   dependencies: ["generate-scripts"]
   parallel:
-    # NOTE: to keept the matrix reasonably sized, we don't test everything everywhere
+    # NOTE: to keep the matrix reasonably sized, we don't test everything everywhere
     # for example, it's ok to test getting specific flavor/minor version only on
     # CentOS 7 (yum) and Rocky 9 (dnf) and not on all versions of all RHEL derivatives
     matrix:
