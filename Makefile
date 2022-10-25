@@ -14,18 +14,21 @@ endef
 install_script.sh: install_script.sh.template
 	export DEPRECATION_MESSAGE
 	sed -e 's|AGENT_MAJOR_VERSION_PLACEHOLDER|6|' \
+		-e 's|SCRIPT_MAJOR_VERSION_PLACEHOLDER|1|' \
 		-e 's|DEPRECATION_MESSAGE_PLACEHOLDER|echo -e "\\033[33m${DEPRECATION_MESSAGE}\\033[0m"|' \
 		install_script.sh.template > $@
 	chmod +x $@
 
 install_script_6.sh: install_script.sh.template
 	sed -e 's|AGENT_MAJOR_VERSION_PLACEHOLDER|6|' \
+		-e 's|SCRIPT_MAJOR_VERSION_PLACEHOLDER|6|' \
 		-e 's|DEPRECATION_MESSAGE_PLACEHOLDER||' \
 		install_script.sh.template > $@
 	chmod +x $@
 
 install_script_7.sh: install_script.sh.template
 	sed -e 's|AGENT_MAJOR_VERSION_PLACEHOLDER|7|' \
+		-e 's|SCRIPT_MAJOR_VERSION_PLACEHOLDER|7|' \
 		-e 's|DEPRECATION_MESSAGE_PLACEHOLDER||' \
 		install_script.sh.template > $@
 	chmod +x $@
