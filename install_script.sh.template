@@ -549,10 +549,15 @@ elif [ "$OS" = "SUSE" ]; then
   # Doing "rpm --import" requires curl on SUSE/SLES
   echo -e "\033[34m\n* Ensuring curl is installed\n\033[0m\n"
   if ! rpm -q curl > /dev/null; then
+    # If zypper fails to refresh a random repo, it installs the package, but then fails
+    # anyway. Therefore we let it do its thing and then see if curl was installed or not.
     if [ -z "$sudo_cmd" ]; then
-      ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install curl
+      ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install curl ||:
     else
-      $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install curl
+      $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install curl ||:
+    fi
+    if ! rpm -q curl > /dev/null; then
+      echo -e "\033[31mAPI key not available in DD_API_KEY environment variable.\033[0m\n"
     fi
   fi
 
