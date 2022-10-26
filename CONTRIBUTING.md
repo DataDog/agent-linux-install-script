@@ -19,7 +19,8 @@ In order to ease/speed up our review, here are some items you can check/improve 
 
   * Have a proper commit history (we advise you to rebase if needed).
   * Write tests for the code you wrote.
-  * Preferably, make sure that all unit tests pass locally and some relevant kitchen tests.
+  * Tests can be run using Docker as explained [here][running-tests].
+  * Preferably, make sure that the included tests run.
   * Summarize your PR with an explanatory title and a message describing your changes, cross-referencing any related bugs/PRs.
   * Open your PR against the `main` branch.
 
@@ -47,3 +48,4 @@ To contribute, follow the contributing guidelines above.
 
 
 [slack]: https://datadoghq.slack.com
+[running-tests]: https://github.com/DataDog/agent-linux-install-script#running-tests
