@@ -21,7 +21,7 @@ In order to ease/speed up our review, here are some items you can check/improve 
   * Write tests for the code you wrote.
   * Preferably, make sure that all unit tests pass locally and some relevant kitchen tests.
   * Summarize your PR with an explanatory title and a message describing your changes, cross-referencing any related bugs/PRs.
-  * Open your PR against the `master` branch.
+  * Open your PR against the `main` branch.
 
 Your pull request must pass all CI tests before we merge it. If you see an error and don't think it's your fault, it may not be! [Join us on Slack][slack] or send us an email, and together we'll get it sorted out.
 
