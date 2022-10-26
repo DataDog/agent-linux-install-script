@@ -39,7 +39,7 @@ If your commit is only shipping documentation changes or example files, and is a
 
 ### Squash your commits
 
-Rebase your changes on `master` and squash your commits whenever possible. This keeps history cleaner and easier to revert things. It also makes developers happier!
+Rebase your changes on `main` and squash your commits whenever possible. This keeps history cleaner and easier to revert things. It also makes developers happier!
 
 ## Development
 
