@@ -546,6 +546,16 @@ elif [ "$OS" = "SUSE" ]; then
     SUSE11="yes"
   fi
 
+  # Doing "rpm --import" requires curl on SUSE/SLES
+  echo -e "\033[34m\n* Ensuring curl is installed\n\033[0m\n"
+  if ! rpm -q curl > /dev/null; then
+    if [ -z "$sudo_cmd" ]; then
+      ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install curl
+    else
+      $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install curl
+    fi
+  fi
+
   echo -e "\033[34m\n* Importing the Datadog GPG Keys\n\033[0m"
   if [ "$SUSE11" == "yes" ]; then
     # SUSE 11 special case

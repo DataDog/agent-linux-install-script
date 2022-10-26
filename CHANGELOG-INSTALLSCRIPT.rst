@@ -2,6 +2,15 @@
 Release Notes
 =============
 
+Unreleased
+================
+
+Bug Fixes
+---------
+
+- Ensure ``curl`` is installed on SUSE, because ``rpm --import`` requires it.
+
+
 .. _Release Notes_installscript-1.10.0:
 
 1.10.0

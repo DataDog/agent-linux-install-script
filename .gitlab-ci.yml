@@ -62,21 +62,20 @@ test:
         FLAVOR: datadog-iot-agent
       - IMAGE: images/mirror/ubuntu:14.04
       - IMAGE: images/mirror/ubuntu:22.04
-      # We'll need actual opensuse fix in install_script to enable these
-      #- IMAGE: images/mirror/opensuse/archive:42.3
-      #- IMAGE: images/mirror/opensuse/archive:42.3
-      #  MINOR_VERSION: 38
-      #- IMAGE: images/mirror/opensuse/archive:42.3
-      #  FLAVOR: datadog-dogstatsd
-      #- IMAGE: images/mirror/opensuse/archive:42.3
-      #  FLAVOR: datadog-iot-agent
-      #- IMAGE: images/mirror/opensuse/leap:15.4
-      #- IMAGE: images/mirror/opensuse/leap:15.4
-      #  MINOR_VERSION: 38
-      #- IMAGE: images/mirror/opensuse/leap:15.4
-      #  FLAVOR: datadog-dogstatsd
-      #- IMAGE: images/mirror/opensuse/leap:15.4
-      #  FLAVOR: datadog-iot-agent
+      - IMAGE: images/mirror/opensuse/archive:42.3
+      - IMAGE: images/mirror/opensuse/archive:42.3
+        MINOR_VERSION: 38
+      - IMAGE: images/mirror/opensuse/archive:42.3
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: images/mirror/opensuse/archive:42.3
+        FLAVOR: datadog-iot-agent
+      - IMAGE: images/mirror/opensuse/leap:15.4
+      - IMAGE: images/mirror/opensuse/leap:15.4
+        MINOR_VERSION: 38
+      - IMAGE: images/mirror/opensuse/leap:15.4
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: images/mirror/opensuse/leap:15.4
+        FLAVOR: datadog-iot-agent
   script:
     - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
     - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
