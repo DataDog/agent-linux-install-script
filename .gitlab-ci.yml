@@ -63,8 +63,10 @@ test:
       - IMAGE: images/mirror/ubuntu:14.04
       - IMAGE: images/mirror/ubuntu:22.04
       - IMAGE: images/mirror/opensuse/archive:42.3
-      - IMAGE: images/mirror/opensuse/archive:42.3
-        MINOR_VERSION: 38
+      # When installing pinned minor version and some repos are broken,
+      # `zypper search` used will fail. We need to figure out a fix for this.
+      #- IMAGE: images/mirror/opensuse/archive:42.3
+      #  MINOR_VERSION: 38
       - IMAGE: images/mirror/opensuse/archive:42.3
         FLAVOR: datadog-dogstatsd
       - IMAGE: images/mirror/opensuse/archive:42.3
