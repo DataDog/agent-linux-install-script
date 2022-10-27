@@ -2,6 +2,17 @@
 Release Notes
 =============
 
+Unreleased
+================
+
+Bug Fixes
+---------
+
+- Ensure ``curl`` is installed on SUSE, because ``rpm --import`` requires it.
+
+- Properly ignore zypper failures with inaccessible repos that aren't
+  related to the Agent installation.
+
 .. _Release Notes_installscript-1.10.0:
 
 1.10.0
