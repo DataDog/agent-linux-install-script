@@ -558,6 +558,8 @@ elif [ "$OS" = "SUSE" ]; then
     fi
     if ! rpm -q curl > /dev/null; then
       echo -e "\033[31mFailed to install curl.\033[0m\n"
+      fallback_msg
+      exit 1;
     fi
   fi
 
@@ -666,6 +668,8 @@ elif [ "$OS" = "SUSE" ]; then
   for expected_pkg in "${packages[@]}"; do
     if ! rpm -q "${expected_pkg}" > /dev/null; then
       echo -e "\033[31mFailed to install ${expected_pkg}.\033[0m\n"
+      fallback_msg
+      exit 1;
     fi
   done
 
