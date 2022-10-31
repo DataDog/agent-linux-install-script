@@ -1,10 +1,15 @@
 #!/bin/bash -e
 
+EXPECTED_FLAVOR=${DD_AGENT_FLAVOR:-datadog-agent}
+if [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] && echo "${SCRIPT}" | grep "agent6.sh$" >/dev/null; then
+    echo "[PASS] Can't install flavor '${DD_AGENT_FLAVOR}' with install_script_agent6.sh"
+    exit 0
+fi
+
 $SCRIPT
 
 INSTALLED_VERSION=
 RESULT=0
-EXPECTED_FLAVOR=${DD_AGENT_FLAVOR:-datadog-agent}
 EXPECTED_MAJOR_VERSION=6
 if echo "${SCRIPT}" | grep "agent7.sh$" >/dev/null || [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] ; then
     EXPECTED_MAJOR_VERSION=7
