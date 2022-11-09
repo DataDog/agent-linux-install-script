@@ -11,9 +11,9 @@ Usage instructions for the install script are in the [Datadog App](https://app.d
 
 This repository contains 2 basic files, `install_script.sh.template` and `Makefile`. Calling `make` will generate these files from the template:
 
-* `install_script.sh` - Install script that uses `DD_MAJOR_VERSION=6` by default and also emits a deprecation warning when run.
-* `install_script_agent6.sh` - Install script that uses `DD_MAJOR_VERSION=6` by default.
-* `install_script_agent7.sh` - Install script that uses `DD_MAJOR_VERSION=7` by default.
+* `install_script.sh` - Install script that uses `DD_AGENT_MAJOR_VERSION=6` by default and also emits a deprecation warning when run.
+* `install_script_agent6.sh` - Install script that uses `DD_AGENT_MAJOR_VERSION=6` by default.
+* `install_script_agent7.sh` - Install script that uses `DD_AGENT_MAJOR_VERSION=7` by default.
 
 The generated files must never be committed to this repository. All changes must be done by modifications of the template file and Makefile.
 
