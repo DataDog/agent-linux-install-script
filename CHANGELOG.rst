@@ -2,8 +2,20 @@
 Release Notes
 =============
 
-Unreleased
+1.11.0
 ================
+
+Upgrade Notes
+-------------
+
+- The install script is now shipped in 3 different flavors:
+
+  - ``install_script.sh``, the original and now deprecated script
+    that will eventually stop receiving updates.
+  - ``install_script_agent6.sh``, which uses ``DD_AGENT_MAJOR_VERSION=6``
+    unless specified otherwise.
+  - ``install_script_agent7.sh``, which uses ``DD_AGENT_MAJOR_VERSION=7``
+    unless specified otherwise.
 
 Bug Fixes
 ---------
