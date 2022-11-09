@@ -8,7 +8,7 @@ Release Notes
 Upgrade Notes
 -------------
 
-- The install script is now shippied in 3 different flavors:
+- The install script is now shipped in 3 different flavors:
 
   - ``install_script.sh``, the original and now deprecated script
     that will eventually stop receiving updates.
