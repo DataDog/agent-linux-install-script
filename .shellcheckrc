@@ -1,0 +1,5 @@
+# Excludes:
+# SC2028: echo may not expand escape sequences. Use printf.
+# SC2059: Don't use variables in the printf format string. Use printf "..%s.." "$foo".
+disable=SC2028,2059
+shell=bash

@@ -251,6 +251,8 @@ flavor_to_config=(
 config_file=${flavor_to_config[$agent_flavor]:-$etcdir/datadog.yaml}
 
 agent_major_version=AGENT_MAJOR_VERSION_PLACEHOLDER
+# shellcheck disable=SC2050
+# ^ to disable the warning about constant comparison in the elif clause below
 if [ -n "$DD_AGENT_MAJOR_VERSION" ]; then
   if [ "$DD_AGENT_MAJOR_VERSION" != "6" ] && [ "$DD_AGENT_MAJOR_VERSION" != "7" ]; then
     echo "DD_AGENT_MAJOR_VERSION must be either 6 or 7. Current value: $DD_AGENT_MAJOR_VERSION"
