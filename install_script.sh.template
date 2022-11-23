@@ -772,7 +772,7 @@ EOF
   fi
 fi
 
-$sudo_cmd chown dd-agent:dd-agent "$config_file"
+$sudo_cmd chown root:dd-agent "$config_file"
 $sudo_cmd chmod 640 "$config_file"
 
 # Creating or overriding the install information
