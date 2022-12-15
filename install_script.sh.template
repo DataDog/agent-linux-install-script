@@ -117,7 +117,7 @@ function report_telemetry() {
    (cat <<END
        $telemetry_event
 END
-       ) | curl --fail --verbose --output /dev/null \
+       ) | curl --fail --silent --output /dev/null \
     "$telemetry_url" \
     --header 'Content-Type: application/json' \
     --header "DD-Api-Key: $apikey" \
