@@ -86,7 +86,8 @@ function report_telemetry() {
        \"event_name\": \"agent.installation.success\",
        \"tags\": {
            \"agent_platform\": \"native\",
-           \"agent_version\": \"$safe_agent_version\"
+           \"agent_version\": \"$safe_agent_version\",
+           \"script_version\": \"$install_script_version\"
        }
    }
 }
@@ -101,7 +102,8 @@ function report_telemetry() {
        \"event_name\": \"agent.installation.error\",
        \"tags\": {
            \"agent_platform\": \"native\",
-           \"agent_version\": \"$safe_agent_version\"
+           \"agent_version\": \"$safe_agent_version\",
+           \"script_version\": \"$install_script_version\"
        },
        \"error\": {
           \"code\": $ERROR_CODE,
