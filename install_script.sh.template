@@ -237,18 +237,21 @@ flavor_to_system_service=(
     ["datadog-dogstatsd"]="datadog-dogstatsd"
 )
 system_service=${flavor_to_system_service[$agent_flavor]:-datadog-agent}
+system_fips_service=datadog-fips-proxy
 
 declare -A flavor_to_etcdir
 flavor_to_etcdir=(
     ["datadog-dogstatsd"]="/etc/datadog-dogstatsd"
 )
 etcdir=${flavor_to_etcdir[$agent_flavor]:-/etc/datadog-agent}
+etcdirfips=/etc/datadog-fips-proxy
 
 declare -A flavor_to_config
 flavor_to_config=(
     ["datadog-dogstatsd"]="$etcdir/dogstatsd.yaml"
 )
 config_file=${flavor_to_config[$agent_flavor]:-$etcdir/datadog.yaml}
+config_file_fips=$etcdirfips/datadog-fips-proxy.cfg
 
 agent_major_version=AGENT_MAJOR_VERSION_PLACEHOLDER
 # shellcheck disable=SC2050
@@ -434,13 +437,12 @@ if [ "$OS" = "RedHat" ]; then
     fi
     echo -e "  \033[33mInstalling package: $agent_flavor\n\033[0m"
 
-    declare -a packages
-    packages=("$agent_flavor")
+    $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "$agent_flavor" || $sudo_cmd yum -y install $dnf_flag "$agent_flavor"
+    # sequence matters, hence why datadog-fips-proxy must be installed
+    # separately in a second step
     if [ -n "$fips_mode" ]; then
-      packages+=("datadog-fips-proxy")
+      $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "datadog-fips-proxy" || $sudo_cmd yum -y install $dnf_flag "datadog-fips-proxy"
     fi
-
-    $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}"
 
 elif [ "$OS" = "Debian" ]; then
     apt_trusted_d_keyring="/etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg"
@@ -519,13 +521,14 @@ If the cause is unclear, please contact Datadog support.
     fi
     echo -e "  \033[33mInstalling package: $agent_flavor\n\033[0m"
 
-    declare -a packages
-    packages=("$agent_flavor" "datadog-signing-keys")
+
+    $sudo_cmd apt-get install -y --force-yes "${agent_flavor}"
+    # sequence matters, hence why datadog-fips-proxy must be installed
+    # separately in a second step
     if [ -n "$fips_mode" ]; then
-     packages+=("datadog-fips-proxy")
+      $sudo_cmd apt-get install -y --force-yes "datadog-fips-proxy"
     fi
 
-    $sudo_cmd apt-get install -y --force-yes "${packages[@]}"
     ERROR_MESSAGE=""
 elif [ "$OS" = "SUSE" ]; then
   UNAME_M=$(uname -m)
@@ -653,16 +656,21 @@ elif [ "$OS" = "SUSE" ]; then
   fi
   echo -e "  \033[33mInstalling package: $agent_flavor\n\033[0m"
 
-  declare -a packages
-  packages=("$agent_flavor")
-  if [ -n "$fips_mode" ]; then
-    packages+=("datadog-fips-proxy")
-  fi
 
   if [ -z "$sudo_cmd" ]; then
     ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" ||:
+    # sequence matters, hence why datadog-fips-proxy must be installed
+    # separately in a second step
+    if [ -n "$fips_mode" ]; then
+      ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "datadog-fips-proxy" ||:
+    fi
   else
     $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" ||:
+    # sequence matters, hence why datadog-fips-proxy must be installed
+    # separately in a second step
+    if [ -n "$fips_mode" ]; then
+      $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "datadog-fips-proxy" ||:
+    fi
   fi
 
   # If zypper fails to refresh a random repo, it installs the package, but then fails
@@ -775,6 +783,23 @@ fi
 $sudo_cmd chown dd-agent:dd-agent "$config_file"
 $sudo_cmd chmod 640 "$config_file"
 
+# set the FIPS configuration
+if [ -n "$fips_mode" ]; then
+  if [ -e "$config_file_fips" ] && [ -z "$upgrade" ]; then
+    printf "\033[34m\n* Keeping old $config_file_fips configuration file\n\033[0m\n"
+  else
+    if [ ! -e "$config_file_fips" ]; then
+      $sudo_cmd cp "$config_file_fips.example" "$config_file_fips"
+  
+      # TODO: set port range in file, or environment variable
+    fi
+
+    $sudo_cmd chown dd-agent:dd-agent "$config_file_fips"
+    $sudo_cmd chmod 640 "$config_file_fips"
+
+  fi
+fi
+
 # Creating or overriding the install information
 install_info_content="---
 install_method:
@@ -783,6 +808,11 @@ install_method:
   installer_version: install_script-$install_script_version
 "
 $sudo_cmd sh -c "echo '$install_info_content' > $etcdir/install_info"
+
+if [ -n "$fips_mode" ]; then
+  # Creating or overriding the install information
+  $sudo_cmd sh -c "echo '$install_info_content' > $etcdirfips/install_info"
+fi
 
 # On SUSE 11, sudo service datadog-agent start fails (because /sbin is not in a base user's path)
 # However, sudo /sbin/service datadog-agent does work.
@@ -798,17 +828,26 @@ fi
 restart_cmd="$sudo_cmd $service_cmd $system_service restart"
 stop_instructions="$sudo_cmd $service_cmd $system_service stop"
 start_instructions="$sudo_cmd $service_cmd $system_service start"
+restart_fips_cmd="$sudo_cmd $service_cmd $system_fips_service restart"
+stop_fips_instructions="$sudo_cmd $service_cmd $system_fips_service stop"
+start_fips_instructions="$sudo_cmd $service_cmd $system_fips_service start"
 
 if [[ `$sudo_cmd ps --no-headers -o comm 1 2>&1` == "systemd" ]] && command -v systemctl 2>&1; then
   # Use systemd if systemctl binary exists and systemd is the init process
   restart_cmd="$sudo_cmd systemctl restart ${system_service}.service"
   stop_instructions="$sudo_cmd systemctl stop $system_service"
   start_instructions="$sudo_cmd systemctl start $system_service"
+  restart_fips_cmd="$sudo_cmd systemctl restart ${system_fips_service}.service"
+  stop_fips_instructions="$sudo_cmd systemctl stop $system_fips_service"
+  start_fips_instructions="$sudo_cmd systemctl start $system_fips_service"
 elif /sbin/init --version 2>&1 | grep -q upstart; then
   # Try to detect Upstart, this works most of the times but still a best effort
   restart_cmd="$sudo_cmd stop $system_service || true ; sleep 2s ; $sudo_cmd start $system_service"
   stop_instructions="$sudo_cmd stop $system_service"
   start_instructions="$sudo_cmd start $system_service"
+  restart_fips_cmd="$sudo_cmd stop $system_fips_service || true ; sleep 2s ; $sudo_cmd start $system_fips_service"
+  stop_fips_instructions="$sudo_cmd stop $system_fips_service"
+  start_fips_instructions="$sudo_cmd start $system_fips_service"
 fi
 
 if [ $no_start ]; then
@@ -821,6 +860,11 @@ following command:
 
 \033[0m\n"
     exit
+fi
+
+if [ -n "$fips_mode" ]; then
+  printf "\033[34m* Starting the Datadog FIPS proxy...\n\033[0m\n"
+  eval "$restart_fips_cmd"
 fi
 
 printf "\033[34m* Starting the $nice_flavor...\n\033[0m\n"
