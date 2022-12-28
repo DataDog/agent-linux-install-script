@@ -861,7 +861,7 @@ for current_service in "${services[@]}"; do
     printf "\033[34m\n    The newly installed version of the ${nice_current_flavor} will not be started.
     You will have to do it manually using the following command:
   
-    $start_instructions\033[0m\n"
+    $start_instructions\033[0m\n\n"
   
     continue 
   fi
@@ -883,5 +883,5 @@ for current_service in "${services[@]}"; do
   
 And to run it again run:
   
-      $start_instructions\033[0m"
+      $start_instructions\033[0m\n\n"
 done
