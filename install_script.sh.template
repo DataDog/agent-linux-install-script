@@ -881,7 +881,7 @@ for current_service in "${services[@]}"; do
   
       $stop_instructions
   
-And to run it again run:
+  And to run it again run:
   
       $start_instructions\033[0m\n\n"
 done
