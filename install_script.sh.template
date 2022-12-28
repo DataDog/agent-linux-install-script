@@ -873,7 +873,7 @@ for current_service in "${services[@]}"; do
   # Metrics are submitted, echo some instructions and exit
   printf "\033[32m  Your ${nice_current_flavor} is running and functioning properly.\n\033[0m"
 
-  if [[ "${monitoring_services[*]}" =~ "${current_service}" ]]; then
+  if [[ "${monitoring_services[*]}" =~ ${current_service} ]]; then
     printf "\033[32m  It will continue to run in the background and submit metrics to Datadog.\n\033[0m"
   fi
   
