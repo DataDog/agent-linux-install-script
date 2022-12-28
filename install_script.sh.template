@@ -832,10 +832,11 @@ fi
 declare -a monitoring_services
 monitoring_services=( "datadog-agent" )
 
-printf "\033[34m\n  * DD_INSTALL_ONLY environment variable set.\033[0m\n"
+if [ $no_start ]; then
+  printf "\033[34m\n  * DD_INSTALL_ONLY environment variable set.\033[0m\n"
+fi
 
 for current_service in "${services[@]}"; do
-
   nice_current_flavor=${flavor_to_readable[$current_service]}
 
   # Use /usr/sbin/service by default.
@@ -872,7 +873,7 @@ for current_service in "${services[@]}"; do
   # Metrics are submitted, echo some instructions and exit
   printf "\033[32m  Your ${nice_current_flavor} is running and functioning properly.\n\033[0m"
 
-  if [[  " ${monitoring_services[*]} ~= " ${current_service} "  ]]; then
+  if [[ "${monitoring_services[*]}" =~ "${current_service}" ]]; then
     printf "\033[32m  It will continue to run in the background and submit metrics to Datadog.\n\033[0m"
   fi
   
