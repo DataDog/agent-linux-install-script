@@ -79,4 +79,28 @@ if [ -n "${EXPECTED_TOOL_VERSION}" ]; then
     fi
 fi
 
+system_probe_config_file=/etc/datadog-agent/system-probe.yaml
+if [ -n "${DD_SYSTEM_PROBE_ENABLED}" ]; then
+    if [ -e "$system_probe_config_file" ]; then
+        echo "[OK] Found system-probe configuration file $system_probe_config_file"
+        config_file_user=$(stat -c '%U' $system_probe_config_file)
+        if [ "$config_file_user" = "dd-agent" ]; then
+            echo "[OK] dd-agent user is the owner system-probe configuration file $system_probe_config_file"
+        else
+            echo "[FAIL] Expected dd-agent user to be the owner system-probe configuration file $system_probe_config_file"
+            RESULT=1
+        fi
+        config_file_group=$(stat -c '%G' $system_probe_config_file)
+        if [ "$config_file_group" = "dd-agent" ]; then
+            echo "[OK] dd-agent group is the owner system-probe configuration file $system_probe_config_file"
+        else
+            echo "[FAIL] Expected dd-agent group to be the owner system-probe configuration file $system_probe_config_file"
+            RESULT=1
+        fi
+    else
+        echo "[FAIL] Expected to find system-probe configuration file $system_probe_config_file"
+        RESULT=1
+    fi
+fi
+
 exit ${RESULT}
