@@ -28,9 +28,9 @@ APT_GPG_KEYS=("DATADOG_APT_KEY_CURRENT.public" "DATADOG_APT_KEY_F14F620E.public"
 # DATADOG_RPM_KEY_FD4BF915.public expires in 2024
 RPM_GPG_KEYS=("DATADOG_RPM_KEY_CURRENT.public" "DATADOG_RPM_KEY_E09422B3.public" "DATADOG_RPM_KEY_FD4BF915.public")
 
-# RPM_GPG_KEYS_A6 contains keys we only install for the A6 repo.
-# DATADOG_RPM_KEY.public is only useful to install old (< 6.14) Agent packages.
-RPM_GPG_KEYS_A6=("DATADOG_RPM_KEY.public")
+# DATADOG_RPM_KEY.public (4172A230) was only useful to install old (< 6.14) Agent packages.
+# We no longer add it and we explicitly remove it.
+RPM_GPG_KEYS_TO_REMOVE=("gpg-pubkey-4172a230-55dd14f6")
 
 # Set up a named pipe for logging
 npipe=/tmp/$$.tmp
@@ -136,6 +136,18 @@ function verify_agent_version(){
     else
         agent_flavor+="$ver_separator$agent_version_custom"
     fi
+}
+
+function remove_rpm_gpg_keys() {
+    local sudo_cmd="$1"
+    shift
+    local old_keys=("$@")
+    for key in "${old_keys[@]}"; do
+        if $sudo_cmd rpm -q "$key" 1>/dev/null 2>/dev/null; then
+            echo -e "\033[34m\nRemoving old RPM key $key from the RPM database\n\033[0m"
+            $sudo_cmd rpm --erase "$key"
+        fi
+    done
 }
 
 echo -e "\033[34m\n* Datadog AgentINSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
@@ -380,6 +392,7 @@ fi
 
 # Install the necessary package sources
 if [ "$OS" = "RedHat" ]; then
+    remove_rpm_gpg_keys "$sudo_cmd" "${RPM_GPG_KEYS_TO_REMOVE[@]}"
     if { [ "$DISTRIBUTION" == "Rocky" ] || [ "$DISTRIBUTION" == "AlmaLinux" ]; } && { [ -n "$agent_minor_version" ] && [ "$agent_minor_version" -lt 33 ]; } && ! echo "$agent_flavor" | grep '[0-9]' > /dev/null; then
         echo -e "\033[33mA future version of $nice_flavor will support $DISTRIBUTION\n\033[0m"
         exit;
@@ -416,11 +429,6 @@ if [ "$OS" = "RedHat" ]; then
     for key_path in "${RPM_GPG_KEYS[@]}"; do
       gpgkeys="${gpgkeys:+"${gpgkeys}${separator}"}https://${keys_url}/${key_path}"
     done
-    if [ "$agent_major_version" -eq 6 ]; then
-      for key_path in "${RPM_GPG_KEYS_A6[@]}"; do
-        gpgkeys="${gpgkeys:+"${gpgkeys}${separator}"}https://${keys_url}/${key_path}"
-      done
-    fi
 
     $sudo_cmd sh -c "echo -e '[datadog]\nname = Datadog, Inc.\nbaseurl = https://${yum_url}/${yum_version_path}/${ARCHI}/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\npriority=1\ngpgkey=${gpgkeys}' > /etc/yum.repos.d/datadog.repo"
 
@@ -540,6 +548,7 @@ If the cause is unclear, please contact Datadog support.
 
     ERROR_MESSAGE=""
 elif [ "$OS" = "SUSE" ]; then
+  remove_rpm_gpg_keys "$sudo_cmd" "${RPM_GPG_KEYS_TO_REMOVE[@]}"
   UNAME_M=$(uname -m)
   if [ "$UNAME_M"  == "i686" ] || [ "$UNAME_M"  == "i386" ] || [ "$UNAME_M"  == "x86" ]; then
       printf "\033[31mThe Datadog Agent installer is only available for 64 bit SUSE Enterprise machines.\033[0m\n"
@@ -584,21 +593,10 @@ elif [ "$OS" = "SUSE" ]; then
       $sudo_cmd curl -o "/tmp/${key_path}" "https://${keys_url}/${key_path}"
       $sudo_cmd rpm --import "/tmp/${key_path}"
     done
-    if [ "$agent_major_version" -eq 6 ]; then
-      for key_path in "${RPM_GPG_KEYS_A6[@]}"; do
-        $sudo_cmd curl -o "/tmp/${key_path}" "https://${keys_url}/${key_path}"
-        $sudo_cmd rpm --import "/tmp/${key_path}"
-      done
-    fi
   else
     for key_path in "${RPM_GPG_KEYS[@]}"; do
       $sudo_cmd rpm --import "https://${keys_url}/${key_path}"
     done
-    if [ "$agent_major_version" -eq 6 ]; then
-      for key_path in "${RPM_GPG_KEYS_A6[@]}"; do
-        $sudo_cmd rpm --import "https://${keys_url}/${key_path}"
-      done
-    fi
   fi
 
   # Parse the major version number out of the distro release info file. xargs is used to trim whitespace.
@@ -613,11 +611,6 @@ elif [ "$OS" = "SUSE" ]; then
     for key_path in "${RPM_GPG_KEYS[@]}"; do
       gpgkeys="${gpgkeys:+"${gpgkeys}${separator}"}https://${keys_url}/${key_path}"
     done
-    if [ "$agent_major_version" -eq 6 ]; then
-      for key_path in "${RPM_GPG_KEYS_A6[@]}"; do
-        gpgkeys="${gpgkeys:+"${gpgkeys}${separator}"}https://${keys_url}/${key_path}"
-      done
-    fi
   fi
 
   echo -e "\033[34m\n* Installing YUM Repository for Datadog\n\033[0m"
