@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.13.0
 ================
+
+- Stop adding and remove the old RPM GPG key 4172A230
 
 1.12.0
 ================
