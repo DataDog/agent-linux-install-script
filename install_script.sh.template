@@ -945,7 +945,7 @@ if [ -n "$system_probe_enabled" ]; then
       $sudo_cmd cp "$system_probe_config_file.example" "$system_probe_config_file"
     fi
 
-    $sudo_cmd chown dd-agent:dd-agent "$system_probe_config_file"
+    $sudo_cmd chown root:dd-agent "$system_probe_config_file"
     $sudo_cmd chmod 640 "$system_probe_config_file"
   fi
 fi
