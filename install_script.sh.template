@@ -275,10 +275,9 @@ if [ -n "$DD_SITE" ]; then
     report_failure_url="https://api.${DD_SITE}/agent_stats/report_failure"
 fi
 
+telemetry_url="https://instrumentation-telemetry-intake.datadoghq.com/api/v2/apmtelemetry"
 if [ -n "$DD_SITE" ]; then
     telemetry_url="https://instrumentation-telemetry-intake.${DD_SITE}/api/v2/apmtelemetry"
-else
-    telemetry_url="https://instrumentation-telemetry-intake.datadoghq.com/api/v2/apmtelemetry"
 fi
 
 if [ -n "$TESTING_REPORT_URL" ]; then
