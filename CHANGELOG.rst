@@ -5,6 +5,22 @@ Release Notes
 Unreleased
 ================
 
+1.13.0
+================
+
+- Stop adding and remove the old RPM GPG key 4172A230
+
+1.12.0
+================
+
+Upgrade Notes
+-------------
+
+- Improved support for FIPS mode 
+
+  After changes to the `datadog-fips-proxy` package, script updates
+  to better support the new config shipping and service management.
+
 1.11.0
 ================
 
