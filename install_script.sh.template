@@ -127,7 +127,6 @@ END
     "$telemetry_url" \
     --header 'Content-Type: application/json' \
     --header "DD-Api-Key: $apikey" \
-    --header 'DD-Telemetry-Debug-Enabled: true' \
     --data @-
   then
     printf "Unable to send telemetry\n"
