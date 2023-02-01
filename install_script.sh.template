@@ -960,8 +960,6 @@ if [ $no_start ]; then
   printf "\033[34m\n  * DD_INSTALL_ONLY environment variable set.\033[0m\n"
 fi
 
-# Metrics are submitted, echo some instructions and exit
-printf "\033[32m
 for current_service in "${services[@]}"; do
   nice_current_flavor=${flavor_to_readable[$current_service]}
 
