@@ -32,6 +32,12 @@ RPM_GPG_KEYS=("DATADOG_RPM_KEY_CURRENT.public" "DATADOG_RPM_KEY_E09422B3.public"
 # DATADOG_RPM_KEY.public is only useful to install old (< 6.14) Agent packages.
 RPM_GPG_KEYS_A6=("DATADOG_RPM_KEY.public")
 
+# Error codes for telemetry
+GENERAL_ERROR_CODE=1
+UNSUPPORTED_PLATFORM_CODE=5
+INVALID_PARAMETERS_CODE=6
+UNABLE_TO_INSTALL_DEPENDENCY_CODE=7
+
 # Set up a named pipe for logging
 npipe=/tmp/$$.tmp
 mknod $npipe p
@@ -114,7 +120,7 @@ function report_telemetry() {
 "
   fi
 
-   (cat <<END
+  if ! (cat <<END
        $telemetry_event
 END
        ) | curl --fail --silent --output /dev/null \
@@ -122,7 +128,10 @@ END
     --header 'Content-Type: application/json' \
     --header "DD-Api-Key: $apikey" \
     --header 'DD-Telemetry-Debug-Enabled: true' \
-    --data @- || true
+    --data @-
+  then
+    printf "Unable to send telemetry\n"
+  fi
 }
 
 function on_read_error() {
@@ -156,7 +165,7 @@ Troubleshooting and basic usage information for the $nice_flavor are available a
 
     https://docs.datadoghq.com/agent/basic_agent_usage/\n\033[0m\n"
 
-    ERROR_CODE=1
+    ERROR_CODE=$GENERAL_ERROR_CODE
     report_telemetry
 
     if ! tty -s; then
@@ -194,7 +203,7 @@ function verify_agent_version(){
     local ver_separator="$1"
     if [ -z "$agent_version_custom" ]; then
         ERROR_MESSAGE="Specified version not found: $agent_major_version.$agent_minor_version"
-        ERROR_CODE=6
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
         echo -e "
   \033[33mWarning: $ERROR_MESSAGE
   Check available versions at: https://github.com/DataDog/datadog-agent/blob/main/CHANGELOG.rst\033[0m"
@@ -311,7 +320,7 @@ nice_flavor=${flavor_to_readable[$agent_flavor]}
 
 if [ -z "$nice_flavor" ]; then
     ERROR_MESSAGE="Unknown DD_AGENT_FLAVOR \"$agent_flavor\""
-    ERROR_CODE=6
+    ERROR_CODE=$INVALID_PARAMETERS_CODE
     echo -e "\033[33m$ERROR_MESSAGE\033[0m"
     fallback_msg
     report_telemetry
@@ -342,7 +351,7 @@ agent_major_version=AGENT_MAJOR_VERSION_PLACEHOLDER
 if [ -n "$DD_AGENT_MAJOR_VERSION" ]; then
   if [ "$DD_AGENT_MAJOR_VERSION" != "6" ] && [ "$DD_AGENT_MAJOR_VERSION" != "7" ]; then
     ERROR_MESSAGE="DD_AGENT_MAJOR_VERSION must be either 6 or 7. Current value: $DD_AGENT_MAJOR_VERSION"
-    ERROR_CODE=6
+    ERROR_CODE=$INVALID_PARAMETERS_CODE
     echo "$ERROR_MESSAGE"
     report_telemetry
     exit 1;
@@ -372,14 +381,14 @@ if [ -n "$DD_AGENT_DIST_CHANNEL" ]; then
   if [ "$repository_url" == "datadoghq.com" ]; then
     if [ "$DD_AGENT_DIST_CHANNEL" != "stable" ] && [ "$DD_AGENT_DIST_CHANNEL" != "beta" ]; then
       ERROR_MESSAGE="DD_AGENT_DIST_CHANNEL must be either 'stable' or 'beta'. Current value: $DD_AGENT_DIST_CHANNEL"
-      ERROR_CODE=6
+      ERROR_CODE=$INVALID_PARAMETERS_CODE
       echo "$ERROR_MESSAGE"
       report_telemetry
       exit 1;
     fi
   elif [ "$DD_AGENT_DIST_CHANNEL" != "stable" ] && [ "$DD_AGENT_DIST_CHANNEL" != "beta" ] && [ "$DD_AGENT_DIST_CHANNEL" != "nightly" ]; then
     ERROR_MESSAGE="DD_AGENT_DIST_CHANNEL must be either 'stable', 'beta' or 'nightly' on custom repos. Current value: $DD_AGENT_DIST_CHANNEL"
-    ERROR_CODE=6
+    ERROR_CODE=$INVALID_PARAMETERS_CODE
     echo "$ERROR_MESSAGE"
     report_telemetry
     exit 1;
@@ -409,7 +418,7 @@ fi
 
 if [[ `uname -m` == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]]; then
     ERROR_MESSAGE="The full $nice_flavor isn't available for your architecture (armv7l).\nInstall the ${flavor_to_readable[datadog-iot-agent]} by setting DD_AGENT_FLAVOR='datadog-iot-agent'."
-    ERROR_CODE=5
+    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE\033[0m\n"
     report_telemetry
     exit 1;
@@ -422,7 +431,7 @@ DISTRIBUTION=$(lsb_release -d 2>/dev/null | grep -Eo $KNOWN_DISTRIBUTION  || gre
 
 if [ "$DISTRIBUTION" = "Darwin" ]; then
     ERROR_MESSAGE="This script does not support installing on the Mac."
-    ERROR_CODE=5
+    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE
 
 Please use the 1-step script available at https://app.datadoghq.com/account/settings#agent/mac.\033[0m\n"
@@ -447,14 +456,14 @@ fi
 if [[ "$agent_flavor" == "datadog-dogstatsd" ]]; then
     if [[ `uname -m` == "armv7l" ]] || { [[ `uname -m` != "x86_64" ]] && [[ "$OS" != "Debian" ]]; }; then
         ERROR_MESSAGE="The $nice_flavor isn't available for your architecture."
-        ERROR_CODE=5
+        ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
         report_telemetry
         exit 1;
     fi
     if  [[ "$OS" == "Debian" ]] && [[ `uname -m` == "aarch64" ]] && { [[ -n "$agent_minor_version" ]] && [[ "$agent_minor_version" -lt 35 ]]; }; then
         ERROR_MESSAGE="The $nice_flavor is only available since version 7.35.0 for your architecture."
-        ERROR_CODE=5
+        ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
         report_telemetry
         exit 1;
@@ -472,7 +481,7 @@ fi
 if [ "$OS" = "RedHat" ]; then
     if { [ "$DISTRIBUTION" == "Rocky" ] || [ "$DISTRIBUTION" == "AlmaLinux" ]; } && { [ -n "$agent_minor_version" ] && [ "$agent_minor_version" -lt 33 ]; } && ! echo "$agent_flavor" | grep '[0-9]' > /dev/null; then
         ERROR_MESSAGE="A future version of $nice_flavor will support $DISTRIBUTION"
-        ERROR_CODE=5
+        ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         echo -e "\033[33m$ERROR_MESSAGE\n\033[0m"
         report_telemetry
         exit;
@@ -586,7 +595,7 @@ elif [ "$OS" = "Debian" ]; then
       if [ -n "$agent_minor_version_without_patch" ]; then
           if [ "$agent_minor_version_without_patch" -ge "36" ]; then
               ERROR_MESSAGE="Debian < 8 only supports $nice_flavor $agent_major_version up to $agent_major_version.35."
-              ERROR_CODE=5
+              ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
               printf "\033[31m$ERROR_MESSAGE\033[0m\n"
               report_telemetry
               exit;
@@ -636,7 +645,7 @@ elif [ "$OS" = "SUSE" ]; then
   UNAME_M=$(uname -m)
   if [ "$UNAME_M"  == "i686" ] || [ "$UNAME_M"  == "i386" ] || [ "$UNAME_M"  == "x86" ]; then
       ERROR_MESSAGE="The Datadog Agent installer is only available for 64 bit SUSE Enterprise machines."
-      ERROR_CODE=5
+      ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
       printf "\033[31m$ERROR_MESSAGE\033[0m\n"
       report_telemetry
       exit;
@@ -668,7 +677,7 @@ elif [ "$OS" = "SUSE" ]; then
     fi
     if ! rpm -q curl > /dev/null; then
       ERROR_MESSAGE="Failed to install curl."
-      ERROR_CODE=7
+      ERROR_CODE=$UNABLE_TO_INSTALL_DEPENDENCY_CODE
       echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
       fallback_msg
       report_telemetry
@@ -733,7 +742,7 @@ elif [ "$OS" = "SUSE" ]; then
       if [ -n "$agent_minor_version_without_patch" ]; then
           if [ "$agent_minor_version_without_patch" -ge "33" ]; then
               ERROR_MESSAGE="openSUSE < 15 only supports $nice_flavor $agent_major_version up to $agent_major_version.32."
-              ERROR_CODE=5
+              ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
               printf "\033[31m$ERROR_MESSAGE\033[0m\n"
               report_telemetry
               exit;
@@ -749,7 +758,7 @@ elif [ "$OS" = "SUSE" ]; then
       if [ -n "$agent_minor_version_without_patch" ]; then
           if [ "$agent_minor_version_without_patch" -ge "33" ]; then
               ERROR_MESSAGE="SLES < 12 only supports $nice_flavor $agent_major_version up to $agent_major_version.32."
-              ERROR_CODE=5
+              ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
               printf "\033[31m$ERROR_MESSAGE\033[0m\n"
               report_telemetry
               exit;
@@ -787,7 +796,7 @@ elif [ "$OS" = "SUSE" ]; then
   for expected_pkg in "${packages[@]}"; do
     if ! rpm -q "${expected_pkg}" > /dev/null; then
       ERROR_MESSAGE="Failed to install ${expected_pkg}."
-      ERROR_CODE=7
+      ERROR_CODE=$UNABLE_TO_INSTALL_DEPENDENCY_CODE
       echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
       fallback_msg
       report_telemetry
@@ -801,7 +810,7 @@ Please follow the instructions on the Agent setup page:
 
     https://app.datadoghq.com/account/settings#agent\033[0m\n"
     ERROR_MESSAGE="Unsupported platform"
-    ERROR_CODE=5
+    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     report_telemetry
     exit;
 fi
