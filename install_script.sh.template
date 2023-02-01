@@ -804,12 +804,12 @@ elif [ "$OS" = "SUSE" ]; then
   done
 
 else
-    printf "\033[31mYour OS or distribution are not supported by this install script.
+    ERROR_MESSAGE="Your OS or distribution are not supported by this install script.
 Please follow the instructions on the Agent setup page:
 
-    https://app.datadoghq.com/account/settings#agent\033[0m\n"
-    ERROR_MESSAGE="Unsupported platform"
+https://app.datadoghq.com/account/settings#agent"
     ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
+    printf "\033[31m$ERROR_MESSAGE\033[0m\n"
     report_telemetry
     exit;
 fi
