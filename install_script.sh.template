@@ -127,6 +127,7 @@ END
     "$telemetry_url" \
     --header 'Content-Type: application/json' \
     --header "DD-Api-Key: $apikey" \
+    --header 'DD-Telemetry-Debug-Enabled: true' \
     --data @-
   then
     printf "Unable to send telemetry\n"
@@ -157,6 +158,11 @@ function get_email() {
 }
 
 function on_error() {
+    if [ -z "${ERROR_MESSAGE}" ] ; then
+      # Save the few lines of the log file for telemetry if the error message is blank
+      SAVED_ERROR_MESSAGE=$(tail -n 3 $logfile)
+    fi
+
     printf "\033[31m$ERROR_MESSAGE
 It looks like you hit an issue when trying to install the $nice_flavor.
 
@@ -164,6 +170,7 @@ Troubleshooting and basic usage information for the $nice_flavor are available a
 
     https://docs.datadoghq.com/agent/basic_agent_usage/\n\033[0m\n"
 
+    ERROR_MESSAGE=$SAVED_ERROR_MESSAGE
     ERROR_CODE=$GENERAL_ERROR_CODE
     report_telemetry
 
