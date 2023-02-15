@@ -496,6 +496,14 @@ if [[ "$agent_flavor" == "datadog-dogstatsd" ]]; then
     fi
 fi
 
+if [ -n "fips_mode" ] && { [[ -n "$agent_minor_version_without_patch" ]] && [[ "${agent_minor_version_without_patch%.*}" -lt 41 ]]; }; then
+    ERROR_MESSAGE="FIPS mode is only available since version AGENT_MAJOR_VERSION_PLACEHOLDER.41.0 and requested minor version is $agent_minor_version"
+    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
+    printf "\033[31m$ERROR_MESSAGE\033[0m\n"
+    report_telemetry
+    exit 1;
+fi
+
 # Root user detection
 if [ "$(echo "$UID")" = "0" ]; then
     sudo_cmd=''
@@ -876,33 +884,10 @@ else
     $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
 # Configuration for the agent to use datadog-fips-proxy to communicate with Datadog via FIPS-compliant channel.
 
-dd_url: http://localhost:9804
-
-apm_config:
-    apm_dd_url: http://localhost:9805
-    profiling_dd_url: http://localhost:9806
-    telemetry:
-        dd_url: http://localhost:9813
-
-process_config:
-    process_dd_url: http://localhost:9807
-
-logs_config:
-    use_http: true
-    logs_dd_url: localhost:9808
-    logs_no_ssl: true
-
-database_monitoring:
-    metrics:
-        dd_url: localhost:9809
-    activity:
-        dd_url: localhost:9809
-    samples:
-        dd_url: localhost:9810
-
-network_devices:
-    metadata:
-        dd_url: localhost:9811
+fips:
+    enabled: true
+    port_range_start: 9803
+    https: false
 EOF
   fi
   if [ "$hostname" ]; then
