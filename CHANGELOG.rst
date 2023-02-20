@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.14.0
 ================
+
+- Add success and failure telemetry events
 
 1.13.0
 ================
