@@ -496,7 +496,7 @@ if [[ "$agent_flavor" == "datadog-dogstatsd" ]]; then
     fi
 fi
 
-if [ -n "fips_mode" ] && { [[ -n "$agent_minor_version_without_patch" ]] && [[ "${agent_minor_version_without_patch%.*}" -lt 41 ]]; }; then
+if [ -n "$fips_mode" ] && { [[ -n "$agent_minor_version_without_patch" ]] && [[ "${agent_minor_version_without_patch%.*}" -lt 41 ]]; }; then
     ERROR_MESSAGE="FIPS mode is only available since version AGENT_MAJOR_VERSION_PLACEHOLDER.41.0 and requested minor version is $agent_minor_version"
     ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE\033[0m\n"
