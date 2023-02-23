@@ -44,3 +44,7 @@ pre_release_%:
 	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
 	sed -i "" -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
 
+post_release_%:
+	$(eval NEW_VERSION=$(shell echo "$@" | sed -e 's|post_release_||'))
+	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}.post|g" install_script.sh.template
+	echo "4i\n\nUnreleased\n================\n.\nw\nq" | ed CHANGELOG.rst
