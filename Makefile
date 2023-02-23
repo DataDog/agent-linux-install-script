@@ -41,6 +41,6 @@ install_script_agent7.sh: install_script.sh.template
 
 pre_release_%:
 	$(eval NEW_VERSION=$(shell echo "$@" | sed -e 's|pre_release_||'))
-	sed -i -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
-
+	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
+	sed -i "" -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
 
