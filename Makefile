@@ -38,3 +38,9 @@ install_script_agent7.sh: install_script.sh.template
 		-e 's|DEPRECATION_MESSAGE_PLACEHOLDER||' \
 		install_script.sh.template > $@
 	chmod +x $@
+
+pre_release_%:
+	$(eval NEW_VERSION=$(shell echo "$@" | sed -e 's|pre_release_||'))
+	sed -i -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
+
+
