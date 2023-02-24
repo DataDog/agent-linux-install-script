@@ -52,7 +52,8 @@ pre_release_minor:
 	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
 	sed -i "" -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
 
-post_release_%:
-	$(eval NEW_VERSION=$(shell echo "$@" | sed -e 's|post_release_||'))
-	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}.post|g" install_script.sh.template
+post_release:
+	$(eval CUR_VERSION=$(shell awk -F "=" '/^install_script_version=/{print $$NF}' install_script.sh.template))
+	((echo ${CUR_VERSION} | grep ".post" &>/dev/null) || exit 0 && exit 1) || (echo "Invalid install script version (contain .post extension)" && exit 1)
+	sed -i "" -e "s|install_script_version=.*|install_script_version=${CUR_VERSION}.post|g" install_script.sh.template
 	echo "4i\n\nUnreleased\n================\n.\nw\nq" | ed CHANGELOG.rst
