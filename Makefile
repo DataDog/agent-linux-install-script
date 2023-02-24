@@ -44,6 +44,14 @@ pre_release_%:
 	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
 	sed -i "" -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
 
+pre_release_minor:
+	$(eval CUR_VERSION=$(shell awk -F "=" '/^install_script_version=/{print $$NF}' install_script.sh.template))
+	$(eval CUR_MINOR=$(shell echo "${CUR_VERSION}" | tr "." "\n" | awk 'NR==2'))
+	$(eval NEXT_MINOR=$(shell echo ${CUR_MINOR}+1 | bc))
+	$(eval NEW_VERSION=$(shell echo "${CUR_VERSION}" | awk -v repl="${NEXT_MINOR}" 'BEGIN {FS=OFS="."} {$$2=repl; print}' | sed -e 's|.post||'))
+	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
+	sed -i "" -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
+
 post_release_%:
 	$(eval NEW_VERSION=$(shell echo "$@" | sed -e 's|post_release_||'))
 	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}.post|g" install_script.sh.template
