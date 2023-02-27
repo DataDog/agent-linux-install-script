@@ -2,9 +2,12 @@
 Release Notes
 =============
 
-Unreleased
+1.15.0
 ================
 
+- Use ``fips`` option instead of hardcoded dd_url when DD_FIPS_MODE is set.
+- Prevent from installing FIPS proxy if the targeted Agent version is below 7.41.
+- Added an error when asking for FIPS mode on non x86_64 architecture.
 
 1.14.0
 ================
