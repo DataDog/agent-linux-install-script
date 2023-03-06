@@ -80,7 +80,7 @@ if [ -n "${EXPECTED_TOOL_VERSION}" ]; then
 fi
 
 system_probe_config_file=/etc/datadog-agent/system-probe.yaml
-if [ -n "${DD_SYSTEM_PROBE_ENABLED}" ]; then
+if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
     if [ -e "$system_probe_config_file" ]; then
         echo "[OK] Found system-probe configuration file $system_probe_config_file"
         config_file_user=$(stat -c '%U' $system_probe_config_file)

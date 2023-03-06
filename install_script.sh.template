@@ -321,9 +321,9 @@ if [ -n "$DD_FIPS_MODE" ]; then
   fips_mode=$DD_FIPS_MODE
 fi
 
-system_probe_enabled=
-if [ -n "$DD_SYSTEM_PROBE_ENABLED" ]; then
-  system_probe_enabled=$DD_SYSTEM_PROBE_ENABLED
+system_probe_ensure_config=
+if [ -n "$DD_SYSTEM_PROBE_ENSURE_CONFIG" ]; then
+  system_probe_ensure_config=$DD_SYSTEM_PROBE_ENSURE_CONFIG
 fi
 
 agent_flavor="datadog-agent"
@@ -937,7 +937,7 @@ if [ -n "$fips_mode" ]; then
 fi
 
 # set the system-probe configuration
-if [ -n "$system_probe_enabled" ]; then
+if [ -n "$system_probe_ensure_config" ]; then
   if [ -e "$system_probe_config_file" ] && [ -z "$upgrade" ]; then
     printf "\033[34m\n* Keeping old $system_probe_config_file configuration file\n\033[0m\n"
   else
