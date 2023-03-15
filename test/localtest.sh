@@ -33,8 +33,10 @@ echo -e "\n"
 MAJOR_VERSION=$(echo "$INSTALLED_VERSION" | cut -d "." -f 1)
 MINOR_VERSION=$(echo "$INSTALLED_VERSION" | cut -d "." -f 2)
 
+echo "${EXPECTED_MAJOR_VERSION}"
+echo "${MAJOR_VERSION}"
 
-if [ "${EXPECTED_MAJOR_VERSION}" -ne "${MAJOR_VERSION}" ]; then
+if [ "${EXPECTED_MAJOR_VERSION}" != "${MAJOR_VERSION}" ]; then
     echo "[FAIL] Expected major version ${EXPECTED_MAJOR_VERSION} to be installed, but found ${MAJOR_VERSION}"
     RESULT=1
 else
@@ -42,7 +44,7 @@ else
 fi
 
 if [ -n "${EXPECTED_MINOR_VERSION}" ]; then
-    if [ "${EXPECTED_MINOR_VERSION}" -ne "${MINOR_VERSION}" ]; then
+    if [ "${EXPECTED_MINOR_VERSION}" != "${MINOR_VERSION}" ]; then
         echo "[FAIL] Expected minor version ${EXPECTED_MINOR_VERSION} to be installed, but found ${MINOR_VERSION}"
         RESULT=1
     else
