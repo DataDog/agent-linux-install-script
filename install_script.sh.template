@@ -402,7 +402,6 @@ if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
   agent_minor_version="${agent_minor_version//[^0-9.]/}"
   # remove the patch version if the minor version includes it (eg: 33.1 -> 33)
   agent_minor_version_without_patch="${agent_minor_version%.*}"
-  # remove any non-digit character from the agent minor version (eg: 33-beta -> 33)
 fi
 
 agent_dist_channel=stable
