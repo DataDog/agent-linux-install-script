@@ -398,7 +398,7 @@ if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
   #  - 20.0 = sets explicit patch version x.20.0
   # Note: Specifying an invalid minor version will terminate the script.
   # Handle pre-release versions like "35.0~rc.5" -> "35.5"
-  agent_minor_version=$(echo $DD_AGENT_MINOR_VERSION | sed -E 's/(.+)\..+\.(.+)/\1.\2/g')
+  agent_minor_version=$(echo "$DD_AGENT_MINOR_VERSION" | sed -E 's/(.+)\..+\.(.+)/\1.\2/g')
   agent_minor_version="${agent_minor_version//[^0-9.]/}"
   # remove the patch version if the minor version includes it (eg: 33.1 -> 33)
   agent_minor_version_without_patch="${agent_minor_version%.*}"
