@@ -397,11 +397,10 @@ if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
   #  - 20   = defaults to highest patch version x.20.2
   #  - 20.0 = sets explicit patch version x.20.0
   # Note: Specifying an invalid minor version will terminate the script.
-  agent_minor_version=$DD_AGENT_MINOR_VERSION
+  agent_minor_version= $(echo $DD_AGENT_MINOR_VERSION | sed -E 's/(.+)\..+\.(.+)/\1.\2/g')
   # remove the patch version if the minor version includes it (eg: 33.1 -> 33)
   agent_minor_version_without_patch="${agent_minor_version%.*}"
   # remove any non-digit character from the agent minor version (eg: 33-beta -> 33)
-  agent_minor_version_without_patch="${agent_minor_version//[^0-9]/}}"
 fi
 
 agent_dist_channel=stable
