@@ -403,8 +403,9 @@ if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
   #  - 20   = defaults to highest patch version x.20.2
   #  - 20.0 = sets explicit patch version x.20.0
   # Note: Specifying an invalid minor version will terminate the script.
-  # Handle pre-release versions like "35.0~rc.5" -> "35.0" or "27.1~viper~conflict~fix" -> "27.1"
   agent_minor_version=${DD_AGENT_MINOR_VERSION}
+  # Handle pre-release versions like "35.0~rc.5" -> "35.0" or "27.1~viper~conflict~fix" -> "27.1"
+  # Allow to get a "clean" version number that can be used to compare the version with others (e.g: "35.0~rc.5" < "36.0" because "35.0" < "36.0")
   clean_agent_minor_version=$(echo "${DD_AGENT_MINOR_VERSION}" | sed -E 's/~.*//g')
   # remove the patch version if the minor version includes it (eg: 33.1 -> 33)
   agent_minor_version_without_patch="${clean_agent_minor_version%.*}"
