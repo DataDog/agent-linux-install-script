@@ -496,7 +496,7 @@ if [[ "$agent_flavor" == "datadog-dogstatsd" ]]; then
         report_telemetry
         exit 1;
     fi
-    if  [[ "$OS" == "Debian" ]] && [[ `uname -m` == "aarch64" ]] && { [[ -n "$clean_agent_minor_version" ]] && [[ "$clean_agent_minor_version" -lt 35 ]]; }; then
+    if  [[ "$OS" == "Debian" ]] && [[ `uname -m` == "aarch64" ]] && { [[ -n "$agent_minor_version_without_patch" ]] && [[ "$agent_minor_version_without_patch" -lt 35 ]]; }; then
         ERROR_MESSAGE="The $nice_flavor is only available since version 7.35.0 for your architecture."
         ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
@@ -532,7 +532,7 @@ fi
 # Install the necessary package sources
 if [ "$OS" = "RedHat" ]; then
     remove_rpm_gpg_keys "$sudo_cmd" "${RPM_GPG_KEYS_TO_REMOVE[@]}"
-    if { [ "$DISTRIBUTION" == "Rocky" ] || [ "$DISTRIBUTION" == "AlmaLinux" ]; } && { [ -n "$clean_agent_minor_version" ] && [ "$clean_agent_minor_version" -lt 33 ]; } && ! echo "$agent_flavor" | grep '[0-9]' > /dev/null; then
+    if { [ "$DISTRIBUTION" == "Rocky" ] || [ "$DISTRIBUTION" == "AlmaLinux" ]; } && { [ -n "$agent_minor_version_without_patch" ] && [ "$agent_minor_version_without_patch" -lt 33 ]; } && ! echo "$agent_flavor" | grep '[0-9]' > /dev/null; then
         ERROR_MESSAGE="A future version of $nice_flavor will support $DISTRIBUTION"
         ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         echo -e "\033[33m$ERROR_MESSAGE\n\033[0m"
