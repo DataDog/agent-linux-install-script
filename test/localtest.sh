@@ -23,7 +23,7 @@ if command -v dpkg > /dev/null; then
     INSTALLED_VERSION=$(dpkg-query -f='${source:Upstream-Version}' -W ${EXPECTED_FLAVOR})
     echo "===== DBG ====="
     echo "$(dpkg-query -f='${source:Upstream-Version}' -l | grep ${EXPECTED_FLAVOR})"
-    echo "$(dpkg-query -W ${EXPECTED_FLAVOR})"
+    echo "$(dpkg-query --version)"
     echo "==============="
 else
     # skip verification of mode/user/group, because these are
