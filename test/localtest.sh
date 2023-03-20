@@ -20,7 +20,7 @@ EXPECTED_MINOR_VERSION="${EXPECTED_MINOR_VERSION:-${DD_AGENT_MINOR_VERSION}}"
 if command -v dpkg > /dev/null; then
     apt-get install -y debsums
     debsums -c ${EXPECTED_FLAVOR}
-    INSTALLED_VERSION=$(dpkg-query -W ${EXPECTED_FLAVOR} | sed -E "s/[^\t]*\t//g")
+    INSTALLED_VERSION=$(dpkg-query -W ${EXPECTED_FLAVOR} | sed -E "s/[^\t]*\t//g" | sed -E "s/[0-9]+://g")
 else
     # skip verification of mode/user/group, because these are
     # changed by the postinstall scriptlet
