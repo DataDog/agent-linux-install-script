@@ -21,7 +21,7 @@ if command -v dpkg > /dev/null; then
     apt-get install -y debsums
     debsums -c ${EXPECTED_FLAVOR}
     INSTALLED_VERSION=$(dpkg-query -f='${source:Upstream-Version}' -W ${EXPECTED_FLAVOR})
-    echo "$(dpkg-query -f='${source:Upstream-Version}' -l)"
+    echo "${EXPECTED_FLAVOR}"
 else
     # skip verification of mode/user/group, because these are
     # changed by the postinstall scriptlet
