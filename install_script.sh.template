@@ -289,7 +289,7 @@ rpm_repo_gpgcheck=
 if [ -n "$DD_RPM_REPO_GPGCHECK" ]; then
     rpm_repo_gpgcheck=$DD_RPM_REPO_GPGCHECK
 else
-    if [ -n "$REPO_URL" ] || [ -n "$DD_REPO_URL" ]; then
+    if [ -n "$REPO_URL" ] || [ -n "$DD_REPO_URL" ]; then
         rpm_repo_gpgcheck=0
     fi
 fi
