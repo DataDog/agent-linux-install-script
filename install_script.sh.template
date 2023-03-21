@@ -260,11 +260,15 @@ if [ -n "$DD_HOST_TAGS" ]; then
     host_tags=$DD_HOST_TAGS
 fi
 
-if [ -n "$REPO_URL" ]; then
+if [ -n "$DD_REPO_URL" ]; then
+    repository_url=$DD_REPO_URL
+elif [ -n "$REPO_URL" ]; then
+    echo -e "\033[33mWarning: REPO_URL is deprecated might be removed later (use DD_REPO_URL instead).\033[0m"
     repository_url=$REPO_URL
 else
     repository_url="datadoghq.com"
 fi
+
 
 if [ -n "$TESTING_KEYS_URL" ]; then
   keys_url=$TESTING_KEYS_URL
@@ -285,7 +289,7 @@ rpm_repo_gpgcheck=
 if [ -n "$DD_RPM_REPO_GPGCHECK" ]; then
     rpm_repo_gpgcheck=$DD_RPM_REPO_GPGCHECK
 else
-    if [ -n "$REPO_URL" ]; then
+    if [ -n "$REPO_URL" ] || [ -n "$DD_REPO_URL" ]; then
         rpm_repo_gpgcheck=0
     fi
 fi
