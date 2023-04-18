@@ -324,6 +324,54 @@ if [ -n "$DD_FIPS_MODE" ]; then
   fips_mode=$DD_FIPS_MODE
 fi
 
+declare -a apm_libraries
+
+host_injection_enabled=
+if [ -n "$DD_APM_HOST_INJECTION_ENABLED" ]; then
+  host_injection_enabled=$DD_APM_HOST_INJECTION_ENABLED
+  apm_libraries=("datadog-apm-inject")
+fi
+
+docker_injection_enabled=
+if [ -n "$DD_APM_DOCKER_INJECTION_ENABLED" ]; then
+  docker_injection_enabled=$DD_APM_DOCKER_INJECTION_ENABLED
+  apm_libraries=("datadog-apm-inject")
+fi
+
+if [ -n "$DD_APM_LIBRARIES" ]; then
+  lib_array=($DD_APM_LIBRARIES)
+  for lib in "${lib_array[@]}"
+  do
+    case $lib in
+      all)
+        apm_libraries+=("datadog-apm-library-all")
+        ;;
+      java)
+        apm_libraries+=("datadog-apm-library-java")
+        ;;
+      js)
+        apm_libraries+=("datadog-apm-library-js")
+        ;;
+      python)
+        apm_libraries+=("datadog-apm-library-python")
+        ;;
+      dotnet)
+        apm_libraries+=("datadog-apm-library-dotnet")
+        ;;
+      *)
+        ERROR_MESSAGE="Unknown apm library: $lib. Must be one of: all, java, js, python, dotnet"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
+        echo "$ERROR_MESSAGE"
+        report_telemetry
+        exit 1;
+        ;;
+    esac
+  done
+elif [ -n "$host_injection_enabled" ] || [ -n "$docker_injection_enabled" ]; then
+  # Default to all libraries if injection is enabled
+  apm_libraries+=("datadog-apm-library-all")
+fi
+
 system_probe_ensure_config=
 if [ -n "$DD_SYSTEM_PROBE_ENSURE_CONFIG" ]; then
   system_probe_ensure_config=$DD_SYSTEM_PROBE_ENSURE_CONFIG
@@ -601,6 +649,10 @@ if [ "$OS" = "RedHat" ]; then
       packages+=("datadog-fips-proxy")
     fi
 
+    if [ -n "$apm_libraries" ]; then
+      packages+=(${apm_libraries[@]})
+    fi
+
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
     $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}"
@@ -689,6 +741,10 @@ If the cause is unclear, please contact Datadog support.
     packages=("$agent_flavor" "datadog-signing-keys")
     if [ -n "$fips_mode" ]; then
      packages+=("datadog-fips-proxy")
+    fi
+
+    if [ -n "$apm_libraries" ]; then
+      packages+=(${apm_libraries[@]})
     fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
@@ -826,6 +882,13 @@ elif [ "$OS" = "SUSE" ]; then
     packages+=("datadog-fips-proxy")
   fi
 
+  if [ -n "$apm_libraries" ]; then
+    ERROR_MESSAGE="APM injection is not supported on SUSE"
+    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
+    echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
+    report_telemetry
+    exit 1;
+  fi
 
   echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
@@ -959,6 +1022,17 @@ if [ -n "$system_probe_ensure_config" ]; then
   fi
 fi
 
+# run apm injection scripts
+if [ -n "$host_injection_enabled" ]; then
+  echo "in host install"
+  $sudo_cmd dd-host-install --no-agent-restart
+  echo "finished host install"
+fi
+
+if [ -n "$docker_injection_enabled" ]; then
+  $sudo_cmd dd-container-install --no-agent-restart
+fi
+
 # Creating or overriding the install information
 install_info_content="---
 install_method:
@@ -967,7 +1041,6 @@ install_method:
   installer_version: install_script-$install_script_version
 "
 $sudo_cmd sh -c "echo '$install_info_content' > $etcdir/install_info"
-
 if [ -n "$fips_mode" ]; then
   # Creating or overriding the install information
   $sudo_cmd sh -c "echo '$install_info_content' > $etcdirfips/install_info"
@@ -988,7 +1061,6 @@ monitoring_services=( "datadog-agent" )
 if [ $no_start ]; then
   printf "\033[34m\n  * DD_INSTALL_ONLY environment variable set.\033[0m\n"
 fi
-
 for current_service in "${services[@]}"; do
   nice_current_flavor=${flavor_to_readable[$current_service]}
 
