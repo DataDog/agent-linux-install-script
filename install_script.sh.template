@@ -232,6 +232,23 @@ function remove_rpm_gpg_keys() {
     done
 }
 
+function ensure_config_file_exists() {
+    local sudo_cmd="$1"
+    local config_file="$2"
+    local upgrade="$3"
+
+    if [ -e "$config_file" ] && [ -z "$upgrade" ]; then
+        printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
+    else
+        if [ ! -e "$config_file" ]; then
+            $sudo_cmd cp "$config_file.example" "$config_file"
+        fi
+
+        $sudo_cmd chown root:dd-agent "$config_file"
+        $sudo_cmd chmod 640 "$config_file"
+    fi
+}
+
 echo -e "\033[34m\n* Datadog AgentINSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
 
 hostname=
@@ -458,6 +475,7 @@ flavor_to_config=(
 config_file=${flavor_to_config[$agent_flavor]:-$etcdir/datadog.yaml}
 config_file_fips=$etcdirfips/datadog-fips-proxy.cfg
 system_probe_config_file=$etcdir/system-probe.yaml
+security_agent_config_file=$etcdir/security-agent.yaml
 
 agent_major_version=AGENT_MAJOR_VERSION_PLACEHOLDER
 # shellcheck disable=SC2050
@@ -1047,33 +1065,30 @@ fi
 
 # set the FIPS configuration
 if [ -n "$fips_mode" ]; then
-  if [ -e "$config_file_fips" ] && [ -z "$upgrade" ]; then
-    printf "\033[34m\n* Keeping old $config_file_fips configuration file\n\033[0m\n"
-  else
-    if [ ! -e "$config_file_fips" ]; then
-      $sudo_cmd cp "$config_file_fips.example" "$config_file_fips"
-  
-      # TODO: set port range in file, or environment variable
-    fi
-
-    $sudo_cmd chown dd-agent:dd-agent "$config_file_fips"
-    $sudo_cmd chmod 640 "$config_file_fips"
-
-  fi
+  ensure_config_file_exists "$sudo_cmd" "$config_file_fips" "$upgrade"
+  # TODO: set port range in file, or environment variable
 fi
 
 # set the system-probe configuration
 if [ -n "$system_probe_ensure_config" ]; then
-  if [ -e "$system_probe_config_file" ] && [ -z "$upgrade" ]; then
-    printf "\033[34m\n* Keeping old $system_probe_config_file configuration file\n\033[0m\n"
-  else
-    if [ ! -e "$system_probe_config_file" ]; then
-      $sudo_cmd cp "$system_probe_config_file.example" "$system_probe_config_file"
-    fi
+  ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "$upgrade"
+fi
 
-    $sudo_cmd chown root:dd-agent "$system_probe_config_file"
-    $sudo_cmd chmod 640 "$system_probe_config_file"
-  fi
+if [ "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" == "true" ] && [ -z "$upgrade" ]; then
+  ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "$upgrade"
+  ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "$upgrade"
+
+  printf "\033[34m\n* Enabling runtime security in configuration\n\033[0m\n"
+  sudo sh -c "sed -i 's/^#\s*runtime_security_config:/runtime_security_config:/' $security_agent_config_file $system_probe_config_file"
+  sudo sh -c "sed -i '/^runtime_security_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $security_agent_config_file $system_probe_config_file"
+fi
+
+if [ "$DD_COMPLIANCE_CONFIG_ENABLED" == "true" ] && [ -z "$upgrade" ]; then
+  ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "$upgrade"
+
+  printf "\033[34m\n* Enabling compliance monitoring in configuration\n\033[0m\n"
+  sudo sh -c "sed -i 's/^#\s*compliance_config:/compliance_config:/' $security_agent_config_file"
+  sudo sh -c "sed -i '/^compliance_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $security_agent_config_file"
 fi
 
 # run apm injection scripts
