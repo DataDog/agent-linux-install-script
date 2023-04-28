@@ -254,6 +254,11 @@ if [ -n "$DD_INSTALL_ONLY" ]; then
     no_start=true
 fi
 
+no_agent=
+if [ -n "$DD_NO_AGENT_INSTALL" ]; then
+    no_agent=true
+fi
+
 host_tags=
 # comma-separated list of tags
 if [ -n "$DD_HOST_TAGS" ]; then
@@ -408,7 +413,13 @@ flavor_to_system_service=(
 system_service=${flavor_to_system_service[$agent_flavor]:-datadog-agent}
 
 declare -a services
-services=("$system_service")
+
+if [ "$no_agent" ]; then
+  services=()
+else
+  services=($system_service)
+fi
+
 if [ -n "$fips_mode" ]; then
   services+=("datadog-fips-proxy")
 fi
@@ -496,13 +507,13 @@ fi
 
 if [ ! "$apikey" ]; then
   # if it's an upgrade, then we will use the transition script
-  if [ ! "$upgrade" ] && [ ! -e "$config_file" ]; then
+  if [ ! "$upgrade" ] && [ ! -e "$config_file" ] && [ ! "$no_agent" ]; then
     printf "\033[31mAPI key not available in DD_API_KEY environment variable.\033[0m\n"
     exit 1;
   fi
 fi
 
-if [[ `uname -m` == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]]; then
+if [[ `uname -m` == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]] && [ ! "$no_agent" ]; then
     ERROR_MESSAGE="The full $nice_flavor isn't available for your architecture (armv7l).\nInstall the ${flavor_to_readable[datadog-iot-agent]} by setting DD_AGENT_FLAVOR='datadog-iot-agent'."
     ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE\033[0m\n"
@@ -644,7 +655,12 @@ if [ "$OS" = "RedHat" ]; then
     fi
 
     declare -a packages
-    packages=("$agent_flavor")
+    if [ "$no_agent" ]; then
+      packages=()
+    else
+      packages=("$agent_flavor")
+    fi
+
     if [ -n "$fips_mode" ]; then
       packages+=("datadog-fips-proxy")
     fi
@@ -738,7 +754,12 @@ If the cause is unclear, please contact Datadog support.
     fi
 
     declare -a packages
-    packages=("$agent_flavor" "datadog-signing-keys")
+    if [ "$no_agent" ]; then
+      packages=("datadog-signing-keys")
+    else
+      packages=("$agent_flavor" "datadog-signing-keys")
+    fi
+
     if [ -n "$fips_mode" ]; then
      packages+=("datadog-fips-proxy")
     fi
@@ -877,7 +898,12 @@ elif [ "$OS" = "SUSE" ]; then
   fi
 
   declare -a packages
-  packages=("$agent_flavor")
+  if [ "$no_agent" ]; then
+    packages=()
+  else
+    packages=("$agent_flavor")
+  fi
+
   if [ -n "$fips_mode" ]; then
     packages+=("datadog-fips-proxy")
   fi
@@ -1024,9 +1050,7 @@ fi
 
 # run apm injection scripts
 if [ -n "$host_injection_enabled" ]; then
-  echo "in host install"
   $sudo_cmd dd-host-install --no-agent-restart
-  echo "finished host install"
 fi
 
 if [ -n "$docker_injection_enabled" ]; then
@@ -1040,6 +1064,7 @@ install_method:
   tool_version: install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
   installer_version: install_script-$install_script_version
 "
+
 $sudo_cmd sh -c "echo '$install_info_content' > $etcdir/install_info"
 if [ -n "$fips_mode" ]; then
   # Creating or overriding the install information
