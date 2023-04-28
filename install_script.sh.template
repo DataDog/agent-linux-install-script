@@ -581,10 +581,12 @@ if [ "$OS" = "RedHat" ]; then
     $sudo_cmd yum -y clean metadata
 
     dnf_flag=""
-    if [ -f "/etc/fedora-release" ] && [ -f "/usr/bin/dnf" ]; then
-      # On Fedora, yum is an alias of dnf, dnf install doesn't
-      # upgrade a package if a newer version is available, unless
-      # the --best flag is set
+    if [ -f "/usr/bin/dnf" ] && { [ ! -f "/usr/bin/yum" ] || [ -L "/usr/bin/yum" ]; } ; then
+      # On modern Red Hat based distros, yum is an alias (symlink) of dnf.
+      # "dnf install" doesn't upgrade a package if a newer version
+      # is available, unless the --best flag is set
+      # NOTE: we assume that sometime in the future "/usr/bin/yum" will
+      # be removed altogether, so we test for that as well.
       dnf_flag="--best"
     fi
 
