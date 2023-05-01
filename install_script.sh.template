@@ -344,7 +344,7 @@ if [ -n "$DD_APM_DOCKER_INJECTION_ENABLED" ]; then
 fi
 
 if [ -n "$DD_APM_LIBRARIES" ]; then
-  lib_array=($DD_APM_LIBRARIES)
+  read -r -a lib_array <<< "$DD_APM_LIBRARIES"
   for lib in "${lib_array[@]}"
   do
     case $lib in
@@ -417,7 +417,7 @@ declare -a services
 if [ "$no_agent" ]; then
   services=()
 else
-  services=($system_service)
+  services=("$system_service")
 fi
 
 if [ -n "$fips_mode" ]; then
@@ -666,8 +666,8 @@ if [ "$OS" = "RedHat" ]; then
       packages+=("datadog-fips-proxy")
     fi
 
-    if [ -n "$apm_libraries" ]; then
-      packages+=(${apm_libraries[@]})
+    if [ ${#apm_libraries[@]} -gt 0 ]; then
+      packages+=("${apm_libraries[@]}")
     fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
@@ -764,8 +764,8 @@ If the cause is unclear, please contact Datadog support.
      packages+=("datadog-fips-proxy")
     fi
 
-    if [ -n "$apm_libraries" ]; then
-      packages+=(${apm_libraries[@]})
+    if [ ${#apm_libraries[@]} -gt 0 ]; then
+      packages+=("${apm_libraries[@]}")
     fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
@@ -906,7 +906,7 @@ elif [ "$OS" = "SUSE" ]; then
     packages+=("datadog-fips-proxy")
   fi
 
-  if [ -n "$apm_libraries" ]; then
+  if [ ${#apm_libraries[@]} -gt 0 ]; then
     ERROR_MESSAGE="APM injection is not supported on SUSE"
     ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
