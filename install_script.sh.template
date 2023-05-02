@@ -332,13 +332,13 @@ fi
 declare -a apm_libraries
 
 host_injection_enabled=
-if [ -n "$DD_APM_HOST_INJECTION_ENABLED" ]; then
+if [[ "$DD_APM_HOST_INJECTION_ENABLED" == "true" || ( -z "$DD_APM_HOST_INJECTION_ENABLED" && "$DD_APM_INSTRUMENTATION_ENABLED" == "true") ]] ; then
   host_injection_enabled=$DD_APM_HOST_INJECTION_ENABLED
   apm_libraries=("datadog-apm-inject")
 fi
 
 docker_injection_enabled=
-if [ -n "$DD_APM_DOCKER_INJECTION_ENABLED" ]; then
+if [[ "$DD_APM_DOCKER_INJECTION_ENABLED" == "true" || ( -z "$DD_APM_DOCKER_INJECTION_ENABLED" && "$DD_APM_INSTRUMENTATION_ENABLED" == "true") ]] ; then
   docker_injection_enabled=$DD_APM_DOCKER_INJECTION_ENABLED
   apm_libraries=("datadog-apm-inject")
 fi
