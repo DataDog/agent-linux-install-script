@@ -103,4 +103,31 @@ if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
     fi
 fi
 
+if [ "$DD_APM_HOST_INJECTION_ENABLED" = "true" ]; then
+  if command -v dpkg > /dev/null; then
+      debsums -c datadog-apm-inject
+      debsums -c datadog-apm-library-all
+  else
+      rpm --verify --nomode --nouser --nogroup datadog-apm-inject
+      rpm --verify --nomode --nouser --nogroup datadog-apm-library-all
+  fi
+
+  if [ -f "/etc/ld.so.preload" ]; then
+    echo "[OK] /etc/ld.so.preload exists"
+  else
+    echo "[FAIL] Expected to find /etc/ld.so.preload"
+    RESULT=1
+  fi
+else
+  if command -v dpkg > /dev/null && debsums -c datadog-apm-inject ; then
+    echo "[FAIL] datadog-apm-inject should not be installed"
+    RESULT=1
+  elif rpm --verify --nomode --nouser --nogroup datadog-apm-inject ; then
+    echo "[FAIL] datadog-apm-inject should not be installed"
+    RESULT=1
+  else
+    echo "[OK] datadog-apm-inject is not installed"
+  fi
+fi
+
 exit ${RESULT}
