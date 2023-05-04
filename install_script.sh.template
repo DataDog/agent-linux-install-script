@@ -1064,7 +1064,10 @@ install_method:
   tool_version: install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
   installer_version: install_script-$install_script_version
 "
-$sudo_cmd sh -c "echo '$install_info_content' > $etcdir/install_info"
+
+if [ ! "$no_agent" ]; then
+  $sudo_cmd sh -c "echo '$install_info_content' > $etcdir/install_info"
+fi
 
 if [ -n "$fips_mode" ]; then
   # Creating or overriding the install information
