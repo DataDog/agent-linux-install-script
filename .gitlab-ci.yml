@@ -89,13 +89,19 @@ test-apm-injection:
   stage: test
   dependencies: ["generate-scripts"]
   parallel:
+    # Docker testing is not possible because of docker-in-docker
+    # Host injection requires the agent to be present
+    # NO_AGENT only makes sense with docker, or specifically installing apm libraries
+    # The matrix below tests the possible combinations with a subset of OSes
     matrix:
-      - IMAGE: images/mirror/ubuntu:14.04
-      - IMAGE: images/mirror/ubuntu:22.04
-      - IMAGE: images/mirror/centos:centos7
+      - IMAGE: ["images/mirror/ubuntu:14.04", "images/mirror/ubuntu:22.04", "images/mirror/centos:centos7" ]
+        HOST_INJECTION: "true"
+      - IMAGE: ["images/mirror/ubuntu:14.04", "images/mirror/ubuntu:22.04", "images/mirror/centos:centos7" ]
+        NO_AGENT: "true"
+        APM_LIBRARIES: "all"
 
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent7.sh --host-injection true
+    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent7.sh --host-injection "$HOST_INJECTION" --no-agent "$NO_AGENT" --apm-libraries "$APM_LIBRARIES"
 
 .deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
