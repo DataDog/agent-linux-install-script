@@ -333,6 +333,14 @@ declare -a apm_libraries
 
 host_injection_enabled=
 if [[ "$DD_APM_HOST_INJECTION_ENABLED" == "true" || ( -z "$DD_APM_HOST_INJECTION_ENABLED" && "$DD_APM_INSTRUMENTATION_ENABLED" == "true") ]] ; then
+  if [ "$no_agent" ]; then
+      ERROR_MESSAGE="Host injection is not supported with the DD_NO_AGENT_INSTALL flag. Disable host injection with DD_APM_HOST_INJECTION_ENABLED=false or unset DD_NO_AGENT_INSTALL"
+      ERROR_CODE=$INVALID_PARAMETERS_CODE
+      echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
+      report_telemetry
+      exit 1;
+  fi
+
   host_injection_enabled="true"
   apm_libraries=("datadog-apm-inject")
 fi
@@ -519,6 +527,14 @@ if [[ `uname -m` == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]] && [ !
     printf "\033[31m$ERROR_MESSAGE\033[0m\n"
     report_telemetry
     exit 1;
+fi
+
+if [ ${#apm_libraries[@]} -gt 0 ] && [ $agent_major_version = "6" ] ; then
+  ERROR_MESSAGE="APM library injection is not supported with Agent version 6"
+  ERROR_CODE=$INVALID_PARAMETERS_CODE
+  echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
+  report_telemetry
+  exit 1;
 fi
 
 # OS/Distro Detection
