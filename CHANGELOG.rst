@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.16.0
 ================
+
+- Use dnf's ``--best`` on all distros that have dnf
+- Handle pre-release versions passed via ``DD_AGENT_MINOR_VERSION```
 
 1.15.0
 ================
