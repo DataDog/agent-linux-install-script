@@ -254,6 +254,11 @@ if [ -n "$DD_INSTALL_ONLY" ]; then
     no_start=true
 fi
 
+no_agent=
+if [ -n "$DD_NO_AGENT_INSTALL" ]; then
+    no_agent=true
+fi
+
 host_tags=
 # comma-separated list of tags
 if [ -n "$DD_HOST_TAGS" ]; then
@@ -324,6 +329,62 @@ if [ -n "$DD_FIPS_MODE" ]; then
   fips_mode=$DD_FIPS_MODE
 fi
 
+declare -a apm_libraries
+
+host_injection_enabled=
+if [[ "$DD_APM_HOST_INJECTION_ENABLED" == "true" || ( -z "$DD_APM_HOST_INJECTION_ENABLED" && "$DD_APM_INSTRUMENTATION_ENABLED" == "true") ]] ; then
+  if [ "$no_agent" ]; then
+      ERROR_MESSAGE="Host injection is not supported with the DD_NO_AGENT_INSTALL flag. Disable host injection with DD_APM_HOST_INJECTION_ENABLED=false or unset DD_NO_AGENT_INSTALL"
+      ERROR_CODE=$INVALID_PARAMETERS_CODE
+      echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
+      report_telemetry
+      exit 1;
+  fi
+
+  host_injection_enabled="true"
+  apm_libraries=("datadog-apm-inject")
+fi
+
+docker_injection_enabled=
+if [[ "$DD_APM_DOCKER_INJECTION_ENABLED" == "true" || ( -z "$DD_APM_DOCKER_INJECTION_ENABLED" && "$DD_APM_INSTRUMENTATION_ENABLED" == "true") ]] ; then
+  docker_injection_enabled="true"
+  apm_libraries=("datadog-apm-inject")
+fi
+
+if [ -n "$DD_APM_LIBRARIES" ]; then
+  read -r -a lib_array <<< "$DD_APM_LIBRARIES"
+  for lib in "${lib_array[@]}"
+  do
+    case $lib in
+      all)
+        apm_libraries+=("datadog-apm-library-all")
+        ;;
+      java)
+        apm_libraries+=("datadog-apm-library-java")
+        ;;
+      js)
+        apm_libraries+=("datadog-apm-library-js")
+        ;;
+      python)
+        apm_libraries+=("datadog-apm-library-python")
+        ;;
+      dotnet)
+        apm_libraries+=("datadog-apm-library-dotnet")
+        ;;
+      *)
+        ERROR_MESSAGE="Unknown apm library: $lib. Must be one of: all, java, js, python, dotnet"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
+        echo "$ERROR_MESSAGE"
+        report_telemetry
+        exit 1;
+        ;;
+    esac
+  done
+elif [ -n "$host_injection_enabled" ] || [ -n "$docker_injection_enabled" ]; then
+  # Default to all libraries if injection is enabled
+  apm_libraries+=("datadog-apm-library-all")
+fi
+
 system_probe_ensure_config=
 if [ -n "$DD_SYSTEM_PROBE_ENSURE_CONFIG" ]; then
   system_probe_ensure_config=$DD_SYSTEM_PROBE_ENSURE_CONFIG
@@ -360,7 +421,13 @@ flavor_to_system_service=(
 system_service=${flavor_to_system_service[$agent_flavor]:-datadog-agent}
 
 declare -a services
-services=("$system_service")
+
+if [ "$no_agent" ]; then
+  services=()
+else
+  services=("$system_service")
+fi
+
 if [ -n "$fips_mode" ]; then
   services+=("datadog-fips-proxy")
 fi
@@ -448,18 +515,26 @@ fi
 
 if [ ! "$apikey" ]; then
   # if it's an upgrade, then we will use the transition script
-  if [ ! "$upgrade" ] && [ ! -e "$config_file" ]; then
+  if [ ! "$upgrade" ] && [ ! -e "$config_file" ] && [ ! "$no_agent" ]; then
     printf "\033[31mAPI key not available in DD_API_KEY environment variable.\033[0m\n"
     exit 1;
   fi
 fi
 
-if [[ `uname -m` == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]]; then
+if [[ `uname -m` == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]] && [ ! "$no_agent" ]; then
     ERROR_MESSAGE="The full $nice_flavor isn't available for your architecture (armv7l).\nInstall the ${flavor_to_readable[datadog-iot-agent]} by setting DD_AGENT_FLAVOR='datadog-iot-agent'."
     ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE\033[0m\n"
     report_telemetry
     exit 1;
+fi
+
+if [ ${#apm_libraries[@]} -gt 0 ] && [ $agent_major_version = "6" ] ; then
+  ERROR_MESSAGE="APM library injection is not supported with Agent version 6"
+  ERROR_CODE=$INVALID_PARAMETERS_CODE
+  echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
+  report_telemetry
+  exit 1;
 fi
 
 # OS/Distro Detection
@@ -577,7 +652,6 @@ if [ "$OS" = "RedHat" ]; then
 
     $sudo_cmd sh -c "echo -e '[datadog]\nname = Datadog, Inc.\nbaseurl = https://${yum_url}/${yum_version_path}/${ARCHI}/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\npriority=1\ngpgkey=${gpgkeys}' > /etc/yum.repos.d/datadog.repo"
 
-    printf "\033[34m* Installing the $nice_flavor package\n\033[0m\n"
     $sudo_cmd yum -y clean metadata
 
     dnf_flag=""
@@ -598,9 +672,18 @@ if [ "$OS" = "RedHat" ]; then
     fi
 
     declare -a packages
-    packages=("$agent_flavor")
+    if [ "$no_agent" ]; then
+      packages=()
+    else
+      packages=("$agent_flavor")
+    fi
+
     if [ -n "$fips_mode" ]; then
       packages+=("datadog-fips-proxy")
+    fi
+
+    if [ ${#apm_libraries[@]} -gt 0 ]; then
+      packages+=("${apm_libraries[@]}")
     fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
@@ -663,7 +746,6 @@ elif [ "$OS" = "Debian" ]; then
       fi
     fi
 
-    printf "\033[34m\n* Installing the $nice_flavor package\n\033[0m\n"
     ERROR_MESSAGE="ERROR
 Failed to update the sources after adding the Datadog repository.
 This may be due to any of the configured APT sources failing -
@@ -673,7 +755,7 @@ If the failing repository is Datadog, please contact Datadog support.
 "
     $sudo_cmd apt-get update -o Dir::Etc::sourcelist="sources.list.d/datadog.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
     ERROR_MESSAGE="ERROR
-Failed to install the $agent_flavor package, sometimes it may be
+Failed to install one or more packages, sometimes it may be
 due to another APT source failing. See the logs above to
 determine the cause.
 If the cause is unclear, please contact Datadog support.
@@ -688,9 +770,18 @@ If the cause is unclear, please contact Datadog support.
     fi
 
     declare -a packages
-    packages=("$agent_flavor" "datadog-signing-keys")
+    if [ "$no_agent" ]; then
+      packages=("datadog-signing-keys")
+    else
+      packages=("$agent_flavor" "datadog-signing-keys")
+    fi
+
     if [ -n "$fips_mode" ]; then
      packages+=("datadog-fips-proxy")
+    fi
+
+    if [ ${#apm_libraries[@]} -gt 0 ]; then
+      packages+=("${apm_libraries[@]}")
     fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
@@ -776,8 +867,6 @@ elif [ "$OS" = "SUSE" ]; then
   echo -e "\033[34m\n* Refreshing repositories\n\033[0m"
   $sudo_cmd zypper --non-interactive --no-gpg-checks refresh datadog
 
-  echo -e "\033[34m\n* Installing the $nice_flavor package\n\033[0m"
-
   # ".32" is the latest version supported for OpenSUSE < 15 and SLES < 12
   # we explicitly test for SUSE11 = "yes", as some SUSE11 don't have /etc/os-release, thus SUSE_VER is empty
   if [ "$DISTRIBUTION" == "openSUSE" ] && { [ "$SUSE11" == "yes" ] || [ "$SUSE_VER" -lt 15 ]; }; then
@@ -823,11 +912,23 @@ elif [ "$OS" = "SUSE" ]; then
   fi
 
   declare -a packages
-  packages=("$agent_flavor")
+  if [ "$no_agent" ]; then
+    packages=()
+  else
+    packages=("$agent_flavor")
+  fi
+
   if [ -n "$fips_mode" ]; then
     packages+=("datadog-fips-proxy")
   fi
 
+  if [ ${#apm_libraries[@]} -gt 0 ]; then
+    ERROR_MESSAGE="APM injection is not supported on SUSE"
+    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
+    echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
+    report_telemetry
+    exit 1;
+  fi
 
   echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
@@ -878,7 +979,7 @@ fi
 # Set the configuration
 if [ -e "$config_file" ] && [ -z "$upgrade" ]; then
   printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
-else
+elif [ ! "$no_agent" ]; then
   if [ ! -e "$config_file" ]; then
     $sudo_cmd cp "$config_file.example" "$config_file"
   fi
@@ -927,8 +1028,10 @@ EOF
   fi
 fi
 
-$sudo_cmd chown dd-agent:dd-agent "$config_file"
-$sudo_cmd chmod 640 "$config_file"
+if [ ! "$no_agent" ]; then
+  $sudo_cmd chown dd-agent:dd-agent "$config_file"
+  $sudo_cmd chmod 640 "$config_file"
+fi
 
 # set the FIPS configuration
 if [ -n "$fips_mode" ]; then
@@ -961,6 +1064,15 @@ if [ -n "$system_probe_ensure_config" ]; then
   fi
 fi
 
+# run apm injection scripts
+if [ -n "$host_injection_enabled" ]; then
+  $sudo_cmd dd-host-install --no-agent-restart
+fi
+
+if [ -n "$docker_injection_enabled" ]; then
+  $sudo_cmd dd-container-install --no-agent-restart
+fi
+
 # Creating or overriding the install information
 install_info_content="---
 install_method:
@@ -968,7 +1080,10 @@ install_method:
   tool_version: install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
   installer_version: install_script-$install_script_version
 "
-$sudo_cmd sh -c "echo '$install_info_content' > $etcdir/install_info"
+
+if [ ! "$no_agent" ]; then
+  $sudo_cmd sh -c "echo '$install_info_content' > $etcdir/install_info"
+fi
 
 if [ -n "$fips_mode" ]; then
   # Creating or overriding the install information

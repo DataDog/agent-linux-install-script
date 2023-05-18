@@ -19,13 +19,24 @@ EXPECTED_MINOR_VERSION="${EXPECTED_MINOR_VERSION:-${DD_AGENT_MINOR_VERSION}}"
 # basic checks to ensure that the correct flavor was installed
 if command -v dpkg > /dev/null; then
     apt-get install -y debsums
-    debsums -c ${EXPECTED_FLAVOR}
-    INSTALLED_VERSION=$(dpkg-query -W ${EXPECTED_FLAVOR} | cut -f2 | cut -d: -f2)
+
+    if [ -z "$DD_NO_AGENT_INSTALL" ]; then
+      debsums -c ${EXPECTED_FLAVOR}
+      INSTALLED_VERSION=$(dpkg-query -W ${EXPECTED_FLAVOR} | cut -f2 | cut -d: -f2)
+    elif debsums -c datadog-agent ; then
+      echo "[FAIL] datadog-agent should not be installed"
+      RESULT=1
+    fi
 else
-    # skip verification of mode/user/group, because these are
-    # changed by the postinstall scriptlet
-    rpm --verify --nomode --nouser --nogroup "${EXPECTED_FLAVOR}"
-    INSTALLED_VERSION=$(rpm -q --qf "%{version}" "${EXPECTED_FLAVOR}")
+    if [ -z "$DD_NO_AGENT_INSTALL" ]; then
+      # skip verification of mode/user/group, because these are
+      # changed by the postinstall scriptlet
+      rpm --verify --nomode --nouser --nogroup "${EXPECTED_FLAVOR}"
+      INSTALLED_VERSION=$(rpm -q --qf "%{version}" "${EXPECTED_FLAVOR}")
+    elif rpm --verify --nomode --nouser --nogroup datadog-agent ; then
+      echo "[FAIL] datadog-agent should not be installed"
+      RESULT=1
+    fi
 fi
 
 echo -e "\n"
@@ -33,12 +44,13 @@ echo -e "\n"
 MAJOR_VERSION=$(echo "$INSTALLED_VERSION" | cut -d "." -f 1)
 MINOR_VERSION=$(echo "$INSTALLED_VERSION" | cut -d "." -f 2)
 
-
-if [ "${EXPECTED_MAJOR_VERSION}" != "${MAJOR_VERSION}" ]; then
-    echo "[FAIL] Expected major version ${EXPECTED_MAJOR_VERSION} to be installed, but found ${MAJOR_VERSION}"
-    RESULT=1
-else
-    echo "[OK] Correct major version installed"
+if [ -z "$DD_NO_AGENT_INSTALL" ]; then
+  if [ "${EXPECTED_MAJOR_VERSION}" != "${MAJOR_VERSION}" ]; then
+      echo "[FAIL] Expected major version ${EXPECTED_MAJOR_VERSION} to be installed, but found ${MAJOR_VERSION}"
+      RESULT=1
+  else
+      echo "[OK] Correct major version installed"
+  fi
 fi
 
 if [ -n "${EXPECTED_MINOR_VERSION}" ]; then
@@ -64,7 +76,7 @@ else
     RESULT=1
 fi
 
-if [ -n "${EXPECTED_TOOL_VERSION}" ]; then
+if [ -n "${EXPECTED_TOOL_VERSION}" ] && [ -z "$DD_NO_AGENT_INSTALL" ]; then
     INSTALL_INFO_FILE=/etc/datadog-agent/install_info
     if [ "${EXPECTED_FLAVOR}" = "datadog-dogstatsd" ]; then
         INSTALL_INFO_FILE=/etc/datadog-dogstatsd/install_info
@@ -101,6 +113,45 @@ if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
         echo "[FAIL] Expected to find system-probe configuration file $system_probe_config_file"
         RESULT=1
     fi
+fi
+
+if [ "$DD_APM_HOST_INJECTION_ENABLED" = "true" ]; then
+  if command -v dpkg > /dev/null; then
+      debsums -c datadog-apm-inject
+      debsums -c datadog-apm-library-all
+      echo "[OK] Inject libraries installed"
+  else
+      rpm --verify --nomode --nouser --nogroup datadog-apm-inject
+      rpm --verify --nomode --nouser --nogroup datadog-apm-library-all
+      echo "[OK] Inject libraries installed"
+  fi
+
+  if [ -f "/etc/ld.so.preload" ]; then
+    echo "[OK] /etc/ld.so.preload exists"
+  else
+    echo "[FAIL] Expected to find /etc/ld.so.preload"
+    RESULT=1
+  fi
+else
+  if command -v dpkg > /dev/null && debsums -c datadog-apm-inject ; then
+    echo "[FAIL] datadog-apm-inject should not be installed"
+    RESULT=1
+  elif rpm --verify --nomode --nouser --nogroup datadog-apm-inject ; then
+    echo "[FAIL] datadog-apm-inject should not be installed"
+    RESULT=1
+  else
+    echo "[OK] datadog-apm-inject is not installed"
+  fi
+fi
+
+if [ -n "$DD_APM_LIBRARIES" ]; then
+  if command -v dpkg > /dev/null; then
+    debsums -c datadog-apm-library-all
+    echo "[OK] Inject libraries installed"
+  else
+    rpm --verify --nomode --nouser --nogroup datadog-apm-library-all
+    echo "[OK] Inject libraries installed"
+  fi
 fi
 
 exit ${RESULT}
