@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.17.0
 ================
+
+- Add check for docker existing before installing
+- Install injection libraries with agent install script
 
 1.16.0
 ================
@@ -34,7 +37,7 @@ Unreleased
 Upgrade Notes
 -------------
 
-- Improved support for FIPS mode 
+- Improved support for FIPS mode
 
   After changes to the `datadog-fips-proxy` package, script updates
   to better support the new config shipping and service management.
@@ -73,7 +76,7 @@ New Features
 ------------
 
 - Add FIPS mode.
-  
+
   When the ``DD_FIPS_MODE`` environment variable is set, the install script
   installs an additional FIPS proxy package and configures Agent to direct
   all traffic to the backend through the FIPS proxy.
@@ -164,10 +167,10 @@ Upgrade Notes
 
 - On Debian-based systems, the install script now installs the
   datadog-signing-keys package in addition to the datadog-agent package.
-  
+
   For users using the official apt.datadoghq.com repository: the datadog-signing-keys
   package is already present in the repository, no further action is necessary.
-  
+
   For users with custom mirrors or repositories: the datadog-signing-keys
   package must be present in the same repository channel as the datadog-agent
   package, otherwise the install script will fail to install the Agent.
