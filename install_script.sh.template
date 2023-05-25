@@ -232,21 +232,28 @@ function remove_rpm_gpg_keys() {
     done
 }
 
+function create_config_file() {
+    local sudo_cmd="$1"
+    local config_file="$2"
+    local owner="$3"
+
+    if [ ! -e "$config_file" ]; then
+        $sudo_cmd cp "$config_file.example" "$config_file"
+    fi
+
+    $sudo_cmd chown "$owner:dd-agent" "$config_file"
+    $sudo_cmd chmod 640 "$config_file"
+}
+
 function ensure_config_file_exists() {
     local sudo_cmd="$1"
     local config_file="$2"
-    local upgrade="$3"
-    local user="$4"
+    local owner="$3"
 
     if [ -e "$config_file" ]; then
         printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
     else
-        if [ ! -e "$config_file" ]; then
-            $sudo_cmd cp "$config_file.example" "$config_file"
-        fi
-
-        $sudo_cmd chown $owner:dd-agent "$config_file"
-        $sudo_cmd chmod 640 "$config_file"
+        create_config_file "$sudo_cmd" "$config_file" "$owner"
     fi
 }
 
@@ -1057,6 +1064,23 @@ EOF
       formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/','/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
       $sudo_cmd sh -c "sed -i \"s/# tags:.*/tags: ""$formatted_host_tags""/\" $config_file"
   fi
+
+  if [ "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" == "true" ]; then
+    [ ! -e "$system_probe_config_file" ] && create_config_file "$sudo_cmd" "$system_probe_config_file" "root"
+    [ ! -e "$security_agent_config_file" ] && create_config_file "$sudo_cmd" "$security_agent_config_file" "root"
+
+    printf "\033[34m\n* Enabling runtime security in configuration\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's/^#\s*runtime_security_config:/runtime_security_config:/' $security_agent_config_file $system_probe_config_file"
+    $sudo_cmd sh -c "sed -i '/^runtime_security_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $security_agent_config_file $system_probe_config_file"
+  fi
+
+  if [ "$DD_COMPLIANCE_CONFIG_ENABLED" == "true" ]; then
+    [ ! -e "$security_agent_config_file" ] && create_config_file "$sudo_cmd" "$security_agent_config_file" "root"
+
+    printf "\033[34m\n* Enabling compliance monitoring in configuration\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's/^#\s*compliance_config:/compliance_config:/' $security_agent_config_file"
+    $sudo_cmd sh -c "sed -i '/^compliance_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $security_agent_config_file"
+  fi
 fi
 
 if [ ! "$no_agent" ]; then
@@ -1072,24 +1096,7 @@ fi
 
 # set the system-probe configuration
 if [ -n "$system_probe_ensure_config" ]; then
-  ensure_config_file_exists "$sudo_cmd" "$system_probe_consystem_probe_config_filefig_file" ""root"
-fi
-
-if [ "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" == "true" ]; then
   ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
-  ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" ""root"
-
-  printf "\033[34m\n* Enabling runtime security in configuration\n\033[0m\n"
-  sudo sh -c "sed -i 's/^#\s*runtime_security_config:/runtime_security_config:/' $security_agent_config_file $system_probe_config_file"
-  sudo sh -c "sed -i '/^runtime_security_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $security_agent_config_file $system_probe_config_file"
-fi
-
-if [ "$DD_COMPLIANCE_CONFIG_ENABLED" == "true" ]; then
-  ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "root"
-
-  printf "\033[34m\n* Enabling compliance monitoring in configuration\n\033[0m\n"
-  sudo sh -c "sed -i 's/^#\s*compliance_config:/compliance_config:/' $security_agent_config_file"
-  sudo sh -c "sed -i '/^compliance_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $security_agent_config_file"
 fi
 
 # run apm injection scripts
