@@ -351,6 +351,18 @@ if [[ "$DD_APM_DOCKER_INJECTION_ENABLED" == "true" || ( -z "$DD_APM_DOCKER_INJEC
   apm_libraries=("datadog-apm-inject")
 fi
 
+daemon_config_dir="/etc/docker"
+
+if [ -n "$docker_injection_enabled" ]; then
+    if [ ! -d "$daemon_config_dir" ]; then
+      ERROR_MESSAGE="$daemon_config_dir does not exist. Please ensure docker is installed"
+      ERROR_CODE=$INVALID_PARAMETERS_CODE
+      echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
+      report_telemetry
+      exit 1;
+    fi
+fi
+
 if [ -n "$DD_APM_LIBRARIES" ]; then
   read -r -a lib_array <<< "$DD_APM_LIBRARIES"
   for lib in "${lib_array[@]}"
