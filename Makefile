@@ -53,7 +53,7 @@ pre_release_minor:
 	$(eval NEW_VERSION=$(shell echo "${CUR_VERSION}" | awk -v repl="${NEXT_MINOR}" 'BEGIN {FS=OFS="."} {$$2=repl; print}' | sed -e 's|.post||'))
 	$(eval CUR_VERSION=$(shell echo "${CUR_VERSION}" | sed -e 's|.post||'))
 	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
-	make update_changelog VERSION=${CUR_VERSION}
+	$(MAKE) update_changelog VERSION=${CUR_VERSION}
 	sed -i "" -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
 
 update_changelog:
