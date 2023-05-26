@@ -40,8 +40,7 @@ install_script_agent7.sh: install_script.sh.template
 	chmod +x $@
 
 pre_release_%:
-	$(eval CUR_VERSION=$(shell awk -F "=" '/^install_script_version=/{print $$NF}' install_script.sh.template))
-	$(eval CUR_VERSION=$(shell echo "${CUR_VERSION}" | sed -e 's|.post||'))
+	$(eval CUR_VERSION=$(shell awk -F "=" '/^install_script_version=/{print $$NF}' install_script.sh.template | sed -e 's|.post||'))
 	$(eval NEW_VERSION=$(shell echo "$@" | sed -e 's|pre_release_||'))
 	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
 	$(MAKE) update_changelog VERSION=${CUR_VERSION}
