@@ -40,8 +40,10 @@ install_script_agent7.sh: install_script.sh.template
 	chmod +x $@
 
 pre_release_%:
+	$(eval CUR_VERSION=$(shell awk -F "=" '/^install_script_version=/{print $$NF}' install_script.sh.template | sed -e 's|.post||'))
 	$(eval NEW_VERSION=$(shell echo "$@" | sed -e 's|pre_release_||'))
 	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
+	$(MAKE) update_changelog VERSION=${CUR_VERSION}
 	sed -i "" -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
 
 pre_release_minor:
@@ -49,8 +51,19 @@ pre_release_minor:
 	$(eval CUR_MINOR=$(shell echo "${CUR_VERSION}" | tr "." "\n" | awk 'NR==2'))
 	$(eval NEXT_MINOR=$(shell echo ${CUR_MINOR}+1 | bc))
 	$(eval NEW_VERSION=$(shell echo "${CUR_VERSION}" | awk -v repl="${NEXT_MINOR}" 'BEGIN {FS=OFS="."} {$$2=repl; print}' | sed -e 's|.post||'))
+	$(eval CUR_VERSION=$(shell echo "${CUR_VERSION}" | sed -e 's|.post||'))
 	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
+	$(MAKE) update_changelog VERSION=${CUR_VERSION}
 	sed -i "" -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
+
+update_changelog:
+	$(eval CHANGES=$(shell git log --format=format:" - %s" $(VERSION)..HEAD | egrep -iv "post.*release" | grep -iv fix | cut -d' ' -f2-))
+	$(eval SPLIT=$(shell grep -n "^Unreleased" CHANGELOG.rst | cut -d':' -f1))
+	$(eval SPLIT=$(shell expr ${SPLIT} + 2))
+	head -${SPLIT} CHANGELOG.rst > log.rst
+	echo ${CHANGES} >> log.rst
+	tail -n +${SPLIT} CHANGELOG.rst >> log.rst
+	mv log.rst CHANGELOG.rst
 
 post_release:
 	$(eval CUR_VERSION=$(shell awk -F "=" '/^install_script_version=/{print $$NF}' install_script.sh.template))
