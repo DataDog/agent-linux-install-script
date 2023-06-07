@@ -456,13 +456,15 @@ hashMapGet() {
 }
 
 # flavor_to_readable hasmap
-declare "flavor_to_readable_datadog-agent=Datadog Agent"
-declare "flavor_to_readable_datadog-iot-agent=Datadog IoT Agent"
-declare "flavor_to_readable_datadog-dogstatsd=Datadog Dogstatsd"
-declare "flavor_to_readable_datadog-fips-proxy=Datadog FIPS Proxy"
-declare "flavor_to_readable_datadog-heroku-agent=Datadog Heroku Agent"
+flavor_to_readable_datadog_agent="Datadog Agent"
+flavor_to_readable_datadog_iot_agent="Datadog IoT Agent"
+flavor_to_readable_datadog_dogstatsd="Datadog Dogstatsd"
+flavor_to_readable_datadog_fips_proxy="Datadog FIPS Proxy"
+flavor_to_readable_datadog_heroku_agent="Datadog Heroku Agent"
 
-nice_flavor=$(hashMapGet flavor_to_readable "$agent_flavor")
+agent_flavor_formatted=$(echo "$agent_flavor" | tr "-" "_")
+
+nice_flavor=$(hashMapGet flavor_to_readable "$agent_flavor_formatted")
 
 
 if [ -z "$nice_flavor" ]; then
@@ -475,9 +477,9 @@ if [ -z "$nice_flavor" ]; then
 fi
 
 
-declare "flavor_to_system_service_datadog-dogstatsd=datadog-dogstatsd"
+flavor_to_system_service_datadog_dogstatsd="datadog-dogstatsd"
 
-system_service="$(hashMapGet flavor_to_system_service $agent_flavor)"
+system_service="$(hashMapGet flavor_to_system_service $agent_flavor_formatted)"
 if [ -z "$system_service" ]; then
     system_service="datadog-agent"
 fi
@@ -494,18 +496,18 @@ if [ -n "$fips_mode" ]; then
   services+=("datadog-fips-proxy")
 fi
 
-declare "flavor_to_etcdir_datadog-dogstatsd=/etc/datadog-dogstatsd"
+flavor_to_etcdir_datadog_dogstatsd="/etc/datadog-dogstatsd"
 
-etcdir="$(hashMapGet flavor_to_etcdir $agent_flavor)"
+etcdir="$(hashMapGet flavor_to_etcdir $agent_flavor_formatted)"
 if [ -z "$etcdir" ]; then
     etcdir="/etc/datadog-agent"
 fi
 
 etcdirfips=/etc/datadog-fips-proxy
 
-declare "flavor_to_config_datadog-dogstatsd=$etcdir/dogstatsd.yaml"
+flavor_to_config_datadog_dogstatsd="$etcdir/dogstatsd.yaml"
 
-config_file="$(hashMapGet flavor_to_config $agent_flavor)"
+config_file="$(hashMapGet flavor_to_config $agent_flavor_formatted)"
 if [ -z "$config_file" ]; then
     config_file="$etcdir/datadog.yaml"
 fi
