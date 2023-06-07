@@ -445,15 +445,21 @@ if [ -n "$DD_AGENT_FLAVOR" ]; then
     agent_flavor=$DD_AGENT_FLAVOR #Eg: datadog-iot-agent
 fi
 
-declare -A flavor_to_readable
-flavor_to_readable=(
-    ["datadog-agent"]="Datadog Agent"
-    ["datadog-iot-agent"]="Datadog IoT Agent"
-    ["datadog-dogstatsd"]="Datadog Dogstatsd"
-    ["datadog-fips-proxy"]="Datadog FIPS Proxy"
-    ["datadog-heroku-agent"]="Datadog Heroku Agent"
-)
-nice_flavor=${flavor_to_readable[$agent_flavor]}
+# Emulate hashmap with indirection
+hashMapGet() {
+    local indirection="$1_$2"
+    printf '%s' "${!indirection}"
+}
+
+# flavor_to_readable hasmap
+declare "flavor_to_readable_datadog-agent=Datadog Agent"
+declare "flavor_to_readable_datadog-iot-agent=Datadog IoT Agent"
+declare "flavor_to_readable_datadog-dogstatsd=Datadog Dogstatsd"
+declare "flavor_to_readable_datadog-fips-proxy=Datadog FIPS Proxy"
+declare "flavor_to_readable_datadog-heroku-agent=Datadog Heroku Agent"
+
+nice_flavor=$(hashMapGet flavor_to_readable "$agent_flavor")
+
 
 if [ -z "$nice_flavor" ]; then
     ERROR_MESSAGE="Unknown DD_AGENT_FLAVOR \"$agent_flavor\""
@@ -464,11 +470,13 @@ if [ -z "$nice_flavor" ]; then
     exit 1;
 fi
 
-declare -A flavor_to_system_service
-flavor_to_system_service=(
-    ["datadog-dogstatsd"]="datadog-dogstatsd"
-)
-system_service=${flavor_to_system_service[$agent_flavor]:-datadog-agent}
+
+declare "flavor_to_system_service_datadog-dogstatsd=datadog-dogstatsd"
+
+system_service="$(hashMapGet flavor_to_system_service $agent_flavor)"
+if [ -z "$system_service" ]; then
+    system_service="datadog-agent"
+fi
 
 declare -a services
 
@@ -482,18 +490,22 @@ if [ -n "$fips_mode" ]; then
   services+=("datadog-fips-proxy")
 fi
 
-declare -A flavor_to_etcdir
-flavor_to_etcdir=(
-    ["datadog-dogstatsd"]="/etc/datadog-dogstatsd"
-)
-etcdir=${flavor_to_etcdir[$agent_flavor]:-/etc/datadog-agent}
+declare "flavor_to_etcdir_datadog-dogstatsd=/etc/datadog-dogstatsd"
+
+etcdir="$(hashMapGet flavor_to_etcdir $agent_flavor)"
+if [ -z "$etcdir" ]; then
+    etcdir="/etc/datadog-agent"
+fi
+
 etcdirfips=/etc/datadog-fips-proxy
 
-declare -A flavor_to_config
-flavor_to_config=(
-    ["datadog-dogstatsd"]="$etcdir/dogstatsd.yaml"
-)
-config_file=${flavor_to_config[$agent_flavor]:-$etcdir/datadog.yaml}
+declare "flavor_to_config_datadog-dogstatsd=$etcdir/dogstatsd.yaml"
+
+config_file="$(hashMapGet flavor_to_config $agent_flavor)"
+if [ -z "$config_file" ]; then
+    config_file="$etcdir/datadog.yaml"
+fi
+
 config_file_fips=$etcdirfips/datadog-fips-proxy.cfg
 system_probe_config_file=$etcdir/system-probe.yaml
 security_agent_config_file=$etcdir/security-agent.yaml
