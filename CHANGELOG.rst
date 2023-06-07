@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.17.1
 ================
+
+- Only replace top-level tags entry in config
 
 1.17.0
 ================
