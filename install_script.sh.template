@@ -330,25 +330,45 @@ if [ -n "$DD_FIPS_MODE" ]; then
 fi
 
 declare -a apm_libraries
+declare host_injection_enabled
+declare docker_injection_enabled
 
-host_injection_enabled=
-if [[ "$DD_APM_HOST_INJECTION_ENABLED" == "true" || ( -z "$DD_APM_HOST_INJECTION_ENABLED" && "$DD_APM_INSTRUMENTATION_ENABLED" == "true") ]] ; then
-  if [ "$no_agent" ]; then
-      ERROR_MESSAGE="Host injection is not supported with the DD_NO_AGENT_INSTALL flag. Disable host injection with DD_APM_HOST_INJECTION_ENABLED=false or unset DD_NO_AGENT_INSTALL"
-      ERROR_CODE=$INVALID_PARAMETERS_CODE
-      echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
-      report_telemetry
-      exit 1;
-  fi
-
-  host_injection_enabled="true"
-  apm_libraries=("datadog-apm-inject")
+if [ -n "$DD_APM_INSTRUMENTATION_ENABLED" ]; then
+  read -r -a target_array <<< "$DD_APM_INSTRUMENTATION_ENABLED"
+  for target in "${target_array[@]}"
+  do
+    case $target in
+      all)
+        host_injection_enabled="true"
+        docker_injection_enabled="true"
+        ;;
+      docker)
+        docker_injection_enabled="true"
+        ;;
+      host)
+        host_injection_enabled="true"
+        ;;
+      *)
+        ERROR_MESSAGE="Unknown instrumentation target: $target. Must be one of: all, docker, host"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
+        echo "$ERROR_MESSAGE"
+        report_telemetry
+        exit 1;
+        ;;
+    esac
+  done
 fi
 
-docker_injection_enabled=
-if [[ "$DD_APM_DOCKER_INJECTION_ENABLED" == "true" || ( -z "$DD_APM_DOCKER_INJECTION_ENABLED" && "$DD_APM_INSTRUMENTATION_ENABLED" == "true") ]] ; then
-  docker_injection_enabled="true"
-  apm_libraries=("datadog-apm-inject")
+if [ -n "${host_injection_enabled}${docker_injection_enabled}" ] ; then
+    apm_libraries=("datadog-apm-inject")
+fi
+
+if [ -n "${host_injection_enabled}" ] && [ -n "${no_agent}" ] ; then
+    ERROR_MESSAGE="Host injection is not supported with the DD_NO_AGENT_INSTALL flag. Disable host injection with DD_APM_HOST_INJECTION_ENABLED=false or unset DD_NO_AGENT_INSTALL"
+    ERROR_CODE=$INVALID_PARAMETERS_CODE
+    echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
+    report_telemetry
+    exit 1;
 fi
 
 daemon_config_dir="/etc/docker"
@@ -363,8 +383,8 @@ if [ -n "$docker_injection_enabled" ]; then
     fi
 fi
 
-if [ -n "$DD_APM_LIBRARIES" ]; then
-  read -r -a lib_array <<< "$DD_APM_LIBRARIES"
+if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
+  read -r -a lib_array <<< "$DD_APM_INSTRUMENTATION_LANGUAGES"
   for lib in "${lib_array[@]}"
   do
     case $lib in
