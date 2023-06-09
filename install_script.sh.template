@@ -1066,8 +1066,8 @@ EOF
   fi
 
   if [ "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" == "true" ]; then
-    [ ! -e "$system_probe_config_file" ] && create_config_file "$sudo_cmd" "$system_probe_config_file" "root"
-    [ ! -e "$security_agent_config_file" ] && create_config_file "$sudo_cmd" "$security_agent_config_file" "root"
+    ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
+    ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "root"
 
     printf "\033[34m\n* Enabling runtime security in configuration\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/^#\s*runtime_security_config:/runtime_security_config:/' $security_agent_config_file $system_probe_config_file"
@@ -1075,7 +1075,7 @@ EOF
   fi
 
   if [ "$DD_COMPLIANCE_CONFIG_ENABLED" == "true" ]; then
-    [ ! -e "$security_agent_config_file" ] && create_config_file "$sudo_cmd" "$security_agent_config_file" "root"
+    ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "root"
 
     printf "\033[34m\n* Enabling compliance monitoring in configuration\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/^#\s*compliance_config:/compliance_config:/' $security_agent_config_file"
