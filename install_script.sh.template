@@ -1098,11 +1098,11 @@ elif [ ! "$no_agent" ]; then
     if [ -z "$fips_mode" ]; then
       if [ -n "$site" ]; then
         printf "\033[34m\n* Setting SITE in the $nice_flavor configuration: $config_file\n\033[0m\n"
-        $sudo_cmd sh -c "sed -i 's/# site:.*/site: $site/' $config_file"
+        $sudo_cmd sh -c "sed -i 's/^# site:.*$/site: $site/' $config_file"
       fi
       if [ -n "$DD_URL" ]; then
         printf "\033[34m\n* Setting DD_URL in the $nice_flavor configuration: $config_file\n\033[0m\n"
-        $sudo_cmd sh -c "sed -i 's|# dd_url:.*|dd_url: $DD_URL|' $config_file"
+        $sudo_cmd sh -c "sed -i 's/^# dd_url:.*$/dd_url: $DD_URL/' $config_file"
       fi
     else
       printf "\033[34m\n* Setting $nice_flavor configuration to use FIPS proxy: $config_file\n\033[0m\n"
@@ -1118,12 +1118,12 @@ EOF
     fi
     if [ -n "$hostname" ]; then
       printf "\033[34m\n* Adding your HOSTNAME to the $nice_flavor configuration: $config_file\n\033[0m\n"
-      $sudo_cmd sh -c "sed -i 's/# hostname:.*/hostname: $hostname/' $config_file"
+      $sudo_cmd sh -c "sed -i 's/^# hostname:.*$/hostname: $hostname/' $config_file"
     fi
     if [ -n "$host_tags" ]; then
         printf "\033[34m\n* Adding your HOST TAGS to the $nice_flavor configuration: $config_file\n\033[0m\n"
         formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/','/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
-        $sudo_cmd sh -c "sed -i \"s/^# tags:.*/tags: ""$formatted_host_tags""/\" $config_file"
+        $sudo_cmd sh -c "sed -i \"s/^# tags:.*$/tags: ""$formatted_host_tags""/\" $config_file"
     fi
   fi
   if [ -n "$dd_env" ]; then
@@ -1134,7 +1134,7 @@ EOF
   if [ "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" == "true" ]; then
     if ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"; then
       printf "\033[34m\n* Enabling runtime security in system_probe configuration\n\033[0m\n"
-      $sudo_cmd sh -c "sed -i 's/^#\s*runtime_security_config:/runtime_security_config:/' $security_agent_config_file $system_probe_config_file"
+      $sudo_cmd sh -c "sed -i 's/^#\s*runtime_security_config:$/runtime_security_config:/' $security_agent_config_file $system_probe_config_file"
     fi
 
     if ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "root"; then
@@ -1146,7 +1146,7 @@ EOF
   if [ "$DD_COMPLIANCE_CONFIG_ENABLED" == "true" ]; then
     if ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "root"; then
       printf "\033[34m\n* Enabling compliance monitoring in security_agent configuration\n\033[0m\n"
-      $sudo_cmd sh -c "sed -i 's/^#\s*compliance_config:/compliance_config:/' $security_agent_config_file"
+      $sudo_cmd sh -c "sed -i 's/^#\s*compliance_config:$/compliance_config:/' $security_agent_config_file"
       $sudo_cmd sh -c "sed -i '/^compliance_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $security_agent_config_file"
     fi
   fi
