@@ -344,6 +344,7 @@ if [ -n "$DD_APM_INSTRUMENTATION_ENABLED" ]; then
         ;;
       docker)
         docker_injection_enabled="true"
+        no_agent=true
         ;;
       host)
         host_injection_enabled="true"
@@ -415,6 +416,11 @@ if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
 elif [ -n "$host_injection_enabled" ] || [ -n "$docker_injection_enabled" ]; then
   # Default to all libraries if injection is enabled
   apm_libraries+=("datadog-apm-library-all")
+fi
+
+no_config_change=
+if [ -n "$DD_NO_CONFIG_CHANGE" ]; then
+  no_config_change="--no-config-change"
 fi
 
 system_probe_ensure_config=
@@ -1098,7 +1104,7 @@ fi
 
 # run apm injection scripts
 if [ -n "$host_injection_enabled" ]; then
-  $sudo_cmd dd-host-install --no-agent-restart
+  $sudo_cmd dd-host-install --no-agent-restart ${no_config_change}
 fi
 
 if [ -n "$docker_injection_enabled" ]; then
