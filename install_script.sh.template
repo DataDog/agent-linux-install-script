@@ -333,31 +333,18 @@ declare -a apm_libraries
 declare host_injection_enabled
 declare docker_injection_enabled
 
-if [ -n "$DD_APM_INSTRUMENTATION_ENABLED" ]; then
-  read -r -a target_array <<< "$DD_APM_INSTRUMENTATION_ENABLED"
-  for target in "${target_array[@]}"
-  do
-    case $target in
-      all)
-        host_injection_enabled="true"
-        docker_injection_enabled="true"
-        ;;
-      docker)
-        docker_injection_enabled="true"
-        no_agent=true
-        ;;
-      host)
-        host_injection_enabled="true"
-        ;;
-      *)
-        ERROR_MESSAGE="Unknown instrumentation target: $target. Must be one of: all, docker, host"
-        ERROR_CODE=$INVALID_PARAMETERS_CODE
-        echo "$ERROR_MESSAGE"
-        report_telemetry
-        exit 1;
-        ;;
-    esac
-  done
+if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "all" ] ; then
+  host_injection_enabled="true"
+  docker_injection_enabled="true"
+fi
+
+if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "host" ] ; then
+  host_injection_enabled="true"
+fi
+
+if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "docker" ] ; then
+  docker_injection_enabled="true"
+  no_agent=true
 fi
 
 if [ -n "${host_injection_enabled}${docker_injection_enabled}" ] ; then
@@ -419,7 +406,7 @@ elif [ -n "$host_injection_enabled" ] || [ -n "$docker_injection_enabled" ]; the
 fi
 
 no_config_change=
-if [ -n "$DD_NO_CONFIG_CHANGE" ]; then
+if [ -n "$DD_APM_INSTRUMENTATION_NO_CONFIG_CHANGE" ]; then
   no_config_change="--no-config-change"
 fi
 
