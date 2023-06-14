@@ -445,26 +445,43 @@ if [ -n "$DD_AGENT_FLAVOR" ]; then
     agent_flavor=$DD_AGENT_FLAVOR #Eg: datadog-iot-agent
 fi
 
-# Emulate hashmap with indirection
-hashMapGet() {
-    local indirection="$1_$2"
-    if [ "$SHELL" = "/bin/zsh" ]; then
-        printf '%s' "${(P)indirection}"
-    else
-        printf '%s' "${!indirection}"
-    fi
-}
+# Emulate hashmap with simple switch case
+getMapData() {
 
-# flavor_to_readable hasmap
-flavor_to_readable_datadog_agent="Datadog Agent"
-flavor_to_readable_datadog_iot_agent="Datadog IoT Agent"
-flavor_to_readable_datadog_dogstatsd="Datadog Dogstatsd"
-flavor_to_readable_datadog_fips_proxy="Datadog FIPS Proxy"
-flavor_to_readable_datadog_heroku_agent="Datadog Heroku Agent"
+    if [ "$1" -eq "flavor_to_readable" ]; then
+        case "$2" in
+            "datadog_agent")
+                DATA="Datadog Agent"
+                ;;
+             "datadog_iot_agent")
+                DATA="Datadog IoT Agent"
+                ;;
+             "datadog_dogstatsd")
+                DATA="Datadog Dogstatsd"
+                ;;
+             "datadog_fips_proxy")
+                DATA="Datadog FIPS Proxy"
+                ;;
+             "datadog_heroku_agent")
+                DATA="Datadog Heroku Agent"
+                ;;
+              *)
+                DATA="Unknown"
+                ;;
+         esac
+    elif ["$1" -eq "flavor_to_system_service" && "$2" -eq "datadog_dogstatsd" ]; then
+        DATA="datadog-dogstatsd"
+    elif ["$1" -eq "flavor_to_etcdir" && "$2" -eq "datadog_dogstatsd" ]; then
+        DATA="/etc/datadog-dogstatsd"
+    elif ["$1" -eq "flavor_to_config" && "$2" -eq "datadog_dogstatsd" ]; then
+        DATA="$etcdir/dogstatsd.yaml"
+    fi
+    printf '%s' "$DATA"
+}
 
 agent_flavor_formatted=$(echo "$agent_flavor" | tr "-" "_")
 
-nice_flavor=$(hashMapGet flavor_to_readable "$agent_flavor_formatted")
+nice_flavor=$(getMapData flavor_to_readable "$agent_flavor_formatted")
 
 
 if [ -z "$nice_flavor" ]; then
@@ -479,7 +496,7 @@ fi
 
 flavor_to_system_service_datadog_dogstatsd="datadog-dogstatsd"
 
-system_service="$(hashMapGet flavor_to_system_service $agent_flavor_formatted)"
+system_service="$(getMapData flavor_to_system_service $agent_flavor_formatted)"
 if [ -z "$system_service" ]; then
     system_service="datadog-agent"
 fi
@@ -498,7 +515,7 @@ fi
 
 flavor_to_etcdir_datadog_dogstatsd="/etc/datadog-dogstatsd"
 
-etcdir="$(hashMapGet flavor_to_etcdir $agent_flavor_formatted)"
+etcdir="$(getMapData flavor_to_etcdir $agent_flavor_formatted)"
 if [ -z "$etcdir" ]; then
     etcdir="/etc/datadog-agent"
 fi
@@ -507,7 +524,7 @@ etcdirfips=/etc/datadog-fips-proxy
 
 flavor_to_config_datadog_dogstatsd="$etcdir/dogstatsd.yaml"
 
-config_file="$(hashMapGet flavor_to_config $agent_flavor_formatted)"
+config_file="$(getMapData flavor_to_config $agent_flavor_formatted)"
 if [ -z "$config_file" ]; then
     config_file="$etcdir/datadog.yaml"
 fi
