@@ -469,11 +469,11 @@ getMapData() {
                 DATA="Unknown"
                 ;;
          esac
-    elif ["$1" = "flavor_to_system_service" && "$2" = "datadog_dogstatsd" ]; then
+    elif [ "$1" = "flavor_to_system_service" ] && [ "$2" = "datadog_dogstatsd" ]; then
         DATA="datadog-dogstatsd"
-    elif ["$1" = "flavor_to_etcdir" && "$2" = "datadog_dogstatsd" ]; then
+    elif [ "$1" = "flavor_to_etcdir" ] && [ "$2" = "datadog_dogstatsd" ]; then
         DATA="/etc/datadog-dogstatsd"
-    elif ["$1" = "flavor_to_config" && "$2" = "datadog_dogstatsd" ]; then
+    elif [ "$1" = "flavor_to_config" ] && [ "$2" = "datadog_dogstatsd" ]; then
         DATA="$etcdir/dogstatsd.yaml"
     fi
     printf '%s' "$DATA"
