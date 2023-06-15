@@ -1178,9 +1178,9 @@ fi
 # Use which (from root user) to find the absolute path to service
 
 service_cmd="service"
-if [ "$SUSE11" == "yes" ]; then
-  service_cmd=`$sudo_cmd which service 2>/dev/null`
-fi
+#if [ "$SUSE11" == "yes" ]; then
+#  service_cmd=`$sudo_cmd which service`
+#fi
 
 declare -a monitoring_services
 monitoring_services=( "datadog-agent" )
