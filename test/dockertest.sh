@@ -63,4 +63,4 @@ docker run --rm --platform $PLATFORM -v $(pwd):/tmp/vol \
   -e DD_NO_AGENT_INSTALL="$DD_NO_AGENT_INSTALL" \
   -e DD_APM_INSTRUMENTATION_LANGUAGES="${DD_APM_INSTRUMENTATION_LANGUAGES}" \
   -e DD_OLD_SUSE="$DD_OLD_SUSE" \
-  --entrypoint /tmp/vol/test/localtest.sh "$IMAGE"
+  --entrypoint "$ENTRYPOINT_PATH" "$IMAGE"

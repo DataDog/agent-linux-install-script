@@ -496,7 +496,7 @@ fi
 
 flavor_to_system_service_datadog_dogstatsd="datadog-dogstatsd"
 
-system_service="$(getMapData flavor_to_system_service $agent_flavor_formatted)"
+system_service=$(getMapData flavor_to_system_service "$agent_flavor_formatted")
 if [ -z "$system_service" ]; then
     system_service="datadog-agent"
 fi
@@ -515,7 +515,7 @@ fi
 
 flavor_to_etcdir_datadog_dogstatsd="/etc/datadog-dogstatsd"
 
-etcdir="$(getMapData flavor_to_etcdir $agent_flavor_formatted)"
+etcdir=$(getMapData flavor_to_etcdir "$agent_flavor_formatted")
 if [ -z "$etcdir" ]; then
     etcdir="/etc/datadog-agent"
 fi
@@ -524,7 +524,7 @@ etcdirfips=/etc/datadog-fips-proxy
 
 flavor_to_config_datadog_dogstatsd="$etcdir/dogstatsd.yaml"
 
-config_file="$(getMapData flavor_to_config $agent_flavor_formatted)"
+config_file=$(getMapData flavor_to_config "$agent_flavor_formatted")
 if [ -z "$config_file" ]; then
     config_file="$etcdir/datadog.yaml"
 fi
