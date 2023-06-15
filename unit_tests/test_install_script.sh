@@ -2,7 +2,7 @@
 
 file_path=$(realpath $0)
 source `dirname $file_path`/extracted_functions.sh
-yaml_config=`dirname $file_path`/.yamllint.yaml
+yaml_config=`dirname $file_path`/../.yamllint.yaml
 config_file="/etc/datadog-agent/datadog.yaml"
 security_agent_config_file="/etc/datadog-agent/security-agent.yaml"
 system_probe_config_file="/etc/datadog-agent/system-probe.yaml"

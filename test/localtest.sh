@@ -1,5 +1,6 @@
 #!/bin/bash -e
 
+file_path=$(realpath $0)
 function get_os_type() {
   if command -v dpkg > /dev/null; then
     echo "ubuntu"
@@ -142,8 +143,9 @@ config_file=/etc/datadog-agent/datadog.yaml
 security_agent_config_file=/etc/datadog-agent/security-agent.yaml
 system_probe_config_file=/etc/datadog-agent/system-probe.yaml
 config_files=( config_file security_agent_config_file system_probe_config_file )
+yamllint_config=$(dirname $file_path)/../.yamllint.yaml
 for file in "${config_files[@]}"; do
-  if [ -e $file ] && ! yamllint $file > /dev/null; then
+  if [ -e $file ] && ! yamllint -c $yamllint_config --no-warnings $file > /dev/null; then
     echo "[FAIL] File ${file} is not a valid YAML file. Please check your configuration files"
     RESULT=1
     fi
