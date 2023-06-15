@@ -1,6 +1,5 @@
 #!/bin/bash -e
 
-file_path=$(realpath "$0")
 function get_os_type() {
   if command -v dpkg > /dev/null; then
     echo "ubuntu"
@@ -24,7 +23,7 @@ if [ "$DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "$DD_APM_INSTRUMENTATION_
 fi
 /tmp/script.sh
 
-OS_TYPE=`get_os_type`
+OS_TYPE=$(get_os_type)
 INSTALLED_VERSION=
 RESULT=0
 EXPECTED_MAJOR_VERSION=6
@@ -104,7 +103,7 @@ if [ -n "${EXPECTED_TOOL_VERSION}" ] && [ -z "$DD_NO_AGENT_INSTALL" ]; then
         INSTALL_INFO_FILE=/etc/datadog-dogstatsd/install_info
     fi
 
-    TOOL_VERSION=$(cat "$INSTALL_INFO_FILE" | grep "tool_version:" | cut -d":" -f 2)
+    TOOL_VERSION=$(grep "tool_version:" "$INSTALL_INFO_FILE" | cut -d":" -f 2)
     if echo "${TOOL_VERSION}" | grep "${EXPECTED_TOOL_VERSION}$" >/dev/null; then
         echo "[OK] Correct tool_version found in install_info file"
     else
@@ -134,24 +133,17 @@ if [ "${EXPECTED_FLAVOR}" == "datadog-agent" ] && [ -z "$DD_NO_AGENT_INSTALL" ];
 fi
 
 # Lint configuration files
-if [[ "$OS_TYPE" == "ubuntu" ]]; then
-  apt-get install -y yamllint
-else
-  dnf install -y yamllint
-fi
+echo "Copy configuration files in project directory for future yaml linting"
+ls /tmp/vol
 config_file=/etc/datadog-agent/datadog.yaml
 security_agent_config_file=/etc/datadog-agent/security-agent.yaml
 system_probe_config_file=/etc/datadog-agent/system-probe.yaml
 config_files=( "$config_file" "$security_agent_config_file" "$system_probe_config_file" )
-yamllint_config="$(dirname "$file_path")/../.yamllint.yaml"
-for file in "${config_files[@]}"; do
-  if [ -e "$file" ] && ! yamllint -c "$yamllint_config" --no-warnings "$file" > /dev/null; then
-    echo "[FAIL] File ${file} is not a valid YAML file. Please check your configuration files"
-    RESULT=1
-    fi
-done
-if [[ $RESULT -eq 0 ]]; then
-  echo "[OK] All configuration files are valid YAML files"
+mkdir -p "/tmp/vol/artifacts"
+if [[ -z "$DD_AGENT_FLAVOR" && -z "$DD_NO_AGENT_INSTALL" ]]; then
+  for file in "${config_files[@]}"; do
+    cp "$file" "/tmp/vol/artifacts"
+  done
 fi
 
 if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
@@ -200,7 +192,7 @@ else
   if [[ "$OS_TYPE" == "ubuntu" ]] && debsums -c datadog-apm-inject ; then
     echo "[FAIL] datadog-apm-inject should not be installed"
     RESULT=1
-  elif rpm --verify --nomode --nouser --nogroup datadog-apm-inject ; then
+  elif [[ "$OS_TYPE" == "redhat" ]] && rpm --verify --nomode --nouser --nogroup datadog-apm-inject ; then
     echo "[FAIL] datadog-apm-inject should not be installed"
     RESULT=1
   else
