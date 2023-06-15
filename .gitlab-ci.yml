@@ -27,6 +27,16 @@ generate-scripts:
       - install_script_op_worker1.sh
       - install_script_vector0.sh
 
+unit_tests:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
+  tags: [arch:amd64]
+  stage: test
+  dependencies: ["generate-scripts"]
+  script:
+    - sudo apt-get install -y shunit2 yamllint
+    - python3 unit_tests/extract_functions.py
+    - ./unit_tests/test_install_script.sh
+
 .test:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: ["runner:docker"]
