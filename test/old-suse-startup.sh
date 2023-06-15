@@ -1,3 +1,5 @@
+#!/bin/bash -e
+
 echo "VERSION:11" > /etc/SuSE-release
 zypper install -y which 
 zypper addrepo https://ftp5.gwdg.de/pub/opensuse/discontinued/distribution/11.1/repo/oss/ discontinue 
