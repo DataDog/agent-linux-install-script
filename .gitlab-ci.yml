@@ -34,9 +34,8 @@ test-opensuse-13:
       - IMAGE: images/mirror/opensuse/archive:13.2
         FLAVOR: datadog-iot-agent
   script:
-    - echo "VERSION:11" > /etc/SuSE-release
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}" --suse-old "true"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}" --suse-old "true"
 
 
 test:

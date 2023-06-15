@@ -1,5 +1,9 @@
 #!/bin/bash -e
 
+if [ ! -z "$DD_OLD_SUSE" ]; then
+    echo "VERSION:11" > /etc/SuSE-release
+fi
+
 EXPECTED_FLAVOR=${DD_AGENT_FLAVOR:-datadog-agent}
 if [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] && echo "${SCRIPT}" | grep "agent6.sh$" >/dev/null; then
     echo "[PASS] Can't install flavor '${DD_AGENT_FLAVOR}' with install_script_agent6.sh"

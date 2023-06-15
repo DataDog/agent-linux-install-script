@@ -31,6 +31,9 @@ while [[ $# -gt 0 ]]; do
     --no-agent)
       DD_NO_AGENT_INSTALL="$2"
       ;;
+    --suse-old)
+      DD_OLD_SUSE="$2"
+      ;;
     -*|--*)
       echo "Unknown option $1"
       exit 1
@@ -53,4 +56,5 @@ docker run --rm --platform $PLATFORM -v $(pwd):/tmp/vol \
   -e DD_APM_INSTRUMENTATION_ENABLED="${DD_APM_INSTRUMENTATION_ENABLED}" \
   -e DD_NO_AGENT_INSTALL="$DD_NO_AGENT_INSTALL" \
   -e DD_APM_INSTRUMENTATION_LANGUAGES="${DD_APM_INSTRUMENTATION_LANGUAGES}" \
+  -e DD_OLD_SUSE="$DD_OLD_SUSE" \
   --entrypoint /tmp/vol/test/localtest.sh "$IMAGE"
