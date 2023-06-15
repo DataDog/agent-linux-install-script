@@ -2,7 +2,7 @@
 
 if [ ! -z "$DD_OLD_SUSE" ]; then
     echo "VERSION:11" > /etc/SuSE-release
-    zypper install -n which 
+    zypper install -y which 
 fi
 
 EXPECTED_FLAVOR=${DD_AGENT_FLAVOR:-datadog-agent}
