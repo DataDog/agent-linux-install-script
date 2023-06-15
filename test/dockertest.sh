@@ -45,6 +45,12 @@ done
 [ -z "$SCRIPT" ] && echo "Please provide script file to test via -s/--script" && exit 1;
 [ -z "$IMAGE" ] && echo "Please provide image to test via -i/--image" && exit 1;
 
+if [ -z "$DD_OLD_SUSE" ]; then
+    ENTRYPOINT_PATH="/tmp/vol/test/localtest.sh"
+else
+    ENTRYPOINT_PATH="/tmp/vol/test/old-suse-startup.sh"
+fi
+
 docker run --rm --platform $PLATFORM -v $(pwd):/tmp/vol \
   -e DD_SYSTEM_PROBE_ENSURE_CONFIG="${DD_SYSTEM_PROBE_ENSURE_CONFIG}" \
   -e DD_COMPLIANCE_CONFIG_ENABLED="${DD_COMPLIANCE_CONFIG_ENABLED}" \
