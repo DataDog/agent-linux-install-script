@@ -1179,7 +1179,9 @@ fi
 
 service_cmd="service"
 if [ "$SUSE11" == "yes" ]; then
+  set +e
   service_cmd=`$sudo_cmd which service`
+  set -e
 fi
 
 declare -a monitoring_services
