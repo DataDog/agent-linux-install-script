@@ -352,7 +352,7 @@ if [ -n "${host_injection_enabled}${docker_injection_enabled}" ] ; then
 fi
 
 if [ -n "${host_injection_enabled}" ] && [ -n "${no_agent}" ] ; then
-    ERROR_MESSAGE="Host injection is not supported with the DD_NO_AGENT_INSTALL flag. Disable host injection with DD_APM_HOST_INJECTION_ENABLED=false or unset DD_NO_AGENT_INSTALL"
+    ERROR_MESSAGE="Host injection is not supported with the DD_NO_AGENT_INSTALL flag. Unset either DD_APM_INSTRUMENTATION_ENABLED or DD_NO_AGENT_INSTALL"
     ERROR_CODE=$INVALID_PARAMETERS_CODE
     echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
     report_telemetry
