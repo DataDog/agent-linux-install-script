@@ -16,4 +16,4 @@ jobs:
       - name: Generate scripts
         run: make
       - name: Run shellcheck
-        run: shellcheck --severity=info *.sh
+        run: shellcheck --severity=info `find . -name "*.sh"`

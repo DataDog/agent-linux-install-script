@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-file_path=$(realpath $0)
+file_path=$(realpath "$0")
 function get_os_type() {
   if command -v dpkg > /dev/null; then
     echo "ubuntu"
@@ -37,12 +37,12 @@ fi
 EXPECTED_MINOR_VERSION="${EXPECTED_MINOR_VERSION:-${DD_AGENT_MINOR_VERSION}}"
 
 # basic checks to ensure that the correct flavor was installed
-if [[ "$OS_TYPE" == "ubuntu" ]] then
+if [[ "$OS_TYPE" == "ubuntu" ]]; then
     apt-get install -y debsums
 
     if [ -z "$DD_NO_AGENT_INSTALL" ]; then
-      debsums -c ${EXPECTED_FLAVOR}
-      INSTALLED_VERSION=$(dpkg-query -W ${EXPECTED_FLAVOR} | cut -f2 | cut -d: -f2)
+      debsums -c "${EXPECTED_FLAVOR}"
+      INSTALLED_VERSION=$(dpkg-query -W "${EXPECTED_FLAVOR}" | cut -f2 | cut -d: -f2)
     elif debsums -c datadog-agent ; then
       echo "[FAIL] datadog-agent should not be installed"
       RESULT=1
@@ -134,7 +134,7 @@ if [ "${EXPECTED_FLAVOR}" == "datadog-agent" ] && [ -z "$DD_NO_AGENT_INSTALL" ];
 fi
 
 # Lint configuration files
-if [[ "$OS_TYPE" == "ubuntu" ]] then
+if [[ "$OS_TYPE" == "ubuntu" ]]; then
   apt-get install -y yamllint
 else
   dnf install -y yamllint
@@ -142,10 +142,10 @@ fi
 config_file=/etc/datadog-agent/datadog.yaml
 security_agent_config_file=/etc/datadog-agent/security-agent.yaml
 system_probe_config_file=/etc/datadog-agent/system-probe.yaml
-config_files=( config_file security_agent_config_file system_probe_config_file )
-yamllint_config=$(dirname $file_path)/../.yamllint.yaml
+config_files=( "$config_file" "$security_agent_config_file" "$system_probe_config_file" )
+yamllint_config="$(dirname "$file_path")/../.yamllint.yaml"
 for file in "${config_files[@]}"; do
-  if [ -e $file ] && ! yamllint -c $yamllint_config --no-warnings $file > /dev/null; then
+  if [ -e "$file" ] && ! yamllint -c "$yamllint_config" --no-warnings "$file" > /dev/null; then
     echo "[FAIL] File ${file} is not a valid YAML file. Please check your configuration files"
     RESULT=1
     fi
@@ -209,7 +209,7 @@ else
 fi
 
 if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
-  if [[ "$OS_TYPE" == "ubuntu" ]] then
+  if [[ "$OS_TYPE" == "ubuntu" ]]; then
     debsums -c datadog-apm-library-all
     echo "[OK] Inject libraries installed"
   else
