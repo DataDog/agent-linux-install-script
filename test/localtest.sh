@@ -115,7 +115,7 @@ if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
     fi
 fi
 
-if [ "$DD_APM_HOST_INJECTION_ENABLED" = "true" ]; then
+if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "host" ]; then
   if command -v dpkg > /dev/null; then
       debsums -c datadog-apm-inject
       debsums -c datadog-apm-library-all
@@ -144,7 +144,7 @@ else
   fi
 fi
 
-if [ -n "$DD_APM_LIBRARIES" ]; then
+if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
   if command -v dpkg > /dev/null; then
     debsums -c datadog-apm-library-all
     echo "[OK] Inject libraries installed"

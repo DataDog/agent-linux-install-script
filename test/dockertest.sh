@@ -22,11 +22,11 @@ while [[ $# -gt 0 ]]; do
     -p|--platform)
       PLATFORM="$2"
       ;;
-    --host-injection)
-      DD_APM_HOST_INJECTION_ENABLED="$2"
+    --injection)
+      DD_APM_INSTRUMENTATION_ENABLED="$2"
       ;;
     --apm-libraries)
-      DD_APM_LIBRARIES="$2"
+      DD_APM_INSTRUMENTATION_LANGUAGES="$2"
       ;;
     --no-agent)
       DD_NO_AGENT_INSTALL="$2"
@@ -50,7 +50,7 @@ docker run --rm --platform $PLATFORM -v $(pwd):/tmp/vol \
   -e DD_AGENT_FLAVOR="${FLAVOR}" \
   -e EXPECTED_MINOR_VERSION="${EXPECTED_MINOR_VERSION}" \
   -e DD_API_KEY=123 -e SCRIPT="/tmp/vol/$SCRIPT" \
-  -e DD_APM_HOST_INJECTION_ENABLED="${DD_APM_HOST_INJECTION_ENABLED}" \
+  -e DD_APM_INSTRUMENTATION_ENABLED="${DD_APM_INSTRUMENTATION_ENABLED}" \
   -e DD_NO_AGENT_INSTALL="$DD_NO_AGENT_INSTALL" \
-  -e DD_APM_LIBRARIES="$DD_APM_LIBRARIES" \
+  -e DD_APM_INSTRUMENTATION_LANGUAGES="${DD_APM_INSTRUMENTATION_LANGUAGES}" \
   --entrypoint /tmp/vol/test/localtest.sh "$IMAGE"
