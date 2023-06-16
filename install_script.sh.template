@@ -1184,7 +1184,7 @@ if [ $no_start ]; then
 fi
 
 for current_service in "${services[@]}"; do
-  nice_current_flavor=${flavor_to_readable[$current_service]}
+    nice_current_flavor=$(getMapData flavor_to_readable "$current_service")
 
   # Use /usr/sbin/service by default.
   # Some distros usually include compatibility scripts with Upstart or Systemd. Check with: `command -v service | xargs grep -E "(upstart|systemd)"`
