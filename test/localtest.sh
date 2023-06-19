@@ -133,8 +133,6 @@ if [ "${EXPECTED_FLAVOR}" == "datadog-agent" ] && [ -z "$DD_NO_AGENT_INSTALL" ];
 fi
 
 # Lint configuration files
-echo "Copy configuration files in project directory for future yaml linting"
-ls /tmp/vol
 config_file=/etc/datadog-agent/datadog.yaml
 security_agent_config_file=/etc/datadog-agent/security-agent.yaml
 system_probe_config_file=/etc/datadog-agent/system-probe.yaml
