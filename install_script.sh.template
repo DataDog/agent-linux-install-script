@@ -456,7 +456,7 @@ if [ -n "$DD_AGENT_FLAVOR" ]; then
 fi
 
 # Emulate hashmap with simple switch case
-getMapData() {
+function getMapData() {
 
     if [ "$1" = "flavor_to_readable" ]; then
         case "$2" in
