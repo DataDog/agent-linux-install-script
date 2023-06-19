@@ -493,8 +493,12 @@ if [ -z "$nice_flavor" ]; then
     exit 1;
 fi
 
+if [ "$agent_flavor_formatted" = "datadog_dogstatsd" ]; then
+    system_service="datadog-dogstatsd"
+    etcdir="/etc/datadog-dogstatsd"
+    config_file="$etcdir/dogstatsd.yaml"
+fi
 
-system_service=$(getMapData flavor_to_system_service "$agent_flavor_formatted")
 if [ -z "$system_service" ]; then
     system_service="datadog-agent"
 fi
@@ -511,14 +515,12 @@ if [ -n "$fips_mode" ]; then
   services+=("datadog-fips-proxy")
 fi
 
-etcdir=$(getMapData flavor_to_etcdir "$agent_flavor_formatted")
 if [ -z "$etcdir" ]; then
     etcdir="/etc/datadog-agent"
 fi
 
 etcdirfips=/etc/datadog-fips-proxy
 
-config_file=$(getMapData flavor_to_config "$agent_flavor_formatted")
 if [ -z "$config_file" ]; then
     config_file="$etcdir/datadog.yaml"
 fi
