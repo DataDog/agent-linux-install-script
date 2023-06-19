@@ -1173,6 +1173,7 @@ fi
 
 service_cmd="service"
 if [ "$SUSE11" == "yes" ]; then
+  # We're testing SUSE11 on a opensuse 13.2, `which service` will fail on openSUSE 13.2 and needs to have `service` as a default value
   service_cmd=`$sudo_cmd which service || echo "service"`
 fi
 

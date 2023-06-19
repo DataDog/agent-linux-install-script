@@ -28,14 +28,14 @@ test-opensuse-13:
   dependencies: ["generate-scripts"]
   parallel:
     matrix:
-      - IMAGE: images/mirror/opensuse/archive:13.2
-      - IMAGE: images/mirror/opensuse/archive:13.2
+      - IMAGE: opensuse/archive:13.2
+      - IMAGE: opensuse/archive:13.2
         FLAVOR: datadog-dogstatsd
-      - IMAGE: images/mirror/opensuse/archive:13.2
+      - IMAGE: opensuse/archive:13.2
         FLAVOR: datadog-iot-agent
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}" --suse-old "true"
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}" --suse-old "true"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}" --old-suse "true"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}" --old-suse "true"
 
 
 test:

@@ -31,7 +31,7 @@ while [[ $# -gt 0 ]]; do
     --no-agent)
       DD_NO_AGENT_INSTALL="$2"
       ;;
-    --suse-old)
+    --old-suse)
       DD_OLD_SUSE="$2"
       ;;
     -*|--*)
