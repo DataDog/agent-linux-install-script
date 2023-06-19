@@ -21,6 +21,23 @@ generate-scripts:
       - install_script_agent6.sh
       - install_script_agent7.sh
 
+test-opensuse-13:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
+  tags: ["runner:docker"]
+  stage: test
+  dependencies: ["generate-scripts"]
+  parallel:
+    matrix:
+      - IMAGE: opensuse/archive:13.2
+      - IMAGE: opensuse/archive:13.2
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: opensuse/archive:13.2
+        FLAVOR: datadog-iot-agent
+  script:
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}" --old-suse "true"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}" --old-suse "true"
+
+
 test:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: ["runner:docker"]

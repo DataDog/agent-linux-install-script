@@ -445,15 +445,38 @@ if [ -n "$DD_AGENT_FLAVOR" ]; then
     agent_flavor=$DD_AGENT_FLAVOR #Eg: datadog-iot-agent
 fi
 
-declare -A flavor_to_readable
-flavor_to_readable=(
-    ["datadog-agent"]="Datadog Agent"
-    ["datadog-iot-agent"]="Datadog IoT Agent"
-    ["datadog-dogstatsd"]="Datadog Dogstatsd"
-    ["datadog-fips-proxy"]="Datadog FIPS Proxy"
-    ["datadog-heroku-agent"]="Datadog Heroku Agent"
-)
-nice_flavor=${flavor_to_readable[$agent_flavor]}
+# Emulate hashmap with simple switch case
+getMapData() {
+
+    if [ "$1" = "flavor_to_readable" ]; then
+        case "$2" in
+            "datadog_agent")
+                DATA="Datadog Agent"
+                ;;
+             "datadog_iot_agent")
+                DATA="Datadog IoT Agent"
+                ;;
+             "datadog_dogstatsd")
+                DATA="Datadog Dogstatsd"
+                ;;
+             "datadog_fips_proxy")
+                DATA="Datadog FIPS Proxy"
+                ;;
+             "datadog_heroku_agent")
+                DATA="Datadog Heroku Agent"
+                ;;
+              *)
+                DATA="Unknown"
+                ;;
+         esac
+    fi
+    printf '%s' "$DATA"
+}
+
+agent_flavor_formatted=$(echo "$agent_flavor" | tr "-" "_")
+
+nice_flavor=$(getMapData flavor_to_readable "$agent_flavor_formatted")
+
 
 if [ -z "$nice_flavor" ]; then
     ERROR_MESSAGE="Unknown DD_AGENT_FLAVOR \"$agent_flavor\""
@@ -464,11 +487,15 @@ if [ -z "$nice_flavor" ]; then
     exit 1;
 fi
 
-declare -A flavor_to_system_service
-flavor_to_system_service=(
-    ["datadog-dogstatsd"]="datadog-dogstatsd"
-)
-system_service=${flavor_to_system_service[$agent_flavor]:-datadog-agent}
+if [ "$agent_flavor_formatted" = "datadog_dogstatsd" ]; then
+    system_service="datadog-dogstatsd"
+    etcdir="/etc/datadog-dogstatsd"
+    config_file="$etcdir/dogstatsd.yaml"
+fi
+
+if [ -z "$system_service" ]; then
+    system_service="datadog-agent"
+fi
 
 declare -a services
 
@@ -482,18 +509,16 @@ if [ -n "$fips_mode" ]; then
   services+=("datadog-fips-proxy")
 fi
 
-declare -A flavor_to_etcdir
-flavor_to_etcdir=(
-    ["datadog-dogstatsd"]="/etc/datadog-dogstatsd"
-)
-etcdir=${flavor_to_etcdir[$agent_flavor]:-/etc/datadog-agent}
+if [ -z "$etcdir" ]; then
+    etcdir="/etc/datadog-agent"
+fi
+
 etcdirfips=/etc/datadog-fips-proxy
 
-declare -A flavor_to_config
-flavor_to_config=(
-    ["datadog-dogstatsd"]="$etcdir/dogstatsd.yaml"
-)
-config_file=${flavor_to_config[$agent_flavor]:-$etcdir/datadog.yaml}
+if [ -z "$config_file" ]; then
+    config_file="$etcdir/datadog.yaml"
+fi
+
 config_file_fips=$etcdirfips/datadog-fips-proxy.cfg
 system_probe_config_file=$etcdir/system-probe.yaml
 security_agent_config_file=$etcdir/security-agent.yaml
@@ -573,7 +598,7 @@ if [ ! "$apikey" ]; then
 fi
 
 if [[ `uname -m` == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]] && [ ! "$no_agent" ]; then
-    ERROR_MESSAGE="The full $nice_flavor isn't available for your architecture (armv7l).\nInstall the ${flavor_to_readable[datadog-iot-agent]} by setting DD_AGENT_FLAVOR='datadog-iot-agent'."
+    ERROR_MESSAGE="The full $nice_flavor isn't available for your architecture (armv7l).\nInstall the $(getMapData flavor_to_readable datadog-iot-agent) by setting DD_AGENT_FLAVOR='datadog-iot-agent'."
     ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE\033[0m\n"
     report_telemetry
@@ -1144,7 +1169,8 @@ fi
 
 service_cmd="service"
 if [ "$SUSE11" == "yes" ]; then
-  service_cmd=`$sudo_cmd which service`
+  # We're testing SLES11 on a opensuse 13.2, `which service` will fail on openSUSE 13.2 and needs to have `service` as a default value
+  service_cmd=`$sudo_cmd which service || echo "service"`
 fi
 
 declare -a monitoring_services
@@ -1155,7 +1181,7 @@ if [ $no_start ]; then
 fi
 
 for current_service in "${services[@]}"; do
-  nice_current_flavor=${flavor_to_readable[$current_service]}
+    nice_current_flavor=$(getMapData flavor_to_readable "$current_service")
 
   # Use /usr/sbin/service by default.
   # Some distros usually include compatibility scripts with Upstart or Systemd. Check with: `command -v service | xargs grep -E "(upstart|systemd)"`
