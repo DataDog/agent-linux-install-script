@@ -1178,7 +1178,7 @@ elif [ ! "$no_agent" ]; then
     update_api_key "$sudo_cmd" "$apikey" "$config_file"
     if [ -z "$fips_mode" ]; then
       update_site "$sudo_cmd" "$site" "$config_file"
-      update_url "$sudo_cmd" "$DD_URL" "$config_file"
+      update_url "$sudo_cmd" "$DD_REPO_URL" "$config_file"
     else
       update_fips "$sudo_cmd" "$config_file"
     fi
@@ -1187,7 +1187,7 @@ elif [ ! "$no_agent" ]; then
   fi
   if ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "root"; then
     update_runtime_security "$sudo_cmd" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$security_agent_config_file"
-    update_compliance_configuration "$sudo_cmd" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$security_agent_config_file"
+    update_compliance_configuration "$sudo_cmd" "$DD_COMPLIANCE_CONFIG_ENABLED" "$security_agent_config_file"
   fi
   if ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"; then
     update_runtime_security "$sudo_cmd" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$system_probe_config_file"
@@ -1201,13 +1201,17 @@ fi
 
 # set the FIPS configuration
 if [ -n "$fips_mode" ]; then
-  ensure_config_file_exists "$sudo_cmd" "$config_file_fips" "dd-agent"
+  if ! ensure_config_file_exists "$sudo_cmd" "$config_file_fips" "dd-agent"; then
+    echo "Fips config file already created"
+  fi
   # TODO: set port range in file, or environment variable
 fi
 
 # set the system-probe configuration
 if [ -n "$system_probe_ensure_config" ]; then
-  ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
+  if ! ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"; then
+    echo "System probe config file already created"
+  fi
 fi
 
 # run apm injection scripts
