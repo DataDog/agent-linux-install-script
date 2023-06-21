@@ -450,19 +450,19 @@ getMapData() {
 
     if [ "$1" = "flavor_to_readable" ]; then
         case "$2" in
-            "datadog_agent")
+            "datadog-agent")
                 DATA="Datadog Agent"
                 ;;
-             "datadog_iot_agent")
+             "datadog-iot-agent")
                 DATA="Datadog IoT Agent"
                 ;;
-             "datadog_dogstatsd")
+             "datadog-dogstatsd")
                 DATA="Datadog Dogstatsd"
                 ;;
-             "datadog_fips_proxy")
+             "datadog-fips-proxy")
                 DATA="Datadog FIPS Proxy"
                 ;;
-             "datadog_heroku_agent")
+             "datadog-heroku-agent")
                 DATA="Datadog Heroku Agent"
                 ;;
               *)
@@ -473,9 +473,7 @@ getMapData() {
     printf '%s' "$DATA"
 }
 
-agent_flavor_formatted=$(echo "$agent_flavor" | tr "-" "_")
-
-nice_flavor=$(getMapData flavor_to_readable "$agent_flavor_formatted")
+nice_flavor=$(getMapData flavor_to_readable "$agent_flavor")
 
 
 if [ -z "$nice_flavor" ]; then
@@ -487,7 +485,7 @@ if [ -z "$nice_flavor" ]; then
     exit 1;
 fi
 
-if [ "$agent_flavor_formatted" = "datadog_dogstatsd" ]; then
+if [ "$agent_flavor" = "datadog-dogstatsd" ]; then
     system_service="datadog-dogstatsd"
     etcdir="/etc/datadog-dogstatsd"
     config_file="$etcdir/dogstatsd.yaml"
