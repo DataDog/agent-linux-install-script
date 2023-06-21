@@ -20,13 +20,15 @@ LEGACY_CONF="$LEGACY_ETCDIR/datadog.conf"
 # repodata and newly released packages
 # DATADOG_APT_KEY_382E94DE.public expires in 2022
 # DATADOG_APT_KEY_F14F620E.public expires in 2032
-APT_GPG_KEYS=("DATADOG_APT_KEY_CURRENT.public" "DATADOG_APT_KEY_F14F620E.public" "DATADOG_APT_KEY_382E94DE.public")
+# DATADOG_APT_KEY_C0962C7D.public expires in 2028
+APT_GPG_KEYS=("DATADOG_APT_KEY_CURRENT.public" "DATADOG_APT_KEY_C0962C7D.public" "DATADOG_APT_KEY_F14F620E.public" "DATADOG_APT_KEY_382E94DE.public")
 
 # DATADOG_RPM_KEY_CURRENT.public always contains key used to sign current
 # repodata and newly released packages
 # DATADOG_RPM_KEY_E09422B3.public expires in 2022
 # DATADOG_RPM_KEY_FD4BF915.public expires in 2024
-RPM_GPG_KEYS=("DATADOG_RPM_KEY_CURRENT.public" "DATADOG_RPM_KEY_E09422B3.public" "DATADOG_RPM_KEY_FD4BF915.public")
+# DATADOG_RPM_KEY_B01082D3.public expires in 2028
+RPM_GPG_KEYS=("DATADOG_RPM_KEY_CURRENT.public" "DATADOG_RPM_KEY_B01082D3.public" "DATADOG_RPM_KEY_FD4BF915.public" "DATADOG_RPM_KEY_E09422B3.public")
 
 # DATADOG_RPM_KEY.public (4172A230) was only useful to install old (< 6.14) Agent packages.
 # We no longer add it and we explicitly remove it.
