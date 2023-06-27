@@ -11,6 +11,7 @@ Unreleased
 - Add new GPG keys for APT and RPM repositories signature rotation (#44)
 - Fix install script on SLES 11 (#51, #52)
 - Allow setting up compliance and runtime security products at installation time (#34)
+- Change names and behavior of APM related variables (#49)
 
 1.17.1
 ================
