@@ -2,8 +2,13 @@
 Release Notes
 =============
 
-Unreleased
+1.18.0
 ================
+
+- AP-2106 Add new GPG keys for APT and RPM repositories signature rotation (#44)
+- Restore usage of underscores in options as it would require change at several places and would probably bring confusion (#52)
+- SLES 11 install script support (#51)
+- Allow setting up compliance and runtime security products at installation time (#34)
 
 1.17.1
 ================

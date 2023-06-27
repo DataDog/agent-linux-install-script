@@ -57,11 +57,10 @@ pre_release_minor:
 	sed -i "" -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
 
 update_changelog:
-	$(eval CHANGES=$(shell git log --format=format:" - %s" $(VERSION)..HEAD | egrep -iv "post.*release" | grep -iv fix | cut -d' ' -f2-))
 	$(eval SPLIT=$(shell grep -n "^Unreleased" CHANGELOG.rst | cut -d':' -f1))
 	$(eval SPLIT=$(shell expr ${SPLIT} + 2))
 	head -${SPLIT} CHANGELOG.rst > log.rst
-	echo ${CHANGES} >> log.rst
+	git log --format=format:" - %s" $(VERSION)..HEAD | egrep -iv "post.*release" | grep -iv fix | cut -d' ' -f2- >> log.rst
 	tail -n +${SPLIT} CHANGELOG.rst >> log.rst
 	mv log.rst CHANGELOG.rst
 
