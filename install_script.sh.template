@@ -787,8 +787,9 @@ elif [ "$OS" = "Debian" ]; then
         fi
 
         if cat /tmp/ddog_install_error_msg | grep "Could not get lock"; then
-            printf "\033[31mInstallation failed : Unable to get lock !!\nretrying in 15s ($i/$MAX_RETRY_NB)\033[0m\n"
-            sleep 15
+            RETRY_TIME=$((i*2))
+            printf "\033[31mInstallation failed : Unable to get lock !!\nretrying in ${RETRY_TIME}s ($i/$MAX_RETRY_NB)\033[0m\n"
+            sleep $RETRY_TIME
         else
             break
         fi
