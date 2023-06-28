@@ -50,6 +50,8 @@ generate-scripts:
 
 test-opensuse-13:
   extends: .test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
   parallel:
     matrix:
       - IMAGE: opensuse/archive:13.2
