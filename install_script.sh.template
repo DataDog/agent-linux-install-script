@@ -770,18 +770,30 @@ elif [ "$OS" = "Debian" ]; then
     apt_trusted_d_keyring="/etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg"
     apt_usr_share_keyring="/usr/share/keyrings/datadog-archive-keyring.gpg"
 
-    printf "\033[34m\n* Installing apt-transport-https, curl and gnupg\n\033[0m\n"
-    $sudo_cmd apt-get update || printf "\033[31m'apt-get update' failed, the script will not install the latest version of apt-transport-https.\033[0m\n"
-    # installing curl might trigger install of additional version of libssl; this will fail the installation process,
-    # see https://unix.stackexchange.com/q/146283 for reference - we use DEBIAN_FRONTEND=noninteractive to fix that
-    if [ -z "$sudo_cmd" ]; then
-        # if $sudo_cmd is empty, doing `$sudo_cmd X=Y command` fails with
-        # `X=Y: command not found`; therefore we don't prefix the command with
-        # $sudo_cmd at all in this case
-        DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg
-    else
-        $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg
-    fi
+    MAX_RETRY_NB=10
+    for i in $(seq 1 $MAX_RETRY_NB)
+    do
+        printf "\033[34m\n* Installing apt-transport-https, curl and gnupg\n\033[0m\n"
+        $sudo_cmd apt-get update || printf "\033[31m'apt-get update' failed, the script will not install the latest version of apt-transport-https.\033[0m\n"
+        # installing curl might trigger install of additional version of libssl; this will fail the installation process,
+        # see https://unix.stackexchange.com/q/146283 for reference - we use DEBIAN_FRONTEND=noninteractive to fix that
+        if [ -z "$sudo_cmd" ]; then
+            # if $sudo_cmd is empty, doing `$sudo_cmd X=Y command` fails with
+            # `X=Y: command not found`; therefore we don't prefix the command with
+            # $sudo_cmd at all in this case
+            DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>/tmp/ddog_install_error_msg || cat /tmp/ddog_install_error_msg
+        else
+            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>/tmp/ddog_install_error_msg || cat /tmp/ddog_install_error_msg
+        fi
+
+        if cat /tmp/install_error_msg | grep "Could not get lock"; then
+            printf "\033[31mInstallation failed : Unable to get lock !!\nretrying in 15s ($i/$MAX_RETRY_NB)\033[0m\n"
+            sleep 15
+        else
+            break
+        fi
+    done
+
     printf "\033[34m\n* Installing APT package sources for Datadog\n\033[0m\n"
     $sudo_cmd sh -c "echo 'deb [signed-by=${apt_usr_share_keyring}] https://${apt_url}/ ${apt_repo_version}' > /etc/apt/sources.list.d/datadog.list"
 
