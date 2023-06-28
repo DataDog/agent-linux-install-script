@@ -786,7 +786,7 @@ elif [ "$OS" = "Debian" ]; then
             $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>/tmp/ddog_install_error_msg || cat /tmp/ddog_install_error_msg
         fi
 
-        if cat /tmp/install_error_msg | grep "Could not get lock"; then
+        if cat /tmp/ddog_install_error_msg | grep "Could not get lock"; then
             printf "\033[31mInstallation failed : Unable to get lock !!\nretrying in 15s ($i/$MAX_RETRY_NB)\033[0m\n"
             sleep 15
         else
