@@ -782,9 +782,9 @@ elif [ "$OS" = "Debian" ]; then
             # if $sudo_cmd is empty, doing `$sudo_cmd X=Y command` fails with
             # `X=Y: command not found`; therefore we don't prefix the command with
             # $sudo_cmd at all in this case
-            DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>/tmp/ddog_install_error_msg || (apt_exit_code=$? &&  cat /tmp/ddog_install_error_msg)
+            DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>/tmp/ddog_install_error_msg || apt_exit_code=$?
         else
-            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>/tmp/ddog_install_error_msg || (apt_exit_code=$? &&  cat /tmp/ddog_install_error_msg)
+            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>/tmp/ddog_install_error_msg || apt_exit_code=$?
         fi
 
         if grep "Could not get lock" /tmp/ddog_install_error_msg; then
@@ -792,6 +792,7 @@ elif [ "$OS" = "Debian" ]; then
             printf "\033[31mInstallation failed: Unable to get lock.\nrRetrying in ${RETRY_TIME}s ($i/$MAX_RETRY_NB).\033[0m\n"
             sleep $RETRY_TIME
         elif [ $apt_exit_code -ne 0 ]; then
+            cat /tmp/ddog_install_error_msg
             exit $apt_exit_code
         else
             break
