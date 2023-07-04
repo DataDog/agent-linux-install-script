@@ -777,23 +777,19 @@ elif [ "$OS" = "Debian" ]; then
         $sudo_cmd apt-get update || printf "\033[31m'apt-get update' failed, the script will not install the latest version of apt-transport-https.\033[0m\n"
         # installing curl might trigger install of additional version of libssl; this will fail the installation process,
         # see https://unix.stackexchange.com/q/146283 for reference - we use DEBIAN_FRONTEND=noninteractive to fix that
-        apt_exit_code=0
-        
         if [ -z "$sudo_cmd" ]; then
             # if $sudo_cmd is empty, doing `$sudo_cmd X=Y command` fails with
             # `X=Y: command not found`; therefore we don't prefix the command with
             # $sudo_cmd at all in this case
-            DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>/tmp/ddog_install_error_msg || (apt_exit_code=$? &&  cat /tmp/ddog_install_error_msg)
+            DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>/tmp/ddog_install_error_msg || cat /tmp/ddog_install_error_msg
         else
-            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>/tmp/ddog_install_error_msg || (apt_exit_code=$? &&  cat /tmp/ddog_install_error_msg)
+            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>/tmp/ddog_install_error_msg || cat /tmp/ddog_install_error_msg
         fi
 
         if grep "Could not get lock" /tmp/ddog_install_error_msg; then
             RETRY_TIME=$((i*5))
-            printf "\033[31mInstallation failed: Unable to get lock.\nrRetrying in ${RETRY_TIME}s ($i/$MAX_RETRY_NB).\033[0m\n"
+            printf "\033[31mInstallation failed : Unable to get lock !!\nretrying in ${RETRY_TIME}s ($i/$MAX_RETRY_NB)\033[0m\n"
             sleep $RETRY_TIME
-        elif [ $apt_exit_code != 0 ]; then
-            exit $apt_exit_code
         else
             break
         fi
