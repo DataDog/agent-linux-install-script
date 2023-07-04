@@ -789,7 +789,7 @@ elif [ "$OS" = "Debian" ]; then
 
         if grep "Could not get lock" /tmp/ddog_install_error_msg; then
             RETRY_TIME=$((i*5))
-            printf "\033[31mInstallation failed: Unable to get lock.\nrRetrying in ${RETRY_TIME}s ($i/$MAX_RETRY_NB).\033[0m\n"
+            printf "\033[31mInstallation failed: Unable to get lock.\nRetrying in ${RETRY_TIME}s ($i/$MAX_RETRY_NB).\033[0m\n"
             sleep $RETRY_TIME
         elif [ $apt_exit_code -ne 0 ]; then
             cat /tmp/ddog_install_error_msg
