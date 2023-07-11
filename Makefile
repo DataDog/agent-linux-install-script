@@ -11,7 +11,12 @@ install_script.sh is deprecated. Please use one of\n\
 * https://s3.amazonaws.com/dd-agent/scripts/install_script_agent7.sh to install Agent 7\n
 endef
 
+# If GNU isn't found in 'sed --version' or if the command fails, assume macOS sed
+ifeq (,$(findstring GNU,$(shell sed --version 2> /dev/null | head -n 1)))
 IN_PLACE_SED = sed -i ""
+else
+IN_PLACE_SED = sed -i
+endif
 
 install_script.sh: install_script.sh.template
 	export DEPRECATION_MESSAGE
