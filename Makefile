@@ -11,6 +11,8 @@ install_script.sh is deprecated. Please use one of\n\
 * https://s3.amazonaws.com/dd-agent/scripts/install_script_agent7.sh to install Agent 7\n
 endef
 
+IN_PLACE_SED = sed -i ""
+
 install_script.sh: install_script.sh.template
 	export DEPRECATION_MESSAGE
 	sed -e 's|AGENT_MAJOR_VERSION_PLACEHOLDER|6|' \
@@ -42,9 +44,9 @@ install_script_agent7.sh: install_script.sh.template
 pre_release_%:
 	$(eval CUR_VERSION=$(shell awk -F "=" '/^install_script_version=/{print $$NF}' install_script.sh.template | sed -e 's|.post||'))
 	$(eval NEW_VERSION=$(shell echo "$@" | sed -e 's|pre_release_||'))
-	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
+	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
 	$(MAKE) update_changelog VERSION=${CUR_VERSION}
-	sed -i "" -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
+	$(IN_PLACE_SED) -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
 
 pre_release_minor:
 	$(eval CUR_VERSION=$(shell awk -F "=" '/^install_script_version=/{print $$NF}' install_script.sh.template))
@@ -52,9 +54,9 @@ pre_release_minor:
 	$(eval NEXT_MINOR=$(shell echo ${CUR_MINOR}+1 | bc))
 	$(eval NEW_VERSION=$(shell echo "${CUR_VERSION}" | awk -v repl="${NEXT_MINOR}" 'BEGIN {FS=OFS="."} {$$2=repl; print}' | sed -e 's|.post||'))
 	$(eval CUR_VERSION=$(shell echo "${CUR_VERSION}" | sed -e 's|.post||'))
-	sed -i "" -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
+	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
 	$(MAKE) update_changelog VERSION=${CUR_VERSION}
-	sed -i "" -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
+	$(IN_PLACE_SED) -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
 
 update_changelog:
 	$(eval SPLIT=$(shell grep -n "^Unreleased" CHANGELOG.rst | cut -d':' -f1))
@@ -67,5 +69,5 @@ update_changelog:
 post_release:
 	$(eval CUR_VERSION=$(shell awk -F "=" '/^install_script_version=/{print $$NF}' install_script.sh.template))
 	((echo ${CUR_VERSION} | grep ".post" &>/dev/null) || exit 0 && exit 1) || (echo "Invalid install script version (contain .post extension)" && exit 1)
-	sed -i "" -e "s|install_script_version=.*|install_script_version=${CUR_VERSION}.post|g" install_script.sh.template
+	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${CUR_VERSION}.post|g" install_script.sh.template
 	echo "4i\n\nUnreleased\n================\n.\nw\nq" | ed CHANGELOG.rst
