@@ -69,3 +69,10 @@ post_release:
 	((echo ${CUR_VERSION} | grep ".post" &>/dev/null) || exit 0 && exit 1) || (echo "Invalid install script version (contain .post extension)" && exit 1)
 	sed -i "" -e "s|install_script_version=.*|install_script_version=${CUR_VERSION}.post|g" install_script.sh.template
 	echo "4i\n\nUnreleased\n================\n.\nw\nq" | ed CHANGELOG.rst
+
+tag:
+	$(eval CUR_VERSION=$(shell awk -F "=" '/^install_script_version=/{print $$NF}' install_script.sh.template))
+	ifneq(,$(findstring .post,$(CUR_VERSION)))
+		$(error "Please run make pre_release(_minor) first")
+	endif
+	git tag -as $(CUR_VERSION) -m $(CUR_VERSION)
