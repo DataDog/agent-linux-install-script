@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.19.0
 ================
+
+- Retry install in case of DPKG error (#57)
+- Fix datadog.list permissions (#61)
 
 1.18.0
 ================
