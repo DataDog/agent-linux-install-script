@@ -1,5 +1,5 @@
 #!/bin/bash
-# (C) Datadog, Inc. 2010-present
+# (C) Datadog, Inc. 2023-present
 # All rights reserved
 # Licensed under Apache-2.0 License (see LICENSE)
 # Datadog Observability Pipelines Worker installation script:
@@ -8,9 +8,10 @@
 
 set -e
 
-install_script_version="0.1.0"
+install_script_version=0.1.0
 logfile="dd-install.log"
-support_email="support@datadoghq.com"
+support_email=support@datadoghq.com
+variant=install_script_op_worker
 
 # DATADOG_APT_KEY_CURRENT.public always contains key used to sign current
 # repodata and newly released packages
@@ -23,11 +24,6 @@ APT_GPG_KEYS=("DATADOG_APT_KEY_CURRENT.public" "DATADOG_APT_KEY_C0962C7D.public"
 # DATADOG_RPM_KEY_FD4BF915.public expires in 2024
 # DATADOG_RPM_KEY_B01082D3.public expires in 2028
 RPM_GPG_KEYS=("DATADOG_RPM_KEY_CURRENT.public" "DATADOG_RPM_KEY_B01082D3.public" "DATADOG_RPM_KEY_FD4BF915.public")
-
-# Error codes for telemetry
-GENERAL_ERROR_CODE=1
-UNSUPPORTED_PLATFORM_CODE=5
-INVALID_PARAMETERS_CODE=6
 
 # Set up a named pipe for logging
 npipe=/tmp/$$.tmp
@@ -46,7 +42,6 @@ with the contents of $logfile and any information you think would be
 useful and we will do our very best to help you solve your problem.\n"
 }
 
-# TODO: this uses an Agent specific endpoint, remove before using?
 function report(){
   if curl -f -s \
     --data-urlencode "os=${OS}" \
@@ -54,74 +49,11 @@ function report(){
     --data-urlencode "log=$(cat $logfile)" \
     --data-urlencode "email=${email}" \
     --data-urlencode "apikey=${apikey}" \
+    --data-urlencode "variant=${variant}" \
     "$report_failure_url"; then
    printf "A notification has been sent to Datadog with the contents of $logfile\n"
   else
     printf "Unable to send the notification (curl v7.18 or newer is required)"
-  fi
-}
-
-function report_telemetry() {
-  if [ "$DD_INSTRUMENTATION_TELEMETRY_ENABLED" == "false" ] || \
-    [ "$site" == "ddog-gov.com" ] || \
-    [ -z "${apikey}" ] || \
-    [ -z "$telemetry_url" ]; then
-    return
-  fi
-
-  if [ -n "$worker_minor_version" ] ; then
-    safe_worker_version=$(echo -n "$worker_major_version.$worker_minor_version" | tr '\n' ' ' | tr '"' '_')
-  else
-    safe_worker_version=$(echo -n "$worker_major_version" | tr '\n' ' ' | tr '"' '_')
-  fi
-
-  if [ -z "${ERROR_CODE}" ] ; then
-    telemetry_event="
-{
-   \"request_type\": \"apm-onboarding-event\",
-   \"api_version\": \"v1\",
-   \"payload\": {
-       \"event_name\": \"pipelines.installation.success\",
-       \"tags\": {
-           \"worker_platform\": \"native\",
-           \"worker_version\": \"$safe_worker_version\",
-           \"script_version\": \"$install_script_version\"
-       }
-   }
-}
-"
-  else
-    safe_error_message=$(echo -n "$ERROR_MESSAGE" | tr '\n' ' ' | tr '"' '_')
-    telemetry_event="
-{
-   \"request_type\": \"apm-onboarding-event\",
-   \"api_version\": \"v1\",
-   \"payload\": {
-       \"event_name\": \"pipelines.installation.error\",
-       \"tags\": {
-           \"worker_platform\": \"native\",
-           \"worker_version\": \"$safe_worker_version\",
-           \"script_version\": \"$install_script_version\"
-       },
-       \"error\": {
-          \"code\": $ERROR_CODE,
-          \"message\": \"$safe_error_message\"
-       }
-   }
-}
-"
-  fi
-
-  if ! (cat <<END
-       $telemetry_event
-END
-       ) | curl --fail --silent --output /dev/null \
-    "$telemetry_url" \
-    --header 'Content-Type: application/json' \
-    --header "DD-Api-Key: $apikey" \
-    --data @-
-  then
-    printf "Unable to send telemetry\n"
   fi
 }
 
@@ -162,15 +94,8 @@ Troubleshooting and basic usage information for the $nice_flavor are available a
     https://docs.datadoghq.com/observability_pipelines/\n\033[0m\n"
 
     ERROR_MESSAGE=$SAVED_ERROR_MESSAGE
-    ERROR_CODE=$GENERAL_ERROR_CODE
-    report_telemetry
 
     if ! tty -s; then
-      fallback_msg
-      exit 1;
-    fi
-
-    if [ "$site" == "ddog-gov.com" ]; then
       fallback_msg
       exit 1;
     fi
@@ -197,16 +122,14 @@ Troubleshooting and basic usage information for the $nice_flavor are available a
 trap on_error ERR
 
 # OPW doesn't have a public changelog
-function verify_agent_version(){
+function verify_worker_version(){
     local ver_separator="$1"
     if [ -z "$agent_version_custom" ]; then
         ERROR_MESSAGE="Specified version not found: $worker_major_version.$worker_minor_version"
-        ERROR_CODE=$INVALID_PARAMETERS_CODE
         echo -e "
   \033[33mWarning: $ERROR_MESSAGE
 \033[0m"
         fallback_msg
-        report_telemetry
         exit 1;
     else
         worker_flavor+="$ver_separator$agent_version_custom"
@@ -218,6 +141,12 @@ echo -e "\033[34m\n* Datadog Observability Pipelines Worker install script v${in
 site=
 if [ -n "$DD_SITE" ]; then
     site="$DD_SITE"
+    if [ "$site" == "ddog-gov.com" ]; then
+      echo -e "
+  \033[33mWarning: Observability Pipelines isn't supported on GovCloud at this time.
+\033[0m"
+      exit 1;
+    fi
 fi
 
 apikey=
@@ -228,6 +157,11 @@ fi
 op_pipeline_id=
 if [ -n "$DD_OP_PIPELINE_ID" ]; then
     op_pipeline_id=$DD_OP_PIPELINE_ID
+fi
+
+op_rc_enabled=
+if [ -n "$DD_OP_REMOTE_CONFIGURATION_ENABLED" ]; then
+    op_rc_enabled=$DD_OP_REMOTE_CONFIGURATION_ENABLED
 fi
 
 no_start=
@@ -274,70 +208,55 @@ else
   apt_url="apt.${repository_url}"
 fi
 
-# TODO: this uses an Agent specific endpoint, remove before using?
 report_failure_url="https://api.datadoghq.com/agent_stats/report_failure"
 if [ -n "$DD_SITE" ]; then
     report_failure_url="https://api.${DD_SITE}/agent_stats/report_failure"
 fi
 
-telemetry_url="https://instrumentation-telemetry-intake.datadoghq.com/api/v2/apmtelemetry"
-if [ -n "$DD_SITE" ]; then
-    telemetry_url="https://instrumentation-telemetry-intake.${DD_SITE}/api/v2/apmtelemetry"
-fi
-
 if [ -n "$TESTING_REPORT_URL" ]; then
   report_failure_url=$TESTING_REPORT_URL
-  telemetry_url=$TESTING_REPORT_URL
 fi
 
 worker_flavor="observability-pipelines-worker"
 nice_flavor="Observability Pipelines Worker"
-
-if [ -z "$etcdir" ]; then
-    etcdir="/etc/observability-pipelines-worker"
-fi
-
-if [ -z "$config_file" ]; then
-    config_file="$etcdir/bootstrap.yaml"
-fi
+etcdir="/etc/observability-pipelines-worker"
+bootstrap_file="$etcdir/bootstrap.yaml"
+pipeline_file="$etcdir/pipeline.yaml"
+env_file="/etc/default/observability-pipelines-worker"
 
 worker_major_version=1
-if [ -n "$DD_WORKER_MAJOR_VERSION" ]; then
-  worker_major_version=${DD_WORKER_MAJOR_VERSION}
+if [ -n "$DD_OP_WORKER_MAJOR_VERSION" ]; then
+  worker_major_version=${DD_OP_WORKER_MAJOR_VERSION}
 fi
 
-if [ -n "$DD_WORKER_MINOR_VERSION" ]; then
+if [ -n "$DD_OP_WORKER_MINOR_VERSION" ]; then
   # Examples:
   #  - 20   = defaults to highest patch version x.20.2
   #  - 20.0 = sets explicit patch version x.20.0
   # Note: Specifying an invalid minor version will terminate the script.
-  worker_minor_version=${DD_WORKER_MINOR_VERSION}
+  worker_minor_version=${DD_OP_WORKER_MINOR_VERSION}
 fi
 
 worker_dist_channel=stable
-if [ -n "$DD_WORKER_DIST_CHANNEL" ]; then
+if [ -n "$DD_OP_WORKER_DIST_CHANNEL" ]; then
   if [ "$repository_url" == "datadoghq.com" ]; then
-    if [ "$DD_WORKER_DIST_CHANNEL" != "stable" ] && [ "$DD_WORKER_DIST_CHANNEL" != "beta" ]; then
-      ERROR_MESSAGE="DD_WORKER_DIST_CHANNEL must be either 'stable' or 'beta'. Current value: $DD_WORKER_DIST_CHANNEL"
-      ERROR_CODE=$INVALID_PARAMETERS_CODE
+    if [ "$DD_OP_WORKER_DIST_CHANNEL" != "stable" ] && [ "$DD_OP_WORKER_DIST_CHANNEL" != "beta" ]; then
+      ERROR_MESSAGE="DD_OP_WORKER_DIST_CHANNEL must be either 'stable' or 'beta'. Current value: $DD_OP_WORKER_DIST_CHANNEL"
       echo "$ERROR_MESSAGE"
-      report_telemetry
       exit 1;
     fi
-  elif [ "$DD_WORKER_DIST_CHANNEL" != "stable" ] && [ "$DD_WORKER_DIST_CHANNEL" != "beta" ] && [ "$DD_WORKER_DIST_CHANNEL" != "nightly" ]; then
-    ERROR_MESSAGE="DD_WORKER_DIST_CHANNEL must be either 'stable', 'beta' or 'nightly' on custom repos. Current value: $DD_WORKER_DIST_CHANNEL"
-    ERROR_CODE=$INVALID_PARAMETERS_CODE
+  elif [ "$DD_OP_WORKER_DIST_CHANNEL" != "stable" ] && [ "$DD_OP_WORKER_DIST_CHANNEL" != "beta" ] && [ "$DD_OP_WORKER_DIST_CHANNEL" != "nightly" ]; then
+    ERROR_MESSAGE="DD_OP_WORKER_DIST_CHANNEL must be either 'stable', 'beta' or 'nightly' on custom repos. Current value: $DD_OP_WORKER_DIST_CHANNEL"
     echo "$ERROR_MESSAGE"
-    report_telemetry
     exit 1;
   fi
-  worker_dist_channel=$DD_WORKER_DIST_CHANNEL
+  worker_dist_channel=$DD_OP_WORKER_DIST_CHANNEL
 fi
 
 if [ -n "$TESTING_YUM_VERSION_PATH" ]; then
   yum_version_path=$TESTING_YUM_VERSION_PATH
 else
-  yum_version_path="${worker_dist_channel}/observability-pipelines-worker${worker_major_version}"
+  yum_version_path="${worker_dist_channel}/observability-pipelines-worker-${worker_major_version}"
 fi
 
 if [ -n "$TESTING_APT_REPO_VERSION" ]; then
@@ -347,8 +266,15 @@ else
 fi
 
 if [ ! "$apikey" ]; then
-  if [ ! -e "$config_file" ]; then
+  if [ ! -e "$env_file" ]; then
     printf "\033[31mAPI key not available in DD_API_KEY environment variable.\033[0m\n"
+    exit 1;
+  fi
+fi
+
+if [ ! "$op_pipeline_id" ]; then
+  if [ ! -e "$env_file" ]; then
+    printf "\033[31mPipeline ID not available in DD_OP_PIPELINE_ID environment variable.\033[0m\n"
     exit 1;
   fi
 fi
@@ -360,10 +286,8 @@ DISTRIBUTION=$(lsb_release -d 2>/dev/null | grep -Eo $KNOWN_DISTRIBUTION  || gre
 
 if [ "$DISTRIBUTION" = "Darwin" ]; then
     ERROR_MESSAGE="This script does not support installing on Mac."
-    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE
 \033[0m\n"
-    report_telemetry
     exit 1;
 
 elif [ -f /etc/debian_version ] || [ "$DISTRIBUTION" == "Debian" ] || [ "$DISTRIBUTION" == "Ubuntu" ]; then
@@ -428,16 +352,16 @@ if [ "$OS" = "RedHat" ]; then
     if [ -n "$worker_minor_version" ]; then
         # Example: observability-pipelines-worker-1.2.1-1
         pkg_pattern="$worker_major_version\.${worker_minor_version%.}(\.[[:digit:]]+){0,1}(-[[:digit:]])?"
-        agent_version_custom="$(yum -y --disablerepo=* --enablerepo=datadog-observability-pipelines-worker list --showduplicates observability-pipelines-worker | sort -r | grep -E "$pkg_pattern" -om1)" || true
-        verify_agent_version "-"
+        agent_version_custom="$(yum -y --disablerepo=* --enablerepo=observability-pipelines-worker list --showduplicates observability-pipelines-worker | sort -r | grep -E "$pkg_pattern" -om1)" || true
+        verify_worker_version "-"
     fi
 
     declare -a packages
-    packages=("observability-pipelines-worker")
+    packages=("$worker_flavor")
     
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog-observability-pipelines-worker' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}"
+    $sudo_cmd yum -y --disablerepo='*' --enablerepo='observability-pipelines-worker' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}"
 
 elif [ "$OS" = "Debian" ]; then
     apt_trusted_d_keyring="/etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg"
@@ -515,11 +439,11 @@ If the cause is unclear, please contact Datadog support.
         # Example: observability-pipelines-worker=1.2.1-1
         pkg_pattern="([[:digit:]]:)?$worker_major_version\.${worker_minor_version%.}(\.[[:digit:]]+){0,1}(-[[:digit:]])?"
         agent_version_custom="$(apt-cache madison observability-pipelines-worker | grep -E "$pkg_pattern" -om1)" || true
-        verify_agent_version "="
+        verify_worker_version "="
     fi
 
     declare -a packages
-    packages=("observability-pipelines-worker" "datadog-signing-keys")
+    packages=("$worker_flavor" "datadog-signing-keys")
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
@@ -531,57 +455,61 @@ else
 Please follow the instructions on the Observability Pipelines Worker setup page:
 
 https://docs.datadoghq.com/observability_pipelines/setup/"
-    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE\033[0m\n"
-    report_telemetry
     exit;
 fi
 
-# Set the configuration
-if [ "$apikey" ]; then
-  printf "\033[34m\n* Adding your API key to the $nice_flavor configuration: $config_file\n\033[0m\n"
-  $sudo_cmd sh -c "sed -i 's/# api_key:.*/api_key: $apikey/' $config_file"
+# Configure the OP Worker via the environment file
+if [ -e "$env_file" ]; then
+    printf "\033[34m\n* Keeping old environment file at: $env_file.\n\033[0m\n"
 else
-  # If the import script failed for any reason, we might end here also in case
-  # of upgrade, let's not start the worker or it would fail because the api key
-  # is missing
-  if ! $sudo_cmd grep -q -E '^api_key: .+' "$config_file"; then
-    printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the API key is missing,\nplease add one in $config_file and start the $nice_flavor manually.\n\033[0m\n"
+  printf "\033[34m\n* Creating $env_file for $worker_flavor.service.\n\033[0m\n"
+  $sudo_cmd sh -c "touch $env_file"
+
+  if [ "$apikey" ]; then
+    printf "\033[34m  * Assigning DD_API_KEY.\n\033[0m\n"
+    $sudo_cmd sh -c "echo DD_API_KEY=$apikey >> $env_file"
+  fi
+
+  if [ "$op_pipeline_id" ]; then
+    printf "\033[34m  * Assigning DD_OP_PIPELINE_ID.\n\033[0m\n"
+    $sudo_cmd sh -c "echo DD_OP_PIPELINE_ID=$op_pipeline_id >> $env_file"
+  fi
+
+  if [ "$site" ]; then
+    printf "\033[34m  * Assigning DD_SITE.\n\033[0m\n"
+    $sudo_cmd sh -c "echo DD_SITE=$site >> $env_file"
+  fi
+
+  if [ "$op_rc_enabled" ]; then
+    printf "\033[34m  * Assigning DD_OP_REMOTE_CONFIGURATION_ENABLED.\n\033[0m\n"
+    $sudo_cmd sh -c "echo DD_OP_REMOTE_CONFIGURATION_ENABLED=$op_rc_enabled >> $env_file"
+  fi
+
+  if ! $sudo_cmd grep -q -E '^DD_API_KEY=.+' "$env_file"; then
+    printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the DD_API_KEY variable is missing.\n  Please add one in $env_file and start the $nice_flavor manually.\n\033[0m\n"
+    no_start=true
+  fi
+
+  if ! $sudo_cmd grep -q -E '^DD_OP_PIPELINE_ID=.+' "$env_file"; then
+    printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the DD_OP_PIPELINE_ID variable is missing.\n  Please add one in $env_file and start the $nice_flavor manually.\n\033[0m\n"
+    no_start=true
+  fi
+
+  if [ ! -e "$pipeline_file" ] && [ ! "$op_rc_enabled" == "true" ]; then
+    printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the pipeline configuration is missing.\n  Please add one at $pipeline_file and start the $nice_flavor manually.\n\033[0m\n"
     no_start=true
   fi
 fi
 
-if [ "$op_pipeline_id" ]; then
-  printf "\033[34m\n* Adding your Pipeline ID to the $nice_flavor configuration: $config_file\n\033[0m\n"
-  $sudo_cmd sh -c "sed -i 's/# pipeline_id:.*/pipeline_id: $op_pipeline_id/' $config_file"
-else
-  # If the import script failed for any reason, we might end here also in case
-  # of upgrade, let's not start the worker or it would fail because the api key
-  # is missing
-  if ! $sudo_cmd grep -q -E '^pipeline_id: .+' "$config_file"; then
-    printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the Pipeline ID is missing,\nplease add one in $config_file and start the $nice_flavor manually.\n\033[0m\n"
-    no_start=true
-  fi
-fi
-
-if [ "$site" ]; then
-  printf "\033[34m\n* Setting SITE in the $nice_flavor configuration: $config_file\n\033[0m\n"
-  $sudo_cmd sh -c "sed -i 's/# site:.*/site: $site/' $config_file"
-fi
-
-if [ ! -e "$etcdir"/pipeline.yaml ]; then
-  printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the pipeline configuration is missing,\nplease add one at $etcdir/pipeline.yaml and start the $nice_flavor manually.\n\033[0m\n"
-  no_start=true
-fi
-
-$sudo_cmd chown observability-pipelines-worker:observability-pipelines-worker "$config_file"
-$sudo_cmd chmod 640 "$config_file"
+$sudo_cmd chown observability-pipelines-worker:observability-pipelines-worker "$bootstrap_file"
+$sudo_cmd chmod 640 "$bootstrap_file"
 
 # Creating or overriding the install information
 install_info_content="---
 install_method:
   tool: install_script
-  tool_version: install_script_opw
+  tool_version: $variant
   installer_version: install_script-$install_script_version
 "
 
@@ -612,7 +540,7 @@ elif /sbin/init --version 2>&1 | grep -q upstart; then
 fi
 
 if [ $no_start ]; then
-  printf "\033[34m\n    The newly installed version of the ${nice_flavor} will not be started.
+  printf "\033[34m\nThe newly installed version of the ${nice_flavor} will not be started.
   You will have to do it manually using the following command:
 
   $start_instructions\033[0m\n\n"
@@ -625,10 +553,9 @@ else
 
   ERROR_MESSAGE=""
     
-  # Metrics are submitted, echo some instructions and exit
   printf "\033[32m  Your ${nice_flavor} is running and functioning properly.\n\033[0m"
 
-  printf "\033[32m  It will continue to run in the background and submit metrics to Datadog.\n\033[0m"
+  printf "\033[32m  It will continue to run in the background.\n\033[0m"
 
   printf "\033[32m  If you ever want to stop the ${nice_flavor}, run:
 
@@ -638,5 +565,3 @@ else
 
       $start_instructions\033[0m\n\n"
 fi
-
-report_telemetry
