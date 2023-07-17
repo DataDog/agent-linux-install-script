@@ -14,17 +14,15 @@ support_email="support@datadoghq.com"
 
 # DATADOG_APT_KEY_CURRENT.public always contains key used to sign current
 # repodata and newly released packages
-# DATADOG_APT_KEY_382E94DE.public expires in 2022
 # DATADOG_APT_KEY_F14F620E.public expires in 2032
 # DATADOG_APT_KEY_C0962C7D.public expires in 2028
-APT_GPG_KEYS=("DATADOG_APT_KEY_CURRENT.public" "DATADOG_APT_KEY_C0962C7D.public" "DATADOG_APT_KEY_F14F620E.public" "DATADOG_APT_KEY_382E94DE.public")
+APT_GPG_KEYS=("DATADOG_APT_KEY_CURRENT.public" "DATADOG_APT_KEY_C0962C7D.public" "DATADOG_APT_KEY_F14F620E.public")
 
 # DATADOG_RPM_KEY_CURRENT.public always contains key used to sign current
 # repodata and newly released packages
-# DATADOG_RPM_KEY_E09422B3.public expires in 2022
 # DATADOG_RPM_KEY_FD4BF915.public expires in 2024
 # DATADOG_RPM_KEY_B01082D3.public expires in 2028
-RPM_GPG_KEYS=("DATADOG_RPM_KEY_CURRENT.public" "DATADOG_RPM_KEY_B01082D3.public" "DATADOG_RPM_KEY_FD4BF915.public" "DATADOG_RPM_KEY_E09422B3.public")
+RPM_GPG_KEYS=("DATADOG_RPM_KEY_CURRENT.public" "DATADOG_RPM_KEY_B01082D3.public" "DATADOG_RPM_KEY_FD4BF915.public")
 
 # Error codes for telemetry
 GENERAL_ERROR_CODE=1
@@ -339,13 +337,13 @@ fi
 if [ -n "$TESTING_YUM_VERSION_PATH" ]; then
   yum_version_path=$TESTING_YUM_VERSION_PATH
 else
-  yum_version_path="${worker_dist_channel}/observability-pipelines-worker-1"
+  yum_version_path="${worker_dist_channel}/observability-pipelines-worker${worker_major_version}"
 fi
 
 if [ -n "$TESTING_APT_REPO_VERSION" ]; then
   apt_repo_version=$TESTING_APT_REPO_VERSION
 else
-  apt_repo_version="${worker_dist_channel} observability-pipelines-worker-1"
+  apt_repo_version="${worker_dist_channel} observability-pipelines-worker-${worker_major_version}"
 fi
 
 if [ ! "$apikey" ]; then
@@ -413,7 +411,7 @@ if [ "$OS" = "RedHat" ]; then
       gpgkeys="${gpgkeys:+"${gpgkeys}${separator}"}https://${keys_url}/${key_path}"
     done
 
-    $sudo_cmd sh -c "echo -e '[datadog]\nname = Datadog, Inc.\nbaseurl = https://${yum_url}/${yum_version_path}/${ARCHI}/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\npriority=1\ngpgkey=${gpgkeys}' > /etc/yum.repos.d/datadog.repo"
+    $sudo_cmd sh -c "echo -e '[observability-pipelines-worker]\nname = Observability Pipelines Worker\nbaseurl = https://${yum_url}/${yum_version_path}/${ARCHI}/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\npriority=1\ngpgkey=${gpgkeys}' > /etc/yum.repos.d/datadog-observability-pipelines-worker.repo"
 
     $sudo_cmd yum -y clean metadata
 
@@ -430,7 +428,7 @@ if [ "$OS" = "RedHat" ]; then
     if [ -n "$worker_minor_version" ]; then
         # Example: observability-pipelines-worker-1.2.1-1
         pkg_pattern="$worker_major_version\.${worker_minor_version%.}(\.[[:digit:]]+){0,1}(-[[:digit:]])?"
-        agent_version_custom="$(yum -y --disablerepo=* --enablerepo=datadog list --showduplicates observability-pipelines-worker | sort -r | grep -E "$pkg_pattern" -om1)" || true
+        agent_version_custom="$(yum -y --disablerepo=* --enablerepo=datadog-observability-pipelines-worker list --showduplicates observability-pipelines-worker | sort -r | grep -E "$pkg_pattern" -om1)" || true
         verify_agent_version "-"
     fi
 
@@ -439,7 +437,7 @@ if [ "$OS" = "RedHat" ]; then
     
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}"
+    $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog-observability-pipelines-worker' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}"
 
 elif [ "$OS" = "Debian" ]; then
     apt_trusted_d_keyring="/etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg"
