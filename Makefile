@@ -79,7 +79,9 @@ post_release:
 
 tag:
 	$(eval CUR_VERSION=$(shell awk -F "=" '/^install_script_version=/{print $$NF}' install_script.sh.template))
-	ifneq(,$(findstring .post,$(CUR_VERSION)))
-		$(error "Please run make pre_release(_minor) first")
-	endif
+    ifneq (,$(findstring .post,$(CUR_VERSION)))
+	$(error "Please run make pre_release(_minor) first")
+    endif
 	git tag -as $(CUR_VERSION) -m $(CUR_VERSION)
+
+.PHONY:	pre_release_minor update_changelog post_release tag
