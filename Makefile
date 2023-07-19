@@ -83,3 +83,5 @@ tag:
 	$(error "Please run make pre_release(_minor) first")
     endif
 	git tag -as $(CUR_VERSION) -m $(CUR_VERSION)
+
+.PHONY:	pre_release_minor update_changelog post_release tag
