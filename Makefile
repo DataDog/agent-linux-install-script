@@ -72,7 +72,9 @@ update_changelog:
 	mv log.rst CHANGELOG.rst
 
 post_release:
-	((echo ${CUR_VERSION} | grep ".post" &>/dev/null) || exit 0 && exit 1) || (echo "Invalid install script version (contain .post extension)" && exit 1)
+    ifneq (,$(findstring .post,${CUR_VERSION}))
+	$(error "Invalid install script version (contain .post extension)")
+    endif
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${CUR_VERSION}.post|g" install_script.sh.template
 	echo "4i\n\nUnreleased\n================\n.\nw\nq" | ed CHANGELOG.rst
 
