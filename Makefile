@@ -76,7 +76,7 @@ post_release:
 	$(error "Invalid install script version (contain .post extension)")
     endif
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${CUR_VERSION}.post|g" install_script.sh.template
-	echo "4i\n\nUnreleased\n================\n.\nw\nq" | ed CHANGELOG.rst
+	echo "4i\n\nUnreleased\n================\n.\nw\nq" | ed -s CHANGELOG.rst
 
 tag:
     ifneq (,$(findstring .post,$(CUR_VERSION)))
