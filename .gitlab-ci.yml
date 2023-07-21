@@ -22,11 +22,37 @@ generate-scripts:
       - install_script_agent7.sh
       - install_script_op_worker.sh
 
-test-opensuse-13:
+.test:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: ["runner:docker"]
   stage: test
   dependencies: ["generate-scripts"]
+  script:
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent6.sh 
+      --minor-version "${MINOR_VERSION}"
+      --expected-minor-version "${EXPECTED_MINOR_VERSION}" 
+      --flavor "${FLAVOR}" 
+      --old-suse "${OLD_SUSE}" 
+      --apt-url "$APT_URL" 
+      --apt-repo-version "$APT_REPO_VERSION_AGENT6" 
+      --yum-url "$YUM_URL" 
+      --yum-version-path "$YUM_VERSION_PATH_AGENT6" 
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent7.sh
+      --minor-version "${MINOR_VERSION}"
+      --expected-minor-version "${EXPECTED_MINOR_VERSION}"
+      --flavor "${FLAVOR}"
+      --old-suse "${OLD_SUSE}"
+      --apt-url "$APT_URL"
+      --apt-repo-version "$APT_REPO_VERSION_AGENT7"
+      --yum-url "$YUM_URL"
+      --yum-version-path "$YUM_VERSION_PATH_AGENT7"
+  variables:
+    OLD_SUSE: "false"
+
+test-opensuse-13:
+  extends: .test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
   parallel:
     matrix:
       - IMAGE: opensuse/archive:13.2
@@ -34,72 +60,74 @@ test-opensuse-13:
         FLAVOR: datadog-dogstatsd
       - IMAGE: opensuse/archive:13.2
         FLAVOR: datadog-iot-agent
-  script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}" --old-suse "true"
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}" --old-suse "true"
+  variables:
+    OLD_SUSE: "true"
 
-
-test:
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
-  tags: ["runner:docker"]
-  stage: test
-  dependencies: ["generate-scripts"]
+test_pinned_version:
+  extends: .test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
   parallel:
     # NOTE: to keep the matrix reasonably sized, we don't test everything everywhere
     # for example, it's ok to test getting specific flavor/minor version only on
     # CentOS 7 (yum) and Rocky 9 (dnf) and not on all versions of all RHEL derivatives
     matrix:
-      - IMAGE: images/mirror/centos:centos7
-      - IMAGE: images/mirror/centos:centos7
+      - IMAGE: centos:centos7
         MINOR_VERSION: 38
-      - IMAGE: images/mirror/centos:centos7
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: images/mirror/centos:centos7
-        FLAVOR: datadog-iot-agent
-      - IMAGE: images/mirror/rockylinux:9.0
-      - IMAGE: images/mirror/rockylinux:9.0
+      - IMAGE: rockylinux:9.0
         MINOR_VERSION: 38
-      - IMAGE: images/mirror/rockylinux:9.0
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: images/mirror/rockylinux:9.0
-        FLAVOR: datadog-iot-agent
-      - IMAGE: images/mirror/amazonlinux:2
-      - IMAGE: images/mirror/amazonlinux:2022
-      - IMAGE: images/mirror/ubuntu:14.04
-      - IMAGE: images/mirror/ubuntu:14.04
+      - IMAGE: ubuntu:14.04
         MINOR_VERSION: 38
-      - IMAGE: images/mirror/ubuntu:14.04
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: images/mirror/ubuntu:14.04
-        FLAVOR: datadog-iot-agent
-      - IMAGE: images/mirror/debian:10.9
-      - IMAGE: images/mirror/debian:10.9
+      - IMAGE: debian:10.9
         MINOR_VERSION: 38
-      - IMAGE: images/mirror/debian:10.9
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: images/mirror/debian:10.9
-        FLAVOR: datadog-iot-agent
-      - IMAGE: images/mirror/ubuntu:14.04
-      - IMAGE: images/mirror/ubuntu:22.04
-      - IMAGE: images/mirror/opensuse/archive:42.3
       # When installing pinned minor version and some repos are broken,
       # `zypper search` used will fail. We need to figure out a fix for this.
-      #- IMAGE: images/mirror/opensuse/archive:42.3
+      #- IMAGE: opensuse/archive:42.3
       #  MINOR_VERSION: 38
-      - IMAGE: images/mirror/opensuse/archive:42.3
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: images/mirror/opensuse/archive:42.3
-        FLAVOR: datadog-iot-agent
-      - IMAGE: images/mirror/opensuse/leap:15.4
-      - IMAGE: images/mirror/opensuse/leap:15.4
+      - IMAGE: opensuse/leap:15.4
         MINOR_VERSION: 38
-      - IMAGE: images/mirror/opensuse/leap:15.4
+
+test:
+  extends: .test
+  parallel:
+    # NOTE: to keep the matrix reasonably sized, we don't test everything everywhere
+    # for example, it's ok to test getting specific flavor/minor version only on
+    # CentOS 7 (yum) and Rocky 9 (dnf) and not on all versions of all RHEL derivatives
+    matrix:
+      - IMAGE: centos:centos7
+      - IMAGE: centos:centos7
         FLAVOR: datadog-dogstatsd
-      - IMAGE: images/mirror/opensuse/leap:15.4
+      - IMAGE: centos:centos7
         FLAVOR: datadog-iot-agent
-  script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent6.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent7.sh --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" --flavor "${FLAVOR}"
+      - IMAGE: rockylinux:9.0
+      - IMAGE: rockylinux:9.0
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: rockylinux:9.0
+        FLAVOR: datadog-iot-agent
+      - IMAGE: amazonlinux:2
+      - IMAGE: amazonlinux:2022
+      - IMAGE: ubuntu:14.04
+      - IMAGE: ubuntu:14.04
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: ubuntu:14.04
+        FLAVOR: datadog-iot-agent
+      - IMAGE: debian:10.9
+      - IMAGE: debian:10.9
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: debian:10.9
+        FLAVOR: datadog-iot-agent
+      - IMAGE: ubuntu:14.04
+      - IMAGE: ubuntu:22.04
+      - IMAGE: opensuse/archive:42.3
+      - IMAGE: opensuse/archive:42.3
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: opensuse/archive:42.3
+        FLAVOR: datadog-iot-agent
+      - IMAGE: opensuse/leap:15.4
+      - IMAGE: opensuse/leap:15.4
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: opensuse/leap:15.4
+        FLAVOR: datadog-iot-agent
 
 test-apm-injection:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
