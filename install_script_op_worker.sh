@@ -485,18 +485,23 @@ else
     printf "\033[34m  * Assigning DD_OP_REMOTE_CONFIGURATION_ENABLED.\n\033[0m\n"
     $sudo_cmd sh -c "echo DD_OP_REMOTE_CONFIGURATION_ENABLED=$op_rc_enabled >> $env_file"
   fi
+fi
 
-  if ! $sudo_cmd grep -q -E '^DD_API_KEY=.+' "$env_file"; then
-    printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the DD_API_KEY variable is missing.\n  Please add one in $env_file and start the $nice_flavor manually.\n\033[0m\n"
-    no_start=true
-  fi
+if ! $sudo_cmd grep -q -E '^DD_API_KEY=.+' "$env_file" && \
+  ! $sudo_cmd grep -q -E '^api_key: .+' "$bootstrap_file"; then
+  printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the DD_API_KEY variable is missing.\n  Please add one in either $env_file or $bootstrap_file and start the $nice_flavor manually.\n\033[0m\n"
+  no_start=true
+fi
 
-  if ! $sudo_cmd grep -q -E '^DD_OP_PIPELINE_ID=.+' "$env_file"; then
-    printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the DD_OP_PIPELINE_ID variable is missing.\n  Please add one in $env_file and start the $nice_flavor manually.\n\033[0m\n"
-    no_start=true
-  fi
+if ! $sudo_cmd grep -q -E '^DD_OP_PIPELINE_ID=.+' "$env_file" && \
+  ! $sudo_cmd grep -q -E '^pipeline_id: .+' "$bootstrap_file"; then
+  printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the DD_OP_PIPELINE_ID variable is missing.\n  Please add one in either $env_file or $bootstrap_file and start the $nice_flavor manually.\n\033[0m\n"
+  no_start=true
+fi
 
-  if [ ! -e "$pipeline_file" ] && [ ! "$op_rc_enabled" == "true" ]; then
+if [ ! -e "$pipeline_file" ]; then
+  if ! $sudo_cmd grep -q -E '^DD_OP_REMOTE_CONFIGURATION_ENABLED=true|"true"' "$env_file" && \
+    ! $sudo_cmd grep -A1 -E '^remote_configuration:' "$bootstrap_file" | $sudo_cmd grep -q -E '^\s{2}enabled: true|"true"'; then
     printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the pipeline configuration is missing.\n  Please add one at $pipeline_file and start the $nice_flavor manually.\n\033[0m\n"
     no_start=true
   fi
