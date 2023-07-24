@@ -139,14 +139,14 @@ test-apm-injection:
     # NO_AGENT only makes sense with docker, or specifically installing apm libraries
     # The matrix below tests the possible combinations with a subset of OSes
     matrix:
-      - IMAGE: ["images/mirror/ubuntu:14.04", "images/mirror/ubuntu:22.04", "images/mirror/centos:centos7" ]
+      - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7" ]
         INJECTION: "host"
-      - IMAGE: ["images/mirror/ubuntu:14.04", "images/mirror/ubuntu:22.04", "images/mirror/centos:centos7" ]
+      - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7" ]
         NO_AGENT: "true"
         APM_LIBRARIES: "all"
 
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/${IMAGE}" --script install_script_agent7.sh --injection "$INJECTION" --no-agent "$NO_AGENT" --apm-libraries "$APM_LIBRARIES"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent7.sh --injection "$INJECTION" --no-agent "$NO_AGENT" --apm-libraries "$APM_LIBRARIES"
 
 .deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
@@ -157,18 +157,10 @@ test-apm-injection:
     - if: $CI_COMMIT_TAG
       when: manual
     - when: never
-
-deploy_deprecated:
-  extends: .deploy
+  parallel:
+    matrix:
+      - SCRIPT: install_script.sh
+      - SCRIPT: install_script_agent6.sh
+      - SCRIPT: install_script_agent7.sh
   script:
-    - $S3_CP_CMD ./install_script.sh s3://dd-agent/scripts/install_script.sh --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
-
-deploy_6:
-  extends: .deploy
-  script:
-    - $S3_CP_CMD ./install_script_agent6.sh s3://dd-agent/scripts/install_script_agent6.sh --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
-
-deploy_7:
-  extends: .deploy
-  script:
-    - $S3_CP_CMD ./install_script_agent7.sh s3://dd-agent/scripts/install_script_agent7.sh --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
+    - $S3_CP_CMD ./${SCRIPT} s3://dd-agent/scripts/${SCRIPT}.sh --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
