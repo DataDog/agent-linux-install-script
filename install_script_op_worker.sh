@@ -284,7 +284,7 @@ fi
 KNOWN_DISTRIBUTION="(Debian|Ubuntu|RedHat|CentOS|Amazon)"
 DISTRIBUTION=$(lsb_release -d 2>/dev/null | grep -Eo $KNOWN_DISTRIBUTION  || grep -Eo $KNOWN_DISTRIBUTION /etc/issue 2>/dev/null || grep -m1 -Eo $KNOWN_DISTRIBUTION /etc/os-release 2>/dev/null || uname -s)
 
-if [ "$DISTRIBUTION" = "Darwin" ]; then
+if [ "$DISTRIBUTION" == "Darwin" ]; then
     ERROR_MESSAGE="This script does not support installing on Mac."
     printf "\033[31m$ERROR_MESSAGE
 \033[0m\n"
@@ -300,14 +300,14 @@ elif [ -f /etc/system-release ] || [ "$DISTRIBUTION" == "Amazon" ]; then
 fi
 
 # Root user detection
-if [ "$(echo "$UID")" = "0" ]; then
+if [ "$(echo "$UID")" == "0" ]; then
     sudo_cmd=''
 else
     sudo_cmd='sudo'
 fi
 
 # Install the necessary package sources
-if [ "$OS" = "RedHat" ]; then
+if [ "$OS" == "RedHat" ]; then
     echo -e "\033[34m\n* Installing YUM sources for Datadog\n\033[0m"
 
     UNAME_M=$(uname -m)
@@ -363,7 +363,7 @@ if [ "$OS" = "RedHat" ]; then
 
     $sudo_cmd yum -y --disablerepo='*' --enablerepo='observability-pipelines-worker' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}"
 
-elif [ "$OS" = "Debian" ]; then
+elif [ "$OS" == "Debian" ]; then
     apt_trusted_d_keyring="/etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg"
     apt_usr_share_keyring="/usr/share/keyrings/datadog-archive-keyring.gpg"
     

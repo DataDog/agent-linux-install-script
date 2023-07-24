@@ -47,7 +47,7 @@ while [[ $# -gt 0 ]]; do
       TESTING_YUM_VERSION_PATH="$2"
       ;;
     --observability-pipelines-worker)
-      DD_OP="$2"
+      DD_OPW="$2"
       ;;
     -*|--*)
       echo "Unknown option $1"
@@ -62,7 +62,7 @@ done
 
 if [ "$DD_OLD_SUSE" ]; then
     ENTRYPOINT_PATH="/tmp/vol/test/old-suse-startup.sh"
-elif [ "$DD_OP" ]; then
+elif [ "$DD_OPW" ]; then
     ENTRYPOINT_PATH="/tmp/vol/test/op-worker-test.sh"
 else
     ENTRYPOINT_PATH="/tmp/vol/test/localtest.sh"
