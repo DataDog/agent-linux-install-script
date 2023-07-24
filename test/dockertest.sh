@@ -60,13 +60,7 @@ done
 [ -z "$SCRIPT" ] && echo "Please provide script file to test via -s/--script" && exit 1;
 [ -z "$IMAGE" ] && echo "Please provide image to test via -i/--image" && exit 1;
 
-<<<<<<< HEAD
 if [ "$DD_OLD_SUSE" ]; then
-=======
-if [ "$DD_OLD_SUSE" != "true" ]; then
-    ENTRYPOINT_PATH="/tmp/vol/test/localtest.sh"
-else
->>>>>>> f68c294 (AP-2157 Modify CI to be able to trigger from datadog-agent (#56))
     ENTRYPOINT_PATH="/tmp/vol/test/old-suse-startup.sh"
 elif [ "$DD_OP" ]; then
     ENTRYPOINT_PATH="/tmp/vol/test/op-worker-test.sh"
@@ -86,13 +80,10 @@ docker run --rm --platform $PLATFORM -v $(pwd):/tmp/vol \
   -e DD_NO_AGENT_INSTALL="$DD_NO_AGENT_INSTALL" \
   -e DD_APM_INSTRUMENTATION_LANGUAGES="${DD_APM_INSTRUMENTATION_LANGUAGES}" \
   -e DD_OLD_SUSE="$DD_OLD_SUSE" \
-<<<<<<< HEAD
   -e DD_OP_WORKER_MINOR_VERSION="${MINOR_VERSION}" \
   -e DD_OP_PIPELINE_ID=123 \
-=======
   -e TESTING_APT_URL="$TESTING_APT_URL" \
   -e TESTING_APT_REPO_VERSION="$TESTING_APT_REPO_VERSION" \
   -e TESTING_YUM_URL="$TESTING_YUM_URL" \
   -e TESTING_YUM_VERSION_PATH="$TESTING_YUM_VERSION_PATH" \
->>>>>>> f68c294 (AP-2157 Modify CI to be able to trigger from datadog-agent (#56))
   --entrypoint "$ENTRYPOINT_PATH" "$IMAGE"
