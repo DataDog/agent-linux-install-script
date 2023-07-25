@@ -60,9 +60,9 @@ done
 [ -z "$SCRIPT" ] && echo "Please provide script file to test via -s/--script" && exit 1;
 [ -z "$IMAGE" ] && echo "Please provide image to test via -i/--image" && exit 1;
 
-if [ "$DD_OLD_SUSE" ]; then
+if [ "$DD_OLD_SUSE" == "true" ]; then
     ENTRYPOINT_PATH="/tmp/vol/test/old-suse-startup.sh"
-elif [ "$DD_OPW" ]; then
+elif [ "$DD_OPW" == "true" ]; then
     ENTRYPOINT_PATH="/tmp/vol/test/op-worker-test.sh"
 else
     ENTRYPOINT_PATH="/tmp/vol/test/localtest.sh"
