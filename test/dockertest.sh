@@ -46,6 +46,9 @@ while [[ $# -gt 0 ]]; do
     --yum-version-path)
       TESTING_YUM_VERSION_PATH="$2"
       ;;
+    --observability-pipelines-worker)
+      DD_OPW="$2"
+      ;;
     -*|--*)
       echo "Unknown option $1"
       exit 1
@@ -57,10 +60,12 @@ done
 [ -z "$SCRIPT" ] && echo "Please provide script file to test via -s/--script" && exit 1;
 [ -z "$IMAGE" ] && echo "Please provide image to test via -i/--image" && exit 1;
 
-if [ "$DD_OLD_SUSE" != "true" ]; then
-    ENTRYPOINT_PATH="/tmp/vol/test/localtest.sh"
-else
+if [ "$DD_OLD_SUSE" ]; then
     ENTRYPOINT_PATH="/tmp/vol/test/old-suse-startup.sh"
+elif [ "$DD_OPW" ]; then
+    ENTRYPOINT_PATH="/tmp/vol/test/op-worker-test.sh"
+else
+    ENTRYPOINT_PATH="/tmp/vol/test/localtest.sh"
 fi
 
 docker run --rm --platform $PLATFORM -v $(pwd):/tmp/vol \
@@ -75,6 +80,8 @@ docker run --rm --platform $PLATFORM -v $(pwd):/tmp/vol \
   -e DD_NO_AGENT_INSTALL="$DD_NO_AGENT_INSTALL" \
   -e DD_APM_INSTRUMENTATION_LANGUAGES="${DD_APM_INSTRUMENTATION_LANGUAGES}" \
   -e DD_OLD_SUSE="$DD_OLD_SUSE" \
+  -e DD_OP_WORKER_MINOR_VERSION="${MINOR_VERSION}" \
+  -e DD_OP_PIPELINE_ID=123 \
   -e TESTING_APT_URL="$TESTING_APT_URL" \
   -e TESTING_APT_REPO_VERSION="$TESTING_APT_REPO_VERSION" \
   -e TESTING_YUM_URL="$TESTING_YUM_URL" \

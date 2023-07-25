@@ -20,6 +20,7 @@ generate-scripts:
       - install_script.sh
       - install_script_agent6.sh
       - install_script_agent7.sh
+      - install_script_op_worker1.sh
 
 .test:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
@@ -148,7 +149,24 @@ test-apm-injection:
   script:
     - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent7.sh --injection "$INJECTION" --no-agent "$NO_AGENT" --apm-libraries "$APM_LIBRARIES"
 
-.deploy:
+test-observability-pipelines-worker:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
+  tags: ["runner:docker"]
+  stage: test
+  dependencies: ["generate-scripts"]
+  parallel:
+    matrix:
+      - IMAGE: amazonlinux:2
+      - IMAGE: amazonlinux:2023
+      - IMAGE: debian:10
+      - IMAGE: debian:11
+      - IMAGE: rockylinux:9.0
+      - IMAGE: ubuntu:20.04
+      - IMAGE: ubuntu:22.04
+  script:
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_op_worker1.sh --observability-pipelines-worker "true" --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}"
+
+deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
   tags: ["runner:main"]
   stage: deploy
@@ -162,5 +180,6 @@ test-apm-injection:
       - SCRIPT: install_script.sh
       - SCRIPT: install_script_agent6.sh
       - SCRIPT: install_script_agent7.sh
+      - SCRIPT: install_script_op_worker1.sh
   script:
-    - $S3_CP_CMD ./${SCRIPT} s3://dd-agent/scripts/${SCRIPT}.sh --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
+    - $S3_CP_CMD ./${SCRIPT} s3://dd-agent/scripts/${SCRIPT} --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
