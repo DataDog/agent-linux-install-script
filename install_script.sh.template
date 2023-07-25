@@ -716,12 +716,6 @@ if [ "$OS" == "RedHat" ]; then
         fi
     fi
 
-    if [ "$agent_major_version" -eq 7 ]; then
-      gpgkeys="https://${keys_url}/DATADOG_RPM_KEY_E09422B3.public"
-    else
-      gpgkeys="https://${keys_url}/DATADOG_RPM_KEY.public\n       https://${keys_url}/DATADOG_RPM_KEY_E09422B3.public"
-    fi
-
     gpgkeys=''
     separator='\n       '
     for key_path in "${RPM_GPG_KEYS[@]}"; do
