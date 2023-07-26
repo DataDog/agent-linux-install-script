@@ -87,6 +87,7 @@ function report_telemetry() {
     safe_agent_version=$(echo -n "$agent_major_version" | tr '\n' ' ' | tr '"' '_')
   fi
 
+  APM_TELEMETRY_SAFE_AGENT_VERSION_OVERRIDE_PLACEHOLDER
   if [ -z "${ERROR_CODE}" ] ; then
     telemetry_event="
 {
