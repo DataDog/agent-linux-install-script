@@ -6,7 +6,13 @@ if [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] && echo "${SCRIPT}" | grep "agent
     exit 0
 fi
 
-$SCRIPT
+cp $SCRIPT /tmp/script.sh
+if [ "DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "DD_APM_INSTRUMENTATION_ENABLED" == "docker" ] || echo "${SCRIPT}" | grep "docker_injection.sh$" > /dev/null; then
+    # fake presence of docker and make sure the script doesn't try to restart it
+    mkdir /etc/docker
+    sed -i "s|dd-container-install --no-agent-restart|dd-container-install --no-agent-restart --no-docker-reload|" /tmp/script.sh
+fi
+/tmp/script.sh
 
 INSTALLED_VERSION=
 RESULT=0
@@ -74,6 +80,8 @@ elif echo "${SCRIPT}" | grep "agent7.sh$" >/dev/null; then
     EXPECTED_TOOL_VERSION="install_script_agent7"
 elif echo "${SCRIPT}" | grep "script.sh$" >/dev/null; then
     EXPECTED_TOOL_VERSION="install_script"
+elif echo "${SCRIPT}" | grep "docker_injection.sh$" >/dev/null; then
+    EXPECTED_TOOL_VERSION="docker_injection"
 else
     echo "[ERROR] Don't know what install info to expect for script ${SCRIPT}"
     RESULT=1
@@ -118,7 +126,7 @@ if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
     fi
 fi
 
-if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "host" ]; then
+if [ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] || echo "${SCRIPT}" | grep "docker_injection.sh$" 1>/dev/null; then
   if command -v dpkg > /dev/null; then
       debsums -c datadog-apm-inject
       debsums -c datadog-apm-library-all
@@ -129,11 +137,13 @@ if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "host" ]; then
       echo "[OK] Inject libraries installed"
   fi
 
-  if [ -f "/etc/ld.so.preload" ]; then
-    echo "[OK] /etc/ld.so.preload exists"
-  else
-    echo "[FAIL] Expected to find /etc/ld.so.preload"
-    RESULT=1
+  if [ "$DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "$DD_APM_INSTRUMENTATION_ENABLED" == "host" ]; then
+    if [ -f "/etc/ld.so.preload" ]; then
+      echo "[OK] /etc/ld.so.preload exists"
+    else
+      echo "[FAIL] Expected to find /etc/ld.so.preload"
+      RESULT=1
+    fi
   fi
 else
   if command -v dpkg > /dev/null && debsums -c datadog-apm-inject ; then

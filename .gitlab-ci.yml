@@ -145,6 +145,7 @@ test-apm-injection:
         INJECTION: "host"
         SCRIPT: "install_script_agent7.sh"
       - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7" ]
+        INJECTION: "docker"
         NO_AGENT: "true"
         APM_LIBRARIES: "all"
         SCRIPT: "install_script_agent7.sh"
