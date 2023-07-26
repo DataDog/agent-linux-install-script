@@ -14,6 +14,9 @@ EXPECTED_MAJOR_VERSION=6
 if echo "${SCRIPT}" | grep "agent7.sh$" >/dev/null || [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] ; then
     EXPECTED_MAJOR_VERSION=7
 fi
+if echo "${SCRIPT}" | grep "docker_injection.sh$" > /dev/null; then
+    DD_NO_AGENT_INSTALL=true
+fi
 EXPECTED_MINOR_VERSION="${EXPECTED_MINOR_VERSION:-${DD_AGENT_MINOR_VERSION}}"
 
 # basic checks to ensure that the correct flavor was installed
