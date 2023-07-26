@@ -2,8 +2,27 @@
 Release Notes
 =============
 
-Unreleased
+1.20.0
 ================
+
+install_script_agent6.sh and install_script_agent7.sh
+-----------------------------------------------------
+
+- Use ``==`` for equality checks consistently (#67)
+- Add ``datadog-apm-library-ruby`` to the list of known APM libraries (#68)
+- Remove unused initialization of ``gpgkeys`` variable (#69)
+
+install_script_docker_injection.sh
+----------------------------------
+
+- Initial release of ``install_script_docker_injection.sh``, a script to install
+  ``datadog-apm-inject`` and APM tracer libraries without installing the Agent (#71)
+
+install_script_op_worker1.sh
+----------------------------
+
+- Initial release of ``install_script_op_worker1.sh``, a script to install
+  observability-pipelines-worker (#66, #70, #72)
 
 1.19.0
 ================
