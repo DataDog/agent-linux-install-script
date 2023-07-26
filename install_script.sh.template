@@ -420,8 +420,11 @@ if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
       dotnet)
         apm_libraries+=("datadog-apm-library-dotnet")
         ;;
+      ruby)
+        apm_libraries+=("datadog-apm-library-ruby")
+        ;;
       *)
-        ERROR_MESSAGE="Unknown apm library: $lib. Must be one of: all, java, js, python, dotnet"
+        ERROR_MESSAGE="Unknown apm library: $lib. Must be one of: all, java, js, python, dotnet, ruby"
         ERROR_CODE=$INVALID_PARAMETERS_CODE
         echo "$ERROR_MESSAGE"
         report_telemetry
