@@ -424,7 +424,7 @@ see the logs above to determine the cause.
 If the failing repository is Datadog, please contact Datadog support.
 *****
 "
-    $sudo_cmd apt-get update -o Dir::Etc::sourcelist="sources.list.d/datadog.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
+    $sudo_cmd apt-get update -o Dir::Etc::sourcelist="sources.list.d/datadog-observability-pipelines-worker.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
     ERROR_MESSAGE="ERROR
 Failed to install one or more packages, sometimes it may be
 due to another APT source failing. See the logs above to
