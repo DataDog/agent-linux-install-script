@@ -505,6 +505,8 @@ if [ ! -e "$pipeline_file" ]; then
   fi
 fi
 
+$sudo_cmd chmod 640 "$env_file"
+
 $sudo_cmd chown observability-pipelines-worker:observability-pipelines-worker "$bootstrap_file"
 $sudo_cmd chmod 640 "$bootstrap_file"
 
