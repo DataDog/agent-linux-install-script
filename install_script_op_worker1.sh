@@ -464,6 +464,8 @@ else
   printf "\033[34m\n* Creating $env_file for $worker_flavor.service.\n\033[0m\n"
   $sudo_cmd sh -c "touch $env_file"
 
+  $sudo_cmd chmod 640 "$env_file"
+
   if [ "$apikey" ]; then
     printf "\033[34m  * Assigning DD_API_KEY.\n\033[0m\n"
     $sudo_cmd sh -c "echo DD_API_KEY=$apikey >> $env_file"
