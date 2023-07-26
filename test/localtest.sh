@@ -1,18 +1,28 @@
 #!/bin/bash -e
 
 EXPECTED_FLAVOR=${DD_AGENT_FLAVOR:-datadog-agent}
+SCRIPT_FLAVOR=$(echo ${SCRIPT} | sed "s|.*install_script_\(.*\).sh|\1|")
 if [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] && echo "${SCRIPT}" | grep "agent6.sh$" >/dev/null; then
     echo "[PASS] Can't install flavor '${DD_AGENT_FLAVOR}' with install_script_agent6.sh"
     exit 0
 fi
 
-$SCRIPT
+cp $SCRIPT /tmp/script.sh
+if [ "$DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "$DD_APM_INSTRUMENTATION_ENABLED" == "docker" ] || [ "$SCRIPT_FLAVOR" == "docker_injection" ]; then
+    # fake presence of docker and make sure the script doesn't try to restart it
+    mkdir /etc/docker
+    sed -i "s|dd-container-install --no-agent-restart|dd-container-install --no-agent-restart --no-docker-reload|" /tmp/script.sh
+fi
+/tmp/script.sh
 
 INSTALLED_VERSION=
 RESULT=0
 EXPECTED_MAJOR_VERSION=6
-if echo "${SCRIPT}" | grep "agent7.sh$" >/dev/null || [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] ; then
+if [ "${SCRIPT_FLAVOR}" == "agent7" ] || [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] ; then
     EXPECTED_MAJOR_VERSION=7
+fi
+if [ "${SCRIPT_FLAVOR}" == "docker_injection" ]; then
+    DD_NO_AGENT_INSTALL=true
 fi
 EXPECTED_MINOR_VERSION="${EXPECTED_MINOR_VERSION:-${DD_AGENT_MINOR_VERSION}}"
 
@@ -65,12 +75,14 @@ else
 fi
 
 EXPECTED_TOOL_VERSION=
-if echo "${SCRIPT}" | grep "agent6.sh$" >/dev/null; then
+if [ "${SCRIPT_FLAVOR}" == "agent6" ]; then
     EXPECTED_TOOL_VERSION="install_script_agent6"
-elif echo "${SCRIPT}" | grep "agent7.sh$" >/dev/null; then
+elif [ "${SCRIPT_FLAVOR}" == "agent7" ]; then
     EXPECTED_TOOL_VERSION="install_script_agent7"
-elif echo "${SCRIPT}" | grep "script.sh$" >/dev/null; then
+elif [ "${SCRIPT_FLAVOR}" == "install_script.sh" ]; then
     EXPECTED_TOOL_VERSION="install_script"
+elif [ "${SCRIPT_FLAVOR}" == "docker_injection" ]; then
+    EXPECTED_TOOL_VERSION="docker_injection"
 else
     echo "[ERROR] Don't know what install info to expect for script ${SCRIPT}"
     RESULT=1
@@ -115,7 +127,7 @@ if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
     fi
 fi
 
-if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "host" ]; then
+if [ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] || [ "${SCRIPT_FLAVOR}" == "docker_injection" ]; then
   if command -v dpkg > /dev/null; then
       debsums -c datadog-apm-inject
       debsums -c datadog-apm-library-all
@@ -126,11 +138,13 @@ if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "host" ]; then
       echo "[OK] Inject libraries installed"
   fi
 
-  if [ -f "/etc/ld.so.preload" ]; then
-    echo "[OK] /etc/ld.so.preload exists"
-  else
-    echo "[FAIL] Expected to find /etc/ld.so.preload"
-    RESULT=1
+  if [ "$DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "$DD_APM_INSTRUMENTATION_ENABLED" == "host" ]; then
+    if [ -f "/etc/ld.so.preload" ]; then
+      echo "[OK] /etc/ld.so.preload exists"
+    else
+      echo "[FAIL] Expected to find /etc/ld.so.preload"
+      RESULT=1
+    fi
   fi
 else
   if command -v dpkg > /dev/null && debsums -c datadog-apm-inject ; then

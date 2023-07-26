@@ -1,7 +1,7 @@
-all: install_script.sh install_script_agent6.sh install_script_agent7.sh
+all: install_script.sh install_script_agent6.sh install_script_agent7.sh install_script_docker_injection.sh
 
 clean:
-	rm -f install_script.sh install_script_agent6.sh install_script_agent7.sh
+	rm -f install_script.sh install_script_agent6.sh install_script_agent7.sh install_script_docker_injection.sh
 
 define DEPRECATION_MESSAGE
 \n\
@@ -23,27 +23,44 @@ CUR_VERSION:=$(shell awk -F "=" '/^install_script_version=/{print $$NF}' install
 install_script.sh: install_script.sh.template
 	export DEPRECATION_MESSAGE
 	sed -e 's|AGENT_MAJOR_VERSION_PLACEHOLDER|6|' \
-		-e 's|INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER||' \
+		-e 's|INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER|Agent|' \
 		-e 's|INSTALL_INFO_VERSION_PLACEHOLDER||' \
 		-e 's|IS_LEGACY_SCRIPT_PLACEHOLDER|true|' \
+		-e 's|DD_APM_INSTRUMENTATION_ENABLED_DOCKER_PLACEHOLDER||' \
+		-e 's|APM_TELEMETRY_SAFE_AGENT_VERSION_OVERRIDE_PLACEHOLDER||' \
 		-e 's|DEPRECATION_MESSAGE_PLACEHOLDER|echo -e "\\033[33m${DEPRECATION_MESSAGE}\\033[0m"|' \
 		install_script.sh.template > $@
 	chmod +x $@
 
 install_script_agent6.sh: install_script.sh.template
 	sed -e 's|AGENT_MAJOR_VERSION_PLACEHOLDER|6|' \
-		-e 's|INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER| 6|' \
+		-e 's|INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER|Agent 6|' \
 		-e 's|INSTALL_INFO_VERSION_PLACEHOLDER|_agent6|' \
 		-e 's|IS_LEGACY_SCRIPT_PLACEHOLDER||' \
+		-e 's|DD_APM_INSTRUMENTATION_ENABLED_DOCKER_PLACEHOLDER||' \
+		-e 's|APM_TELEMETRY_SAFE_AGENT_VERSION_OVERRIDE_PLACEHOLDER||' \
 		-e 's|DEPRECATION_MESSAGE_PLACEHOLDER||' \
 		install_script.sh.template > $@
 	chmod +x $@
 
 install_script_agent7.sh: install_script.sh.template
 	sed -e 's|AGENT_MAJOR_VERSION_PLACEHOLDER|7|' \
-		-e 's|INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER| 7|' \
+		-e 's|INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER|Agent 7|' \
 		-e 's|INSTALL_INFO_VERSION_PLACEHOLDER|_agent7|' \
 		-e 's|IS_LEGACY_SCRIPT_PLACEHOLDER||' \
+		-e 's|DD_APM_INSTRUMENTATION_ENABLED_DOCKER_PLACEHOLDER||' \
+		-e 's|APM_TELEMETRY_SAFE_AGENT_VERSION_OVERRIDE_PLACEHOLDER||' \
+		-e 's|DEPRECATION_MESSAGE_PLACEHOLDER||' \
+		install_script.sh.template > $@
+	chmod +x $@
+
+install_script_docker_injection.sh: install_script.sh.template
+	sed -e 's|AGENT_MAJOR_VERSION_PLACEHOLDER|7|' \
+		-e 's|INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER|Docker Injection|' \
+		-e 's|INSTALL_INFO_VERSION_PLACEHOLDER|_docker_injection|' \
+		-e 's|IS_LEGACY_SCRIPT_PLACEHOLDER||' \
+		-e 's|DD_APM_INSTRUMENTATION_ENABLED_DOCKER_PLACEHOLDER|DD_APM_INSTRUMENTATION_ENABLED="docker"|' \
+		-e 's|APM_TELEMETRY_SAFE_AGENT_VERSION_OVERRIDE_PLACEHOLDER|safe_agent_version=noagent_autoinstrumentation|' \
 		-e 's|DEPRECATION_MESSAGE_PLACEHOLDER||' \
 		install_script.sh.template > $@
 	chmod +x $@

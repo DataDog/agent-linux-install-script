@@ -20,6 +20,7 @@ generate-scripts:
       - install_script.sh
       - install_script_agent6.sh
       - install_script_agent7.sh
+      - install_script_docker_injection.sh
       - install_script_op_worker1.sh
 
 .test:
@@ -142,12 +143,20 @@ test-apm-injection:
     matrix:
       - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7" ]
         INJECTION: "host"
+        SCRIPT: "install_script_agent7.sh"
       - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7" ]
+        INJECTION: "docker"
         NO_AGENT: "true"
         APM_LIBRARIES: "all"
+        SCRIPT: "install_script_agent7.sh"
+      - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7"]
+        # We intentionally don't pass NO_AGENT here to ensure this script works without it
+        # NO_AGENT: "true"
+        APM_LIBRARIES: "all"
+        SCRIPT: "install_script_docker_injection.sh"
 
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent7.sh --injection "$INJECTION" --no-agent "$NO_AGENT" --apm-libraries "$APM_LIBRARIES"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script "$SCRIPT" --injection "$INJECTION" --no-agent "$NO_AGENT" --apm-libraries "$APM_LIBRARIES"
 
 test-observability-pipelines-worker:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
@@ -180,6 +189,7 @@ deploy:
       - SCRIPT: install_script.sh
       - SCRIPT: install_script_agent6.sh
       - SCRIPT: install_script_agent7.sh
+      - SCRIPT: install_script_docker_injection.sh
       - SCRIPT: install_script_op_worker1.sh
   script:
     - $S3_CP_CMD ./${SCRIPT} s3://dd-agent/scripts/${SCRIPT} --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732

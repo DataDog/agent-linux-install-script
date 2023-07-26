@@ -87,6 +87,7 @@ function report_telemetry() {
     safe_agent_version=$(echo -n "$agent_major_version" | tr '\n' ' ' | tr '"' '_')
   fi
 
+  APM_TELEMETRY_SAFE_AGENT_VERSION_OVERRIDE_PLACEHOLDER
   if [ -z "${ERROR_CODE}" ] ; then
     telemetry_event="
 {
@@ -261,7 +262,7 @@ function ensure_config_file_exists() {
     fi
 }
 
-echo -e "\033[34m\n* Datadog AgentINSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
+echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
 
 hostname=
 if [ -n "$DD_HOSTNAME" ]; then
@@ -361,6 +362,7 @@ fi
 declare -a apm_libraries
 declare host_injection_enabled
 declare docker_injection_enabled
+DD_APM_INSTRUMENTATION_ENABLED_DOCKER_PLACEHOLDER
 
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "all" ] ; then
   host_injection_enabled="true"
