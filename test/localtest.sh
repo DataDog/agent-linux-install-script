@@ -7,7 +7,7 @@ if [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] && echo "${SCRIPT}" | grep "agent
 fi
 
 cp $SCRIPT /tmp/script.sh
-if [ "DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "DD_APM_INSTRUMENTATION_ENABLED" == "docker" ] || echo "${SCRIPT}" | grep "docker_injection.sh$" > /dev/null; then
+if [ "$DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "$DD_APM_INSTRUMENTATION_ENABLED" == "docker" ] || echo "${SCRIPT}" | grep "docker_injection.sh$" > /dev/null; then
     # fake presence of docker and make sure the script doesn't try to restart it
     mkdir /etc/docker
     sed -i "s|dd-container-install --no-agent-restart|dd-container-install --no-agent-restart --no-docker-reload|" /tmp/script.sh
