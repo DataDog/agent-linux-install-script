@@ -160,6 +160,8 @@ test-apm-injection:
 
 test-observability-pipelines-worker:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
+  rules:
+  - if: '$CI_PIPELINE_SOURCE == "push"'
   tags: ["runner:docker"]
   stage: test
   dependencies: ["generate-scripts"]
