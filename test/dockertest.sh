@@ -49,7 +49,7 @@ while [[ $# -gt 0 ]]; do
     --observability-pipelines-worker)
       DD_OPW="$2"
       ;;
-    --observability-pipelines-install-classic-agent)
+    --opw-install-classic-agent)
       DD_OPW_INSTALL_CLASSIC_AGENT="$2"
       ;;
     -*|--*)
