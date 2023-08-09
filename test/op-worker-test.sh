@@ -6,7 +6,6 @@ fi
 
 $SCRIPT
 
-
 EXPECTED_FLAVOR=observability-pipelines-worker
 INSTALLED_VERSION=
 RESULT=0
