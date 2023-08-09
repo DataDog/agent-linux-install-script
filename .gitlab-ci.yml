@@ -175,6 +175,7 @@ test-observability-pipelines-worker:
       - IMAGE: ubuntu:20.04
       - IMAGE: ubuntu:22.04
       - IMAGE: amazonlinux:2
+        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
       - IMAGE: amazonlinux:2023
         INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
       - IMAGE: debian:10
