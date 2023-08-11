@@ -49,6 +49,9 @@ while [[ $# -gt 0 ]]; do
     --observability-pipelines-worker)
       DD_OPW="$2"
       ;;
+    --opw-install-classic-agent)
+      DD_OPW_INSTALL_CLASSIC_AGENT="$2"
+      ;;
     -*|--*)
       echo "Unknown option $1"
       exit 1
@@ -82,6 +85,7 @@ docker run --rm --platform $PLATFORM -v $(pwd):/tmp/vol \
   -e DD_OLD_SUSE="$DD_OLD_SUSE" \
   -e DD_OP_WORKER_MINOR_VERSION="${MINOR_VERSION}" \
   -e DD_OP_PIPELINE_ID=123 \
+  -e DD_OPW_INSTALL_CLASSIC_AGENT=${DD_OPW_INSTALL_CLASSIC_AGENT}\
   -e TESTING_APT_URL="$TESTING_APT_URL" \
   -e TESTING_APT_REPO_VERSION="$TESTING_APT_REPO_VERSION" \
   -e TESTING_YUM_URL="$TESTING_YUM_URL" \

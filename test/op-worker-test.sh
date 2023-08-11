@@ -1,5 +1,9 @@
 #!/bin/bash -e
 
+if [[ -v "$DD_OPW_INSTALL_CLASSIC_AGENT" ]]; then
+$DD_OPW_INSTALL_CLASSIC_AGENT
+fi
+
 $SCRIPT
 
 EXPECTED_FLAVOR=observability-pipelines-worker

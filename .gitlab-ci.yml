@@ -160,6 +160,8 @@ test-apm-injection:
 
 test-observability-pipelines-worker:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
+  rules:
+  - if: '$CI_PIPELINE_SOURCE == "push"'
   tags: ["runner:docker"]
   stage: test
   dependencies: ["generate-scripts"]
@@ -172,8 +174,22 @@ test-observability-pipelines-worker:
       - IMAGE: rockylinux:9.0
       - IMAGE: ubuntu:20.04
       - IMAGE: ubuntu:22.04
+      - IMAGE: amazonlinux:2
+        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
+      - IMAGE: amazonlinux:2023
+        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
+      - IMAGE: debian:10
+        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
+      - IMAGE: debian:11
+        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
+      - IMAGE: rockylinux:9.0
+        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
+      - IMAGE: ubuntu:20.04
+        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
+      - IMAGE: ubuntu:22.04
+        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_op_worker1.sh --observability-pipelines-worker "true" --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_op_worker1.sh --observability-pipelines-worker "true" --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" ${INSTALL_CLASSIC_AGENT}
 
 deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
