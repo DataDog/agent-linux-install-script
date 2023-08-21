@@ -103,6 +103,22 @@ if [ -n "${EXPECTED_TOOL_VERSION}" ] && [ -z "$DD_NO_AGENT_INSTALL" ]; then
     fi
 fi
 
+if [ "${EXPECTED_FLAVOR}" = "datadog-agent" ] && [ -z "$DD_NO_AGENT_INSTALL" ]; then
+    dd_agent_config_file=/etc/datadog-agent/datadog.yaml
+    if [ ! -f $dd_agent_config_file ]; then
+        echo "[FAIL] Config file $dd_agent_config_file not found"
+        RESULT=1
+    fi
+    if [ -n "$DD_ENV" ]; then
+        if grep -q "^[[:space:]]*env: $DD_ENV" $dd_agent_config_file; then
+            echo "[OK] Expected environment was found"
+        else
+            echo "[FAIL] Expected environment wasn't found in $dd_agent_config_file"
+            RESULT=1
+        fi
+    fi
+fi
+
 system_probe_config_file=/etc/datadog-agent/system-probe.yaml
 if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
     if [ -e "$system_probe_config_file" ]; then
