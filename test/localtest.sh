@@ -110,10 +110,14 @@ if [ "${EXPECTED_FLAVOR}" = "datadog-agent" ] && [ -z "$DD_NO_AGENT_INSTALL" ]; 
         RESULT=1
     fi
     if [ -n "$DD_ENV" ]; then
-        if grep -q "^[[:space:]]*env: $DD_ENV" $dd_agent_config_file; then
+        if grep -q "^env: $DD_ENV" $dd_agent_config_file; then
             echo "[OK] Expected environment was found"
         else
             echo "[FAIL] Expected environment wasn't found in $dd_agent_config_file"
+            RESULT=1
+        fi
+        if grep -E "^[[:space:]]+env: $DD_ENV" $dd_agent_config_file; then
+            echo "[FAIL] Some other occurences of env were mistakenly replaced $dd_agent_config_file"
             RESULT=1
         fi
     fi
