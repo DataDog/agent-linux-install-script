@@ -29,15 +29,15 @@ generate-scripts:
   stage: test
   dependencies: ["generate-scripts"]
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent6.sh 
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent6.sh
       --minor-version "${MINOR_VERSION}"
-      --expected-minor-version "${EXPECTED_MINOR_VERSION}" 
-      --flavor "${FLAVOR}" 
-      --old-suse "${OLD_SUSE}" 
-      --apt-url "$APT_URL" 
-      --apt-repo-version "$APT_REPO_VERSION_AGENT6" 
-      --yum-url "$YUM_URL" 
-      --yum-version-path "$YUM_VERSION_PATH_AGENT6" 
+      --expected-minor-version "${EXPECTED_MINOR_VERSION}"
+      --flavor "${FLAVOR}"
+      --old-suse "${OLD_SUSE}"
+      --apt-url "$APT_URL"
+      --apt-repo-version "$APT_REPO_VERSION_AGENT6"
+      --yum-url "$YUM_URL"
+      --yum-version-path "$YUM_VERSION_PATH_AGENT6"
     - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent7.sh
       --minor-version "${MINOR_VERSION}"
       --expected-minor-version "${EXPECTED_MINOR_VERSION}"
@@ -129,6 +129,7 @@ test:
         FLAVOR: datadog-dogstatsd
       - IMAGE: opensuse/leap:15.4
         FLAVOR: datadog-iot-agent
+      - IMAGE: debian:12.1
 
 test-apm-injection:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
