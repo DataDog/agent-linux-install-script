@@ -33,7 +33,6 @@ generate-scripts:
       --minor-version "${MINOR_VERSION}"
       --expected-minor-version "${EXPECTED_MINOR_VERSION}"
       --flavor "${FLAVOR}"
-      --old-suse "${OLD_SUSE}"
       --apt-url "$APT_URL"
       --apt-repo-version "$APT_REPO_VERSION_AGENT6"
       --yum-url "$YUM_URL"
@@ -42,27 +41,10 @@ generate-scripts:
       --minor-version "${MINOR_VERSION}"
       --expected-minor-version "${EXPECTED_MINOR_VERSION}"
       --flavor "${FLAVOR}"
-      --old-suse "${OLD_SUSE}"
       --apt-url "$APT_URL"
       --apt-repo-version "$APT_REPO_VERSION_AGENT7"
       --yum-url "$YUM_URL"
       --yum-version-path "$YUM_VERSION_PATH_AGENT7"
-  variables:
-    OLD_SUSE: "false"
-
-test-opensuse-13:
-  extends: .test
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "push"'
-  parallel:
-    matrix:
-      - IMAGE: opensuse/archive:13.2
-      - IMAGE: opensuse/archive:13.2
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: opensuse/archive:13.2
-        FLAVOR: datadog-iot-agent
-  variables:
-    OLD_SUSE: "true"
 
 test_pinned_version:
   extends: .test
@@ -130,6 +112,13 @@ test:
       - IMAGE: opensuse/leap:15.4
         FLAVOR: datadog-iot-agent
       - IMAGE: debian:12.1
+      - IMAGE: datadog/docker-library:install_script_sles_11
+      - IMAGE: datadog/docker-library:install_script_sles_11
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: datadog/docker-library:install_script_sles_11
+        FLAVOR: datadog-iot-agent
+
+
 
 test-apm-injection:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
