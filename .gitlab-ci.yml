@@ -112,10 +112,10 @@ test:
       - IMAGE: opensuse/leap:15.4
         FLAVOR: datadog-iot-agent
       - IMAGE: debian:12.1
-      - IMAGE: datadog/docker-library:install_script_sles_11
-      - IMAGE: datadog/docker-library:install_script_sles_11
+      - IMAGE: opensuse/archive:install_script_sles_11
+      - IMAGE: opensuse/archive:install_script_sles_11
         FLAVOR: datadog-dogstatsd
-      - IMAGE: datadog/docker-library:install_script_sles_11
+      - IMAGE: opensuse/archive:install_script_sles_11
         FLAVOR: datadog-iot-agent
 
 
