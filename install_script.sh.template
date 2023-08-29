@@ -506,7 +506,7 @@ fi
 
 declare -a services
 
-if [ "$no_agent" ]; then
+if [ -n "$no_agent" ]; then
   services=()
 else
   services=("$system_service")
@@ -604,7 +604,7 @@ if [ ! "$apikey" ]; then
   fi
 fi
 
-if [[ `uname -m` == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]] && [ ! "$no_agent" ]; then
+if [[ $(uname -m) == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]] && [ ! "$no_agent" ]; then
     ERROR_MESSAGE="The full $nice_flavor isn't available for your architecture (armv7l).\nInstall the $(getMapData flavor_to_readable datadog-iot-agent) by setting DD_AGENT_FLAVOR='datadog-iot-agent'."
     ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE\033[0m\n"
@@ -650,14 +650,14 @@ elif [ -f /etc/SuSE-release ] || [ "$DISTRIBUTION" == "SUSE" ] || [ "$DISTRIBUTI
 fi
 
 if [[ "$agent_flavor" == "datadog-dogstatsd" ]]; then
-    if [[ `uname -m` == "armv7l" ]] || { [[ `uname -m` != "x86_64" ]] && [[ "$OS" != "Debian" ]]; }; then
+    if [[ $(uname -m) == "armv7l" ]] || { [[ $(uname -m) != "x86_64" ]] && [[ "$OS" != "Debian" ]]; }; then
         ERROR_MESSAGE="The $nice_flavor isn't available for your architecture."
         ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
         report_telemetry
         exit 1;
     fi
-    if  [[ "$OS" == "Debian" ]] && [[ `uname -m` == "aarch64" ]] && { [[ -n "$agent_minor_version_without_patch" ]] && [[ "$agent_minor_version_without_patch" -lt 35 ]]; }; then
+    if  [[ "$OS" == "Debian" ]] && [[ $(uname -m) == "aarch64" ]] && { [[ -n "$agent_minor_version_without_patch" ]] && [[ "$agent_minor_version_without_patch" -lt 35 ]]; }; then
         ERROR_MESSAGE="The $nice_flavor is only available since version 7.35.0 for your architecture."
         ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
@@ -667,7 +667,7 @@ if [[ "$agent_flavor" == "datadog-dogstatsd" ]]; then
 fi
 
 if [ -n "$fips_mode" ]; then
-    if [[ `uname -m` != "x86_64" ]]; then
+    if [[ $(uname -m) != "x86_64" ]]; then
         ERROR_MESSAGE="FIPS mode isn't available for your architecture"
         ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
@@ -684,7 +684,7 @@ if [ -n "$fips_mode" ]; then
 fi
 
 # Root user detection
-if [ "$(echo "$UID")" == "0" ]; then
+if [ "$UID" == "0" ]; then
     sudo_cmd=''
 else
     sudo_cmd='sudo'
@@ -749,7 +749,7 @@ if [ "$OS" == "RedHat" ]; then
     fi
 
     declare -a packages
-    if [ "$no_agent" ]; then
+    if [ -n "$no_agent" ]; then
       packages=()
     else
       packages=("$agent_flavor")
@@ -866,7 +866,7 @@ If the cause is unclear, please contact Datadog support.
     fi
 
     declare -a packages
-    if [ "$no_agent" ]; then
+    if [ -n "$no_agent" ]; then
       packages=("datadog-signing-keys")
     else
       packages=("$agent_flavor" "datadog-signing-keys")
@@ -1008,7 +1008,7 @@ elif [ "$OS" == "SUSE" ]; then
   fi
 
   declare -a packages
-  if [ "$no_agent" ]; then
+  if [ -n "$no_agent" ]; then
     packages=()
   else
     packages=("$agent_flavor")
@@ -1058,7 +1058,7 @@ https://app.datadoghq.com/account/settings#agent"
     exit;
 fi
 
-if [ "$upgrade" ] && [ "$agent_flavor" != "datadog-dogstatsd" ]; then
+if [ -n "$upgrade" ] && [ "$agent_flavor" != "datadog-dogstatsd" ]; then
   if [ -e $LEGACY_CONF ]; then
     # try to import the config file from the previous version
     icmd="datadog-agent import $LEGACY_ETCDIR $etcdir"
@@ -1079,7 +1079,7 @@ elif [ ! "$no_agent" ]; then
   if [ ! -e "$config_file" ]; then
     $sudo_cmd cp "$config_file.example" "$config_file"
   fi
-  if [ "$apikey" ]; then
+  if [ -n "$apikey" ]; then
     printf "\033[34m\n* Adding your API key to the $nice_flavor configuration: $config_file\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/api_key:.*/api_key: $apikey/' $config_file"
   else
@@ -1093,7 +1093,7 @@ elif [ ! "$no_agent" ]; then
   fi
 
   if [ -z "$fips_mode" ]; then
-    if [ "$site" ]; then
+    if [ -n "$site" ]; then
       printf "\033[34m\n* Setting SITE in the $nice_flavor configuration: $config_file\n\033[0m\n"
       $sudo_cmd sh -c "sed -i 's/# site:.*/site: $site/' $config_file"
     fi
@@ -1113,11 +1113,11 @@ fips:
     https: false
 EOF
   fi
-  if [ "$hostname" ]; then
+  if [ -n "$hostname" ]; then
     printf "\033[34m\n* Adding your HOSTNAME to the $nice_flavor configuration: $config_file\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/# hostname:.*/hostname: $hostname/' $config_file"
   fi
-  if [ "$host_tags" ]; then
+  if [ -n "$host_tags" ]; then
       printf "\033[34m\n* Adding your HOST TAGS to the $nice_flavor configuration: $config_file\n\033[0m\n"
       formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/','/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
       $sudo_cmd sh -c "sed -i \"s/^# tags:.*/tags: ""$formatted_host_tags""/\" $config_file"
@@ -1190,13 +1190,13 @@ fi
 service_cmd="service"
 if [ "$SUSE11" == "yes" ]; then
   # We're testing SLES11 on a opensuse 13.2, `which service` will fail on openSUSE 13.2 and needs to have `service` as a default value
-  service_cmd=`$sudo_cmd which service || echo "service"`
+  service_cmd=$($sudo_cmd which service || echo "service")
 fi
 
 declare -a monitoring_services
 monitoring_services=( "datadog-agent" )
 
-if [ $no_start ]; then
+if [ -n "$no_start" ]; then
   printf "\033[34m\n  * DD_INSTALL_ONLY environment variable set.\033[0m\n"
 fi
 
@@ -1209,7 +1209,7 @@ for current_service in "${services[@]}"; do
   stop_instructions="$sudo_cmd $service_cmd $current_service stop"
   start_instructions="$sudo_cmd $service_cmd $current_service start"
 
-  if [[ `$sudo_cmd ps --no-headers -o comm 1 2>&1` == "systemd" ]] && command -v systemctl 2>&1; then
+  if [[ $($sudo_cmd ps --no-headers -o comm 1 2>&1) == "systemd" ]] && command -v systemctl 2>&1; then
     # Use systemd if systemctl binary exists and systemd is the init process
     restart_cmd="$sudo_cmd systemctl restart ${current_service}.service"
     stop_instructions="$sudo_cmd systemctl stop $current_service"
@@ -1221,7 +1221,7 @@ for current_service in "${services[@]}"; do
     start_instructions="$sudo_cmd start $current_service"
   fi
 
-  if [ $no_start ]; then
+  if [ -n "$no_start" ]; then
     printf "\033[34m\n    The newly installed version of the ${nice_current_flavor} will not be started.
     You will have to do it manually using the following command:
 
