@@ -506,7 +506,7 @@ fi
 
 declare -a services
 
-if [ "$no_agent" ]; then
+if [ -n "$no_agent" ]; then
   services=()
 else
   services=("$system_service")
@@ -749,7 +749,7 @@ if [ "$OS" == "RedHat" ]; then
     fi
 
     declare -a packages
-    if [ "$no_agent" ]; then
+    if [ -n "$no_agent" ]; then
       packages=()
     else
       packages=("$agent_flavor")
@@ -866,7 +866,7 @@ If the cause is unclear, please contact Datadog support.
     fi
 
     declare -a packages
-    if [ "$no_agent" ]; then
+    if [ -n "$no_agent" ]; then
       packages=("datadog-signing-keys")
     else
       packages=("$agent_flavor" "datadog-signing-keys")
@@ -1008,7 +1008,7 @@ elif [ "$OS" == "SUSE" ]; then
   fi
 
   declare -a packages
-  if [ "$no_agent" ]; then
+  if [ -n "$no_agent" ]; then
     packages=()
   else
     packages=("$agent_flavor")
@@ -1058,7 +1058,7 @@ https://app.datadoghq.com/account/settings#agent"
     exit;
 fi
 
-if [ "$upgrade" ] && [ "$agent_flavor" != "datadog-dogstatsd" ]; then
+if [ -n "$upgrade" ] && [ "$agent_flavor" != "datadog-dogstatsd" ]; then
   if [ -e $LEGACY_CONF ]; then
     # try to import the config file from the previous version
     icmd="datadog-agent import $LEGACY_ETCDIR $etcdir"
@@ -1079,7 +1079,7 @@ elif [ ! "$no_agent" ]; then
   if [ ! -e "$config_file" ]; then
     $sudo_cmd cp "$config_file.example" "$config_file"
   fi
-  if [ "$apikey" ]; then
+  if [ -n "$apikey" ]; then
     printf "\033[34m\n* Adding your API key to the $nice_flavor configuration: $config_file\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/api_key:.*/api_key: $apikey/' $config_file"
   else
@@ -1093,7 +1093,7 @@ elif [ ! "$no_agent" ]; then
   fi
 
   if [ -z "$fips_mode" ]; then
-    if [ "$site" ]; then
+    if [ -n "$site" ]; then
       printf "\033[34m\n* Setting SITE in the $nice_flavor configuration: $config_file\n\033[0m\n"
       $sudo_cmd sh -c "sed -i 's/# site:.*/site: $site/' $config_file"
     fi
@@ -1113,11 +1113,11 @@ fips:
     https: false
 EOF
   fi
-  if [ "$hostname" ]; then
+  if [ -n "$hostname" ]; then
     printf "\033[34m\n* Adding your HOSTNAME to the $nice_flavor configuration: $config_file\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/# hostname:.*/hostname: $hostname/' $config_file"
   fi
-  if [ "$host_tags" ]; then
+  if [ -n "$host_tags" ]; then
       printf "\033[34m\n* Adding your HOST TAGS to the $nice_flavor configuration: $config_file\n\033[0m\n"
       formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/','/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
       $sudo_cmd sh -c "sed -i \"s/^# tags:.*/tags: ""$formatted_host_tags""/\" $config_file"
@@ -1196,7 +1196,7 @@ fi
 declare -a monitoring_services
 monitoring_services=( "datadog-agent" )
 
-if [ $no_start ]; then
+if [ -n "$no_start" ]; then
   printf "\033[34m\n  * DD_INSTALL_ONLY environment variable set.\033[0m\n"
 fi
 
@@ -1221,7 +1221,7 @@ for current_service in "${services[@]}"; do
     start_instructions="$sudo_cmd start $current_service"
   fi
 
-  if [ $no_start ]; then
+  if [ -n "$no_start" ]; then
     printf "\033[34m\n    The newly installed version of the ${nice_current_flavor} will not be started.
     You will have to do it manually using the following command:
 
