@@ -1127,7 +1127,7 @@ EOF
       formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/','/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
       $sudo_cmd sh -c "sed -i \"s/^# tags:.*/tags: ""$formatted_host_tags""/\" $config_file"
   fi
-  if [ "$dd_env" ]; then
+  if [ -n "$dd_env" ]; then
     printf "\033[34m\n* Adding your DD_ENV to the $nice_flavor configuration: $config_file\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/^# env:.*/env: $dd_env/' $config_file"
   fi
