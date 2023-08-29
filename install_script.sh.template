@@ -684,7 +684,7 @@ if [ -n "$fips_mode" ]; then
 fi
 
 # Root user detection
-if [ "$(echo "$UID")" == "0" ]; then
+if [ "$UID" == "0" ]; then
     sudo_cmd=''
 else
     sudo_cmd='sudo'
