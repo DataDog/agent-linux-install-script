@@ -103,7 +103,7 @@ if [ -n "${EXPECTED_TOOL_VERSION}" ] && [ -z "$DD_NO_AGENT_INSTALL" ]; then
     fi
 fi
 
-if [ "${EXPECTED_FLAVOR}" = "datadog-agent" ] && [ -z "$DD_NO_AGENT_INSTALL" ]; then
+if [ "${EXPECTED_FLAVOR}" == "datadog-agent" ] && [ -z "$DD_NO_AGENT_INSTALL" ]; then
     dd_agent_config_file=/etc/datadog-agent/datadog.yaml
     if [ ! -f $dd_agent_config_file ]; then
         echo "[FAIL] Config file $dd_agent_config_file not found"
