@@ -9,13 +9,13 @@ function get_os_type() {
 }
 
 EXPECTED_FLAVOR=${DD_AGENT_FLAVOR:-datadog-agent}
-SCRIPT_FLAVOR=$(echo ${SCRIPT} | sed "s|.*install_script_\(.*\).sh|\1|")
+SCRIPT_FLAVOR=$(echo "${SCRIPT}" | sed "s|.*install_script_\(.*\).sh|\1|")
 if [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] && echo "${SCRIPT}" | grep "agent6.sh$" >/dev/null; then
     echo "[PASS] Can't install flavor '${DD_AGENT_FLAVOR}' with install_script_agent6.sh"
     exit 0
 fi
 
-cp $SCRIPT /tmp/script.sh
+cp "$SCRIPT" /tmp/script.sh
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "$DD_APM_INSTRUMENTATION_ENABLED" == "docker" ] || [ "$SCRIPT_FLAVOR" == "docker_injection" ]; then
     # fake presence of docker and make sure the script doesn't try to restart it
     mkdir /etc/docker
