@@ -359,6 +359,11 @@ if [ -n "$DD_FIPS_MODE" ]; then
   fips_mode=$DD_FIPS_MODE
 fi
 
+dd_env=
+if [ -n "$DD_ENV" ]; then
+    dd_env=$DD_ENV
+fi
+
 declare -a apm_libraries
 declare host_injection_enabled
 declare docker_injection_enabled
@@ -1121,6 +1126,10 @@ EOF
       printf "\033[34m\n* Adding your HOST TAGS to the $nice_flavor configuration: $config_file\n\033[0m\n"
       formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/','/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
       $sudo_cmd sh -c "sed -i \"s/^# tags:.*/tags: ""$formatted_host_tags""/\" $config_file"
+  fi
+  if [ -n "$dd_env" ]; then
+    printf "\033[34m\n* Adding your DD_ENV to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's/^# env:.*/env: $dd_env/' $config_file"
   fi
 
   if [ "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" == "true" ]; then
