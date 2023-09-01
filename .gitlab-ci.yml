@@ -70,6 +70,19 @@ test_pinned_version:
       - IMAGE: opensuse/leap:15.4
         MINOR_VERSION: 38
 
+# Opensuse13 only supports Datadog Agent version up 6.32, hence these tests should not be launched on pipelines triggered by datadog-agent pipelines
+test_opensuse13:
+  extends: .test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  parallel:
+    matrix:
+      - IMAGE: opensuse/archive:install_script_sles_11
+      - IMAGE: opensuse/archive:install_script_sles_11
+        FLAVOR: datadog-dogstatsd
+      - IMAGE: opensuse/archive:install_script_sles_11
+        FLAVOR: datadog-iot-agent
+
 test:
   extends: .test
   parallel:
@@ -112,11 +125,6 @@ test:
       - IMAGE: opensuse/leap:15.4
         FLAVOR: datadog-iot-agent
       - IMAGE: debian:12.1
-      - IMAGE: opensuse/archive:install_script_sles_11
-      - IMAGE: opensuse/archive:install_script_sles_11
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: opensuse/archive:install_script_sles_11
-        FLAVOR: datadog-iot-agent
 
 
 
