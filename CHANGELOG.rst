@@ -2,8 +2,15 @@
 Release Notes
 =============
 
-Unreleased
+1.21.0
 ================
+
+- Forward DD_ENV to datadog.yml (#77)
+- Use dedicated jobs for opensuse13 that are not launched on pipeline trigged from datadog-agent (#81)
+- [SLES11] migrating tests using third party dependency to internal image (#80)
+- Minor cleanup in script template (#79)
+- CI: Add debian 12 to the test matrix (#78)
+- Add test to install both agents (#76)
 
 1.20.0
 ================
