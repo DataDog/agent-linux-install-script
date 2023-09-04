@@ -38,8 +38,10 @@ testUpdateKey() {
   update_api_key "sudo" "123" $config_file
   yamllint -c "$yaml_config" --no-warnings $config_file
   assertEquals 0 $?
-  sudo grep -wq "^api_key: 123$" $config_file
+  sudo grep -w "^api_key: 123$" $config_file | sudo tee tmp > /dev/null
   assertEquals 0 $?
+  nb_match=$(sudo cat tmp | wc -l)
+  assertEquals 1 "$nb_match"
 }
 testNoKey() {
   sudo cp ${config_file}.example $config_file
@@ -54,8 +56,10 @@ testUpdateSite() {
   update_site "sudo" "d4t4d0g.cat" $config_file
   yamllint -c "$yaml_config" --no-warnings $config_file
   assertEquals 0 $?
-  sudo grep -wq "^site: d4t4d0g.cat" $config_file
+  sudo grep -w "^site: d4t4d0g.cat" $config_file | sudo tee tmp > /dev/null
   assertEquals 0 $?
+  nb_match=$(sudo cat tmp | wc -l)
+  assertEquals 1 "$nb_match"
 }
 testNoSite() {
   sudo cp ${config_file}.example $config_file
@@ -70,8 +74,10 @@ testUrlUpdated() {
   update_url "sudo" "https:\/\/d4t4d0g.cat" $config_file
   yamllint -c "$yaml_config" --no-warnings $config_file
   assertEquals 0 $?
-  sudo grep -wq "^dd_url: https:\/\/d4t4d0g.cat" $config_file
+  sudo grep -w "^dd_url: https:\/\/d4t4d0g.cat" $config_file | sudo tee tmp > /dev/null
   assertEquals 0 $?
+  nb_match=$(sudo cat tmp | wc -l)
+  assertEquals 1 "$nb_match"
 }
 testNoUrl() {
   sudo cp ${config_file}.example $config_file
@@ -96,8 +102,10 @@ testHostnameUpdated() {
   update_hostname "sudo" "gandalf" $config_file
   yamllint -c "$yaml_config" --no-warnings $config_file
   assertEquals 0 $?
-  sudo grep -wq "^hostname: gandalf$" $config_file
+  sudo grep -w "^hostname: gandalf$" $config_file | sudo tee tmp > /dev/null
   assertEquals 0 $?
+  nb_match=$(sudo cat tmp | wc -l)
+  assertEquals 1 "$nb_match"
 }
 testNoHostname() {
   sudo cp ${config_file}.example $config_file
@@ -112,8 +120,10 @@ testHostTagsUpdated() {
   update_hosttags "sudo" "foo:bar,titi:toto" $config_file
   yamllint -c "$yaml_config" --no-warnings $config_file
   assertEquals 0 $?
-  sudo grep -wq "^tags: \['foo:bar', 'titi:toto'\]" $config_file
+  sudo grep -w "^tags: \['foo:bar', 'titi:toto'\]" $config_file | sudo tee tmp > /dev/null
   assertEquals 0 $?
+  nb_match=$(sudo cat tmp | wc -l)
+  assertEquals 1 "$nb_match"
 }
 testNoHostTags() {
   sudo cp ${config_file}.example $config_file
@@ -122,6 +132,23 @@ testNoHostTags() {
   assertEquals 0 $?
 }
 
+### update_env
+testEnvUpdated(){
+  sudo cp ${config_file}.example $config_file
+  update_env "sudo" "interstellar" $config_file
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  sudo grep -w "^env: interstellar" $config_file | sudo tee tmp > /dev/null
+  assertEquals 0 $?
+  nb_match=$(sudo cat tmp | wc -l)
+  assertEquals 1 "$nb_match"
+}
+testNoEnv(){
+  sudo cp ${config_file}.example $config_file
+  update_env "sudo" "" $config_file
+  sudo grep -wq "^# env: <environment name>$" $config_file
+  assertEquals 0 $?
+}
 ### update_runtime_security
 testRuntimeSecurityUpdated() {
   sudo cp ${security_agent_config_file}.example $security_agent_config_file
@@ -152,8 +179,8 @@ testComplianceConfigurationUpdated() {
   update_compliance_configuration "sudo" "true" $security_agent_config_file
   yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
   assertEquals 0 $?
-  #sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
-  #assertEquals 0 $?
+  sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 0 $?
 }
 testComplianceConfigurationDisabled() {
   sudo cp ${security_agent_config_file}.example $security_agent_config_file
