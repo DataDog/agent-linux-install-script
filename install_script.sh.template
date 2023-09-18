@@ -172,6 +172,8 @@ function on_error() {
     printf "\033[31m$ERROR_MESSAGE
 It looks like you hit an issue when trying to install the $nice_flavor.
 
+    $ERR_SUMMARY
+
 Troubleshooting and basic usage information for the $nice_flavor are available at:
 
     https://docs.datadoghq.com/agent/basic_agent_usage/\n\033[0m\n"
