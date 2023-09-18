@@ -41,6 +41,8 @@ UNSUPPORTED_PLATFORM_CODE=5
 INVALID_PARAMETERS_CODE=6
 UNABLE_TO_INSTALL_DEPENDENCY_CODE=7
 
+ERROR_SUMMARY_REGEX="Error Summary\n.*\n.*\n.*"
+
 # Set up a named pipe for logging
 npipe=/tmp/$$.tmp
 mknod $npipe p
@@ -770,7 +772,8 @@ if [ "$OS" == "RedHat" ]; then
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}"
+    $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}" 2>&1 | tee -a "/tmp/ddog_install_error_msg"
+    ERR_SUMMARY=$(grep -oze "$ERROR_SUMMARY_REGEX" /tmp/ddog_install_error_msg)
 
 elif [ "$OS" == "Debian" ]; then
     apt_trusted_d_keyring="/etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg"
@@ -887,7 +890,8 @@ If the cause is unclear, please contact Datadog support.
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd apt-get install -y --force-yes "${packages[@]}"
+    $sudo_cmd apt-get install -y --force-yes "${packages[@]}" 2>&1 | tee -a "/tmp/ddog_install_error_msg"
+    ERR_SUMMARY=$(grep -oze "$ERROR_SUMMARY_REGEX" /tmp/ddog_install_error_msg)
 
     ERROR_MESSAGE=""
 elif [ "$OS" == "SUSE" ]; then
@@ -1034,10 +1038,12 @@ elif [ "$OS" == "SUSE" ]; then
   echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
   if [ -z "$sudo_cmd" ]; then
-    ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" ||:
+    ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" 2>&1 | tee -a "/tmp/ddog_install_error_msg" ||:
   else
-    $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" ||:
+    $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" 2>&1 | tee -a "/tmp/ddog_install_error_msg" ||:
   fi
+
+   ERR_SUMMARY=$(grep -oze "$ERROR_SUMMARY_REGEX" /tmp/ddog_install_error_msg)
 
   # If zypper fails to refresh a random repo, it installs the package, but then fails
   # anyway. Therefore we let it do its thing and then see if curl was installed or not.
