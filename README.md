@@ -18,7 +18,7 @@ This repository contains 2 basic files, `install_script.sh.template` and `Makefi
 
 The generated files must never be committed to this repository. All changes must be done by modifications of the template file and Makefile.
 
-## Running tests
+## Running gags
 
 Tests can be run using Docker; for example to test installation of latest Agent 6 release with the `install_script_agent6.sh` file on Ubuntu 22.04 run:
 
