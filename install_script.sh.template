@@ -672,7 +672,8 @@ if [[ "$agent_flavor" == "datadog-dogstatsd" ]]; then
 fi
 
 if [ -n "$fips_mode" ]; then
-    if [[ $(uname -m) != "x86_64" ]]; then
+    UNAME_M=$(uname -m)
+    if [[ ${UNAME_M} != "x86_64" ]] && [[ ${UNAME_M} != "aarch64" ]]; then
         ERROR_MESSAGE="FIPS mode isn't available for your architecture"
         ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
