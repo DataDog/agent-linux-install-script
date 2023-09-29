@@ -41,8 +41,6 @@ UNSUPPORTED_PLATFORM_CODE=5
 INVALID_PARAMETERS_CODE=6
 UNABLE_TO_INSTALL_DEPENDENCY_CODE=7
 
-ERROR_SUMMARY_REGEX="Error Summary\n.*\n.*\n.*"
-
 # Set up a named pipe for logging
 npipe=/tmp/$$.tmp
 mknod $npipe p
@@ -171,7 +169,6 @@ function on_error() {
 
     printf "\033[31m$ERROR_MESSAGE
 It looks like you hit an issue when trying to install the $nice_flavor.
-
     $ERR_SUMMARY
 
 Troubleshooting and basic usage information for the $nice_flavor are available at:
@@ -774,8 +771,9 @@ if [ "$OS" == "RedHat" ]; then
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}" 2>"/tmp/ddog_install_error_msg";cat "/tmp/ddog_install_error_msg"
-    ERR_SUMMARY=$(grep -oze "$ERROR_SUMMARY_REGEX" /tmp/ddog_install_error_msg)
+    $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}" 2>"/tmp/ddog_install_error_msg"
+    cat "/tmp/ddog_install_error_msg"
+    ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg | echo "")
 
 elif [ "$OS" == "Debian" ]; then
     apt_trusted_d_keyring="/etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg"
@@ -892,8 +890,9 @@ If the cause is unclear, please contact Datadog support.
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd apt-get install -y --force-yes "${packages[@]}" 2>"/tmp/ddog_install_error_msg";cat "/tmp/ddog_install_error_msg"
-    ERR_SUMMARY=$(grep -oze "$ERROR_SUMMARY_REGEX" /tmp/ddog_install_error_msg)
+    $sudo_cmd apt-get install -y --force-yes "${packages[@]}" 2>"/tmp/ddog_install_error_msg"
+    cat "/tmp/ddog_install_error_msg"
+    ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg | echo "")
 
     ERROR_MESSAGE=""
 elif [ "$OS" == "SUSE" ]; then
@@ -1047,7 +1046,7 @@ elif [ "$OS" == "SUSE" ]; then
     cat "/tmp/ddog_install_error_msg"
   fi
 
-   ERR_SUMMARY=$(grep -oze "$ERROR_SUMMARY_REGEX" /tmp/ddog_install_error_msg)
+   ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg | echo "")
 
   # If zypper fails to refresh a random repo, it installs the package, but then fails
   # anyway. Therefore we let it do its thing and then see if curl was installed or not.
