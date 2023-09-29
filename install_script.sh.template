@@ -893,7 +893,7 @@ If the cause is unclear, please contact Datadog support.
 
     $sudo_cmd apt-get install -y --force-yes "${packages[@]}" 2>"/tmp/ddog_install_error_msg"
     cat "/tmp/ddog_install_error_msg" || true
-    ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
+    ERR_SUMMARY=$(grep "No space left on device" -A1 -B1 /tmp/ddog_install_error_msg || true)
 
     ERROR_MESSAGE=""
 elif [ "$OS" == "SUSE" ]; then
@@ -1047,7 +1047,7 @@ elif [ "$OS" == "SUSE" ]; then
     cat "/tmp/ddog_install_error_msg" || true
   fi
 
-   ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
+   ERR_SUMMARY=$(grep "Write error" -A1 -B1 /tmp/ddog_install_error_msg || true)
 
   # If zypper fails to refresh a random repo, it installs the package, but then fails
   # anyway. Therefore we let it do its thing and then see if curl was installed or not.
