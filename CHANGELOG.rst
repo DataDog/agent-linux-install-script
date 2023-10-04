@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.22.0
 ================
+
+- Allow installation of arm64 FIPS Proxy packages (#83)
+- Show error summary when installation fails because of insufficient available disk space (#92)
 
 1.21.0
 ================
