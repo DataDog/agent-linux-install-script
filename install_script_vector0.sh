@@ -1,7 +1,8 @@
 #!/bin/bash
-
-# setup.sh
-#
+# (C) Datadog, Inc. 2023-present
+# All rights reserved
+# Licensed under Apache-2.0 License (see LICENSE)
+# Vector installation script:
 # A script intended to setup DEB and RPM package repositories for Vector. This
 # also provides an opt-in option to remove the old cloudsmith based repositories.
 
