@@ -49,6 +49,9 @@ while [[ $# -gt 0 ]]; do
     --opw-install-classic-agent)
       DD_OPW_INSTALL_CLASSIC_AGENT="$2"
       ;;
+    --vector)
+      VECTOR="$2"
+      ;;
     -*|--*)
       echo "Unknown option $1"
       exit 1
@@ -62,6 +65,8 @@ done
 
 if [ "$DD_OPW" == "true" ]; then
     ENTRYPOINT_PATH="/tmp/vol/test/op-worker-test.sh"
+elif [ "$VECTOR" == "true" ]; then
+    ENTRYPOINT_PATH="/tmp/vol/test/vector-test.sh"
 else
     ENTRYPOINT_PATH="/tmp/vol/test/localtest.sh"
 fi
