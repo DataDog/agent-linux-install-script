@@ -11,7 +11,7 @@ if command -v dpkg > /dev/null; then
   apt-cache show vector
   RESULT=$?
 else
-  dnf list -y vector
+  yum list -y vector
   RESULT=$?
 fi
 
