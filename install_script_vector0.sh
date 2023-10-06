@@ -125,7 +125,7 @@ if [ "$OS" == "RedHat" ]; then
     echo -e "\033[34m\n* Installing YUM sources for Vector\n\033[0m"
 
     if "$cloudsmith_migrate"; then
-        rm "/etc/yum.repos.d/timber-vector.repo"
+        rm -f "/etc/yum.repos.d/timber-vector.repo"
     fi
 
     # Because of https://bugzilla.redhat.com/show_bug.cgi?id=1792506, we disable
@@ -149,7 +149,7 @@ if [ "$OS" == "RedHat" ]; then
     $sudo_cmd yum -y clean metadata
 elif [ "$OS" == "Debian" ]; then
     if "$cloudsmith_migrate"; then
-        rm "/etc/apt/sources.list.d/timber-vector.list"
+        rm -f "/etc/apt/sources.list.d/timber-vector.list"
     fi
 
     apt_trusted_d_keyring="/etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg"
@@ -165,7 +165,8 @@ elif [ "$OS" == "Debian" ]; then
         # see https://unix.stackexchange.com/q/146283 for reference - we use DEBIAN_FRONTEND=noninteractive to fix that
         apt_exit_code=0
 
-        $sudo_cmd sh -c "DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>$VEC_APT_INSTALL_ERROR_MSG || apt_exit_code=$?"
+        export DEBIAN_FRONTEND=noninteractive
+        $sudo_cmd apt-get install -y apt-transport-https curl gnupg 2>$VEC_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
 
         if grep "Could not get lock" $VEC_APT_INSTALL_ERROR_MSG; then
             RETRY_TIME=$((i*5))
@@ -180,7 +181,7 @@ elif [ "$OS" == "Debian" ]; then
     done
 
     printf "\033[34m\n* Installing APT package sources for Vector\n\033[0m\n"
-    $sudo_cmd sh -c "echo 'deb [signed-by=${apt_usr_share_keyring}] https://${apt_url}/ ${apt_repo_version}' > /etc/apt/sources.list.d/vector.list"
+    echo "deb [signed-by=${apt_usr_share_keyring}] https://${apt_url}/ ${apt_repo_version}" | $sudo_cmd tee "/etc/apt/sources.list.d/vector.list"
     $sudo_cmd sh -c "chmod a+r /etc/apt/sources.list.d/vector.list"
 
     if [ ! -f $apt_usr_share_keyring ]; then
