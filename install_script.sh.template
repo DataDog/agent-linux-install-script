@@ -1114,7 +1114,7 @@ function update_url() {
   local config_file="$3"
   if [ -n "$url" ]; then
     printf "\033[34m\n* Setting DD_URL in the $nice_flavor configuration: $config_file\n\033[0m\n"
-    $sudo_cmd sh -c "sed -i 's/^# dd_url:.*$/dd_url: $url/' $config_file"
+    $sudo_cmd sh -c "sed -i 's|^# dd_url:.*$|dd_url: $url|' $config_file"
   fi
 }
 function update_fips() {
@@ -1178,7 +1178,7 @@ elif [ ! "$no_agent" ]; then
     update_api_key "$sudo_cmd" "$apikey" "$config_file"
     if [ -z "$fips_mode" ]; then
       update_site "$sudo_cmd" "$site" "$config_file"
-      update_url "$sudo_cmd" "$DD_REPO_URL" "$config_file"
+      update_url "$sudo_cmd" "$DD_URL" "$config_file"
     else
       update_fips "$sudo_cmd" "$config_file"
     fi
