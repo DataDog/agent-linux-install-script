@@ -16,6 +16,9 @@ type installFipsScriptTestSuite struct {
 }
 
 func TestInstallFipsScriptSuite(t *testing.T) {
+	if flavor != flavorDatadogAgent {
+		t.Skip("install fips supported only on datadog-agent flavor")
+	}
 	t.Run(fmt.Sprintf("install script with fips on flavor %s on platform %s", flavor, targetPlatform), func(t *testing.T) {
 		testSuite := &installFipsScriptTestSuite{}
 		e2e.Run(t,

@@ -39,6 +39,7 @@ const (
 	flavorDatadogAgent     agentFlavor = "datadog-agent"
 	flavorDatadogIOTAgent  agentFlavor = "datadog-iot-agent"
 	flavorDatadogDogstatsd agentFlavor = "datadog-dogstatsd"
+	defaultAgentFlavor                 = flavorDatadogAgent
 )
 
 type osUnderTest struct {
@@ -63,7 +64,7 @@ var (
 
 	supportedOSMap = map[string]osUnderTest{
 		"Debian_11":         {id: "Debian_11", name: "Debian 11", osType: ec2os.DebianOS},
-		"Ubuntu_22.04":      {id: "Ubuntu_22_04", name: "Ubuntu 22.04", osType: ec2os.UbuntuOS},
+		"Ubuntu_22_04":      {id: "Ubuntu_22_04", name: "Ubuntu 22.04", osType: ec2os.UbuntuOS},
 		"RedHat_CentOS_7":   {id: "RedHat_CentOS_7", name: "RedHat / CentOS 7", osType: ec2os.CentOS},
 		"RedHat_8":          {id: "RedHat_8", name: "RedHat 8", osType: ec2os.RedHatOS, ami: "ami-06640050dc3f556bb"},
 		"Amazon_Linux_2023": {id: "Amazon_Linux_2023", name: "Amazon Linux 2023", osType: ec2os.AmazonLinuxOS, ami: "ami-0889a44b331db0194"},
@@ -165,8 +166,7 @@ func (s *linuxPlatformTestSuite) purge() {
 	vm := s.Env().VM
 	// Remove installed binary
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
-		t.Log("Purge supported only with apt")
-		return
+		t.Skip("Purge supported only with apt")
 	}
 	t.Log("Purge")
 	vm.Execute(fmt.Sprintf("sudo apt remove --purge -y %s", flavor))
@@ -213,8 +213,7 @@ func (s *linuxPlatformTestSuite) assertPurge() {
 	vm := s.Env().VM
 
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
-		t.Log("Purge supported only with apt")
-		return
+		t.Skip("Purge supported only with apt")
 	}
 
 	_, err := vm.ExecuteWithError("id datadog-agent")
