@@ -100,7 +100,6 @@ func init() {
 }
 
 func (s *linuxPlatformTestSuite) SetupSuite() {
-	require.NotEmpty(s.T(), apiKey, "empty api key")
 	targetOS := supportedOSMap[targetPlatform]
 	if len(targetOS.ami) == 0 {
 		// use default AMI defined in test-infra-definitions
@@ -164,7 +163,6 @@ func purge(t *testing.T, vm *client.VM) {
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
 		t.Skip("Purge supported only with apt")
 	}
-	t.Log("Purge")
 	vm.Execute(fmt.Sprintf("sudo apt remove --purge -y %s", flavor))
 }
 
