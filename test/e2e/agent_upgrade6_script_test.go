@@ -26,14 +26,14 @@ func TestUpgrade6ScriptSuite(t *testing.T) {
 func (s *upgrade6ScriptTestSuite) TestUpgrade6Script() {
 	// ACT
 	s.T().Log("Install latest Agent 6")
-	cmd := fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=6 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(curl -L %s/%s)\"",
+	cmd := fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=6 DD_API_KEY=%s bash -c \"$(curl -L %s/%s)\"",
 		flavor,
 		apiKey,
 		scriptURL,
 		scriptAgent6)
 	s.Env().VM.Execute(cmd)
-	s.T().Log("Install latest Agent 7")
-	cmd = fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(curl -L %s/%s)\"",
+	s.T().Log("Install latest Agent 7 RC")
+	cmd = fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/%s)\"",
 		flavor,
 		apiKey,
 		scriptURL,

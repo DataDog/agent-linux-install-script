@@ -30,8 +30,8 @@ func (s *installFipsScriptTestSuite) TestInstallFipsScript() {
 	// ACT
 	t := s.T()
 	vm := s.Env().VM
-	t.Log("Install latest Agent 7")
-	cmd := fmt.Sprintf("DD_FIPS_MODE=true DD_URL=\"fake.url.com\" DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"darth.vador.com\" bash -c \"$(curl -L %s/%s)\"",
+	t.Log("Install latest Agent 7 RC")
+	cmd := fmt.Sprintf("DD_FIPS_MODE=true DD_URL=\"fake.url.com\" DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"darth.vador.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/%s)\"",
 		flavor,
 		apiKey,
 		scriptURL,
@@ -50,13 +50,10 @@ func (s *installFipsScriptTestSuite) TestInstallFipsScript() {
 	assert.Contains(t, config, "fips")
 	fipsConfig, ok := config["fips"].(map[string]any)
 	assert.True(t, ok)
-	assert.Equal(t, true, fipsConfig["enabled"].(bool))
-	assert.Equal(t, 9803, fipsConfig["port_range_start"].(int))
-	assert.Equal(t, false, fipsConfig["https"].(bool))
-	assert.Contains(t, config, "api_key")
-	apiConfig, ok := config["api_key"].(string)
-	assert.True(t, ok)
-	assert.Equal(t, apiKey, apiConfig, "not matching api key in config")
+	assert.Equal(t, true, fipsConfig["enabled"])
+	assert.Equal(t, 9803, fipsConfig["port_range_start"])
+	assert.Equal(t, false, fipsConfig["https"])
+	assert.Equal(t, apiKey, config["api_key"], "not matching api key in config")
 
 	assert.NotContains(t, config, "site", "site modified in config")
 	assert.NotContains(t, config, "dd_url", "dd_url modified in config")

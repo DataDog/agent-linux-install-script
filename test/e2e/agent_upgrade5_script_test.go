@@ -30,8 +30,8 @@ func (s *upgrade5ScriptTestSuite) TestUpgrade5Script() {
 	// "Install latest Agent 5"
 	cmd := fmt.Sprintf("DD_API_KEY=%s bash -c \"$(curl -L https://raw.githubusercontent.com/DataDog/dd-agent/master/packaging/datadog-agent/source/install_agent.sh)\"", apiKey)
 	s.Env().VM.Execute(cmd)
-	s.T().Log("Install latest Agent 7")
-	cmd = fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(curl -L %s/%s)\"",
+	s.T().Log("Install latest Agent 7 RC")
+	cmd = fmt.Sprintf("DD_REPO_URL=datad0g.com DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_UPGRADE=true DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/%s)\"",
 		flavor,
 		apiKey,
 		scriptURL,
