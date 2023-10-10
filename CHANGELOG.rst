@@ -5,6 +5,11 @@ Release Notes
 Unreleased
 ================
 
+1.23.0
+================
+
+- feat: Add install script for Vector (#95)
+
 1.22.0
 ================
 
