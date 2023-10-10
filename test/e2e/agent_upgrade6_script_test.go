@@ -41,4 +41,12 @@ func (s *upgrade6ScriptTestSuite) TestUpgrade6Script() {
 	s.Env().VM.Execute(cmd)
 	// ASSERT
 	s.assertInstallScript()
+	// ACT uninstall
+	s.uninstall()
+	// ASSERT
+	s.assertUninstall()
+	// ACT purge - only on APT
+	s.purge()
+	// ASSERT
+	s.assertPurge()
 }
