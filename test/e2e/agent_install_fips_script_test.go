@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
+	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/client"
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,7 +42,7 @@ func (s *installFipsScriptTestSuite) TestInstallFipsScript() {
 		scriptAgent7)
 	output := vm.Execute(cmd)
 	// ASSERT
-	s.assertInstallScript()
+	assertInstallScript(t, vm)
 	assert.Contains(t, output, "Installing package(s): datadog-agent datadog-signing-keys datadog-fips-proxy", "Missing installer log line for installing package(s)")
 	assert.Contains(t, output, "* Adding your API key to the Datadog Agent configuration: /etc/datadog-agent/datadog.yaml", "Missing installer log line for API key")
 	assert.Contains(t, output, "* Setting Datadog Agent configuration to use FIPS proxy: /etc/datadog-agent/datadog.yaml", "Missing installer log line for FIPS proxy")
@@ -62,18 +63,16 @@ func (s *installFipsScriptTestSuite) TestInstallFipsScript() {
 	assert.NotContains(t, config, "dd_url", "dd_url modified in config")
 
 	// ACT uninstall
-	s.uninstall()
+	uninstall(t, vm)
 	// ASSERT
-	s.assertUninstall()
+	assertUninstall(t, vm)
 	// ACT purge - only on APT
-	s.purgeFips()
+	purgeFips(t, vm)
 	// ASSERT
-	s.assertPurge()
+	assertPurge(t, vm)
 }
 
-func (s *installFipsScriptTestSuite) purgeFips() {
-	t := s.T()
-	vm := s.Env().VM
+func purgeFips(t *testing.T, vm *client.VM) {
 	// Remove installed binary
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
 		t.Log("Purge supported only with apt")

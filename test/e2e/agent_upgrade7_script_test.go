@@ -24,29 +24,25 @@ func TestUpgrade7ScriptSuite(t *testing.T) {
 }
 
 func (s *upgrade7ScriptTestSuite) TestUpgrade7Script() {
-	// ACT
-	s.T().Log("Install latest Agent 7")
+	t := s.T()
+	vm := s.Env().VM
+	t.Log("Install latest Agent 7")
 	cmd := fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s bash -c \"$(curl -L %s/%s)\"",
 		flavor,
 		apiKey,
 		scriptURL,
 		scriptAgent7)
-	s.Env().VM.Execute(cmd)
-	s.T().Log("Install latest Agent RC")
+	vm.Execute(cmd)
+	t.Log("Install latest Agent RC")
 	cmd = fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/%s)\"",
 		flavor,
 		apiKey,
 		scriptAgent6,
 		scriptURL)
-	s.Env().VM.Execute(cmd)
-	// ASSERT
-	s.assertInstallScript()
-	// ACT uninstall
-	s.uninstall()
-	// ASSERT
-	s.assertUninstall()
-	// ACT purge - only on APT
-	s.purge()
-	// ASSERT
-	s.assertPurge()
+	vm.Execute(cmd)
+	assertInstallScript(t, vm)
+	uninstall(t, vm)
+	assertUninstall(t, vm)
+	purge(t, vm)
+	assertPurge(t, vm)
 }

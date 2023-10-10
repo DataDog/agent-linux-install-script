@@ -25,26 +25,28 @@ func TestUpgrade5ScriptSuite(t *testing.T) {
 }
 
 func (s *upgrade5ScriptTestSuite) TestUpgrade5Script() {
-	require.NotEqual(s.T(), "datadog-agent", flavor, fmt.Sprintf("%s not supported on Agent 5", flavor))
-	s.T().Log("Install latest Agent 5")
+	t := s.T()
+	vm := s.Env().VM
+	require.NotEqual(t, "datadog-agent", flavor, fmt.Sprintf("%s not supported on Agent 5", flavor))
+	t.Log("Install latest Agent 5")
 	// "Install latest Agent 5"
 	cmd := fmt.Sprintf("DD_API_KEY=%s bash -c \"$(curl -L https://raw.githubusercontent.com/DataDog/dd-agent/master/packaging/datadog-agent/source/install_agent.sh)\"", apiKey)
-	s.Env().VM.Execute(cmd)
-	s.T().Log("Install latest Agent 7 RC")
+	vm.Execute(cmd)
+	t.Log("Install latest Agent 7 RC")
 	cmd = fmt.Sprintf("DD_REPO_URL=datad0g.com DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_UPGRADE=true DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/%s)\"",
 		flavor,
 		apiKey,
 		scriptURL,
 		scriptAgent7)
-	s.Env().VM.Execute(cmd)
+	vm.Execute(cmd)
 	// ASSERT
-	s.assertInstallScript()
+	assertInstallScript(t, vm)
 	// ACT uninstall
-	s.uninstall()
+	uninstall(t, vm)
 	// ASSERT
-	s.assertUninstall()
+	assertUninstall(t, vm)
 	// ACT purge - only on APT
-	s.purge()
+	purge(t, vm)
 	// ASSERT
-	s.assertPurge()
+	assertPurge(t, vm)
 }

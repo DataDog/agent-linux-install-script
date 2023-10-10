@@ -24,7 +24,8 @@ func TestInstallScriptSuite(t *testing.T) {
 }
 
 func (s *installScriptTestSuite) TestInstallScript() {
-	// ACT
+	t := s.T()
+	vm := s.Env().VM
 	s.T().Log("Install latest Agent 7 RC")
 	cmd := fmt.Sprintf("DD_REPO_URL=datad0g.com DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/%s)\"",
 		flavor,
@@ -32,14 +33,9 @@ func (s *installScriptTestSuite) TestInstallScript() {
 		scriptURL,
 		scriptAgent7)
 	s.Env().VM.Execute(cmd)
-	// ASSERT
-	s.assertInstallScript()
-	// ACT uninstall
-	s.uninstall()
-	// ASSERT
-	s.assertUninstall()
-	// ACT purge - only on APT
-	s.purge()
-	// ASSERT
-	s.assertPurge()
+	assertInstallScript(t, vm)
+	uninstall(t, vm)
+	assertUninstall(t, vm)
+	purge(t, vm)
+	assertPurge(t, vm)
 }

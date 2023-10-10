@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"testing"
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
+	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/client"
 
 	commonos "github.com/DataDog/test-infra-definitions/components/os"
 	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2os"
@@ -109,9 +111,7 @@ func (s *linuxPlatformTestSuite) SetupSuite() {
 	s.Suite.SetupSuite()
 }
 
-func (s *linuxPlatformTestSuite) assertInstallScript() {
-	t := s.T()
-	vm := s.Env().VM
+func assertInstallScript(t *testing.T, vm *client.VM) {
 	// check presence of the dd-agent user
 	_, err := vm.ExecuteWithError("id dd-agent")
 	assert.NoError(t, err, "user datadog-agent does not exist after install")
@@ -143,9 +143,7 @@ func (s *linuxPlatformTestSuite) assertInstallScript() {
 	}
 }
 
-func (s *linuxPlatformTestSuite) uninstall() {
-	t := s.T()
-	vm := s.Env().VM
+func uninstall(t *testing.T, vm *client.VM) {
 	// Remove installed binary
 	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
 		t.Log("Uninstall with apt")
@@ -161,9 +159,7 @@ func (s *linuxPlatformTestSuite) uninstall() {
 	}
 }
 
-func (s *linuxPlatformTestSuite) purge() {
-	t := s.T()
-	vm := s.Env().VM
+func purge(t *testing.T, vm *client.VM) {
 	// Remove installed binary
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
 		t.Skip("Purge supported only with apt")
@@ -172,9 +168,7 @@ func (s *linuxPlatformTestSuite) purge() {
 	vm.Execute(fmt.Sprintf("sudo apt remove --purge -y %s", flavor))
 }
 
-func (s *linuxPlatformTestSuite) assertUninstall() {
-	t := s.T()
-	vm := s.Env().VM
+func assertUninstall(t *testing.T, vm *client.VM) {
 	var packageManager string
 	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
 		packageManager = "apt"
@@ -208,10 +202,7 @@ func (s *linuxPlatformTestSuite) assertUninstall() {
 	}
 }
 
-func (s *linuxPlatformTestSuite) assertPurge() {
-	t := s.T()
-	vm := s.Env().VM
-
+func assertPurge(t *testing.T, vm *client.VM) {
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
 		t.Skip("Purge supported only with apt")
 	}
