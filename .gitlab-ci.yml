@@ -226,7 +226,7 @@ e2e-ubuntu:
     # Use S3 backend
     - pulumi login "s3://dd-pulumi-state?region=us-east-1&awssdk=v2&profile=$AWS_PROFILE"
   script:
-    - go test -timeout 0s ./test/new-e2e/tests/e2e -v --flavor datadog-agent --targetPlatform Ubuntu_22_04
+    - cd test/e2e && go test -timeout 0s . -v --flavor datadog-agent --targetPlatform Ubuntu_22_04
   variables:
     E2E_PUBLIC_KEY_PATH: /tmp/agent-qa-ssh-key.pub
     E2E_PRIVATE_KEY_PATH: /tmp/agent-qa-ssh-key
