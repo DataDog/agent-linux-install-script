@@ -228,6 +228,8 @@ e2e-ubuntu:
   script:
     - cd test/e2e && go test -timeout 0s . -v --flavor datadog-agent --targetPlatform Ubuntu_22_04
   variables:
+    KUBERNETES_MEMORY_REQUEST: 12Gi
+    KUBERNETES_MEMORY_LIMIT: 16Gi
     E2E_PUBLIC_KEY_PATH: /tmp/agent-qa-ssh-key.pub
     E2E_PRIVATE_KEY_PATH: /tmp/agent-qa-ssh-key
     E2E_KEY_PAIR_NAME: ci.agent-linux-install-script
