@@ -3,7 +3,6 @@ package e2e
 import (
 	"flag"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -94,7 +93,7 @@ type linuxPlatformTestSuite struct {
 func init() {
 	flag.Var(&flavor, "flavor", fmt.Sprintf("defines agent install flavor, possible values are %v", flavors))
 	flag.BoolVar(&skipFlush, "skipFlush", false, "To prevent eventual cleanup, to test install_script won't override existing configuration")
-	flag.StringVar(&apiKey, "apiKey", os.Getenv("DD_API_KEY"), "Datadog API key")
+	flag.StringVar(&apiKey, "apiKey", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "Datadog API key")
 	flag.StringVar(&targetPlatform, "targetPlatform", "Debian_11", fmt.Sprintf("defines the target platform, possible values are %v", supportedOSMap))
 	flag.StringVar(&scriptURL, "scriptURL", defaultScriptURL, fmt.Sprintf("Defines the script URL, default %s", defaultScriptURL))
 }
