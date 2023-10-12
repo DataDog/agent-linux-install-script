@@ -1,0 +1,9 @@
+{
+  "go.useLanguageServer": true,
+  "go.testFlags": ["-v"],
+  "go.testTimeout": "0s",
+  "go.alternateTools": {
+    "go": "/usr/local/bin/awsgo",
+    "dlv": "/usr/local/bin/awsdlv"
+  }
+}
