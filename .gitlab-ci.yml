@@ -7,7 +7,7 @@ stages:
 variables:
   DATADOG_AGENT_BUILDERS: v9930706-ef9d493
   DATADOG_AGENT_BUILDIMAGES: v13321514-644fed4
-  S3_CP_CMD: aws s3 cp --only-show-errors --region us-east-1 --sse AES256  
+  S3_CP_CMD: aws s3 cp --only-show-errors --region us-east-1 --sse AES256
   TEST_INFRA_DEFINITIONS_BUILDIMAGES: cb9e86993fd5
   KUBERNETES_SERVICE_ACCOUNT_OVERWRITE: agent-linux-install-script
 
@@ -130,8 +130,6 @@ test:
         FLAVOR: datadog-iot-agent
       - IMAGE: debian:12.1
 
-
-
 test-apm-injection:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: ["runner:docker"]
@@ -143,10 +141,10 @@ test-apm-injection:
     # NO_AGENT only makes sense with docker, or specifically installing apm libraries
     # The matrix below tests the possible combinations with a subset of OSes
     matrix:
-      - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7" ]
+      - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7"]
         INJECTION: "host"
         SCRIPT: "install_script_agent7.sh"
-      - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7" ]
+      - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7"]
         INJECTION: "docker"
         NO_AGENT: "true"
         APM_LIBRARIES: "all"
@@ -163,7 +161,7 @@ test-apm-injection:
 test-observability-pipelines-worker:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
   rules:
-  - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
   tags: ["runner:docker"]
   stage: test
   dependencies: ["generate-scripts"]
@@ -196,7 +194,7 @@ test-observability-pipelines-worker:
 test-vector:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
   rules:
-  - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
   tags: ["runner:docker"]
   stage: test
   dependencies: ["generate-scripts"]
