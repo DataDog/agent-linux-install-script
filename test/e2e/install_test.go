@@ -104,7 +104,6 @@ func (s *linuxInstallerTestSuite) TestInstallerScript() {
 
 	t.Run("Check user, config file and service", func(tt *testing.T) {
 		// Check presence of the dd-agent user
-		// check presence of the dd-agent user
 		_, err := vm.ExecuteWithError("id dd-agent")
 		assert.NoError(tt, err, "user datadog-agent does not exist after install")
 		// Check presence of the config file - the file is added by the install script, so this should always be okay
