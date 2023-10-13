@@ -6,3 +6,5 @@ install_script.sh
 install_script_docker_injection.sh
 install_script_agent6.sh
 install_script_agent7.sh
+.vscode/launch.json
+.vscode/settings.json

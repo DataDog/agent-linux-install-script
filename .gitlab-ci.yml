@@ -1,12 +1,15 @@
 stages:
   - generate
   - test
+  - e2e
   - deploy
 
 variables:
   DATADOG_AGENT_BUILDERS: v9930706-ef9d493
   DATADOG_AGENT_BUILDIMAGES: v13321514-644fed4
   S3_CP_CMD: aws s3 cp --only-show-errors --region us-east-1 --sse AES256
+  TEST_INFRA_DEFINITIONS_BUILDIMAGES: cb9e86993fd5
+  KUBERNETES_SERVICE_ACCOUNT_OVERWRITE: agent-linux-install-script
 
 generate-scripts:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
@@ -127,8 +130,6 @@ test:
         FLAVOR: datadog-iot-agent
       - IMAGE: debian:12.1
 
-
-
 test-apm-injection:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: ["runner:docker"]
@@ -140,10 +141,10 @@ test-apm-injection:
     # NO_AGENT only makes sense with docker, or specifically installing apm libraries
     # The matrix below tests the possible combinations with a subset of OSes
     matrix:
-      - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7" ]
+      - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7"]
         INJECTION: "host"
         SCRIPT: "install_script_agent7.sh"
-      - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7" ]
+      - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7"]
         INJECTION: "docker"
         NO_AGENT: "true"
         APM_LIBRARIES: "all"
@@ -160,7 +161,7 @@ test-apm-injection:
 test-observability-pipelines-worker:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
   rules:
-  - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
   tags: ["runner:docker"]
   stage: test
   dependencies: ["generate-scripts"]
@@ -193,7 +194,7 @@ test-observability-pipelines-worker:
 test-vector:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
   rules:
-  - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
   tags: ["runner:docker"]
   stage: test
   dependencies: ["generate-scripts"]
@@ -208,6 +209,35 @@ test-vector:
       - IMAGE: ubuntu:22.04
   script:
     - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_vector0.sh --vector "true"
+
+e2e_ubuntu_install:
+  stage: e2e
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/test-infra-definitions/runner:$TEST_INFRA_DEFINITIONS_BUILDIMAGES
+  tags: ["arch:amd64"]
+  before_script:
+    # Setup AWS Credentials
+    - mkdir -p ~/.aws
+    - aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.agent-qa-profile --with-decryption --query "Parameter.Value" --out text >> ~/.aws/config
+    - export AWS_PROFILE=agent-qa-ci
+    - aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.ssh_public_key --with-decryption --query "Parameter.Value" --out text > $E2E_PUBLIC_KEY_PATH
+    - aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.ssh_private_key --with-decryption --query "Parameter.Value" --out text > $E2E_PRIVATE_KEY_PATH
+    - export DD_API_KEY=$(aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.datadog_api_key --with-decryption --query "Parameter.Value" --out text)
+    # Use S3 backend
+    - pulumi login "s3://dd-pulumi-state?region=us-east-1&awssdk=v2&profile=$AWS_PROFILE"
+  script:
+    - cd test/e2e && go test -timeout 0s . -v --flavor datadog-agent --mode install
+  variables:
+    KUBERNETES_MEMORY_REQUEST: 12Gi
+    KUBERNETES_MEMORY_LIMIT: 16Gi
+    E2E_PUBLIC_KEY_PATH: /tmp/agent-qa-ssh-key.pub
+    E2E_PRIVATE_KEY_PATH: /tmp/agent-qa-ssh-key
+    E2E_KEY_PAIR_NAME: ci.agent-linux-install-script
+    TEAM: agent-platform
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: always
+    - when: manual
+      allow_failure: true
 
 deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS

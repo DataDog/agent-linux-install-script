@@ -1,0 +1,15 @@
+{
+  "go.useLanguageServer": true,
+  "go.testFlags": ["-v"],
+  "go.testTimeout": "0s",
+  "go.alternateTools": {
+    "go": "/usr/local/bin/awsgo",
+    "dlv": "/usr/local/bin/awsdlv"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.autoIndent": "advanced"
+  },
+  "yaml.format.enable": true,
+  "editor.formatOnSave": true
+}
