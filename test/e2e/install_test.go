@@ -6,9 +6,7 @@
 package e2e
 
 import (
-	"flag"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -18,31 +16,6 @@ import (
 	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2params"
 	"github.com/stretchr/testify/assert"
 )
-
-const (
-	defaultScriptURL = "https://s3.amazonaws.com/dd-agent/scripts"
-)
-
-var (
-	flavor    string // datadog-agent, datadog-iot-agent, datadog-dogstatsd
-	mode      string // install, upgrade5, upgrade6, upgrade7
-	apiKey    string // Needs to be valid, at least for the upgrade5 scenario
-	scriptURL string // To test a non-published script
-	noFlush   bool   // To prevent eventual cleanup, to test install_script won't override existing configuration
-)
-
-// note: no need to call flag.Parse() on test code, go test does it
-func init() {
-	flag.StringVar(&flavor, "flavor", "datadog-agent", "defines agent install flavor")
-	flag.StringVar(&mode, "mode", "install", "test mode")
-	flag.BoolVar(&noFlush, "noFlush", false, "To prevent eventual cleanup, to test install_script won't override existing configuration")
-	flag.StringVar(&apiKey, "apiKey", os.Getenv("DD_API_KEY"), "Datadog API key")
-	flag.StringVar(&scriptURL, "scriptURL", defaultScriptURL, fmt.Sprintf("Defines the script URL, default %s", defaultScriptURL))
-}
-
-type linuxInstallerTestSuite struct {
-	e2e.Suite[e2e.VMEnv]
-}
 
 func TestLinuxInstallerSuite(t *testing.T) {
 	scriptType := "production"
