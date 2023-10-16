@@ -19,11 +19,23 @@ const (
 )
 
 var (
+	// flags
 	flavor    agentFlavor // datadog-agent, datadog-iot-agent, datadog-dogstatsd
 	mode      string      // install, upgrade5, upgrade6, upgrade7
 	apiKey    string      // Needs to be valid, at least for the upgrade5 scenario
 	scriptURL string      // To test a non-published script
 	noFlush   bool        // To prevent eventual cleanup, to test install_script won't override existing configuration
+
+	baseNameByFlavor = map[agentFlavor]string{
+		agentFlavorDatadogAgent:     "datadog-agent",
+		agentFlavorDatadogDogstatsd: "datadog-dogstatsd",
+		agentFlavorDatadogIOTAgent:  "datadog-agent",
+	}
+	configFileByFlavor = map[agentFlavor]string{
+		agentFlavorDatadogAgent:     "datadog.yaml",
+		agentFlavorDatadogDogstatsd: "dogstatsd.yaml",
+		agentFlavorDatadogIOTAgent:  "datadog.yaml",
+	}
 )
 
 // note: no need to call flag.Parse() on test code, go test does it
@@ -37,6 +49,8 @@ func init() {
 
 type linuxInstallerTestSuite struct {
 	e2e.Suite[e2e.VMEnv]
+	baseName   string
+	configFile string
 }
 
 func (s *linuxInstallerTestSuite) SetupSuite() {
@@ -44,4 +58,6 @@ func (s *linuxInstallerTestSuite) SetupSuite() {
 		s.T().Log("setting default agent flavor")
 		flavor = defaultAgentFlavor
 	}
+	s.baseName = baseNameByFlavor[flavor]
+	s.configFile = configFileByFlavor[flavor]
 }
