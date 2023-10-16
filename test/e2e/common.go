@@ -14,20 +14,21 @@ import (
 )
 
 const (
-	defaultScriptURL = "https://s3.amazonaws.com/dd-agent/scripts"
+	defaultScriptURL               = "https://s3.amazonaws.com/dd-agent/scripts"
+	defaultAgentFlavor agentFlavor = agentFlavorDatadogAgent
 )
 
 var (
-	flavor    string // datadog-agent, datadog-iot-agent, datadog-dogstatsd
-	mode      string // install, upgrade5, upgrade6, upgrade7
-	apiKey    string // Needs to be valid, at least for the upgrade5 scenario
-	scriptURL string // To test a non-published script
-	noFlush   bool   // To prevent eventual cleanup, to test install_script won't override existing configuration
+	flavor    agentFlavor // datadog-agent, datadog-iot-agent, datadog-dogstatsd
+	mode      string      // install, upgrade5, upgrade6, upgrade7
+	apiKey    string      // Needs to be valid, at least for the upgrade5 scenario
+	scriptURL string      // To test a non-published script
+	noFlush   bool        // To prevent eventual cleanup, to test install_script won't override existing configuration
 )
 
 // note: no need to call flag.Parse() on test code, go test does it
 func init() {
-	flag.StringVar(&flavor, "flavor", "datadog-agent", "defines agent install flavor")
+	flag.Var(&flavor, "flavor", "defines agent install flavor, supported values are [datadog-agent, datadog-iot-agent, datadog-dogstatsd]")
 	flag.StringVar(&mode, "mode", "install", "test mode")
 	flag.BoolVar(&noFlush, "noFlush", false, "To prevent eventual cleanup, to test install_script won't override existing configuration")
 	flag.StringVar(&apiKey, "apiKey", os.Getenv("DD_API_KEY"), "Datadog API key")
@@ -36,4 +37,11 @@ func init() {
 
 type linuxInstallerTestSuite struct {
 	e2e.Suite[e2e.VMEnv]
+}
+
+func (s *linuxInstallerTestSuite) SetupSuite() {
+	if flavor == "" {
+		s.T().Log("setting default agent flavor")
+		flavor = defaultAgentFlavor
+	}
 }
