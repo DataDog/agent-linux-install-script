@@ -3,4 +3,5 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-present Datadog, Inc.
 
+// Package e2e implements e2e tests for the agent linux installer
 package e2e
