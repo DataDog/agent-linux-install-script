@@ -70,5 +70,7 @@ func (s *linuxInstallerTestSuite) TestInstallerScript() {
 
 	s.addExtraIntegration()
 
-	s.uninstallAndAssert()
+	s.uninstall()
+
+	s.assertUninstall()
 }
