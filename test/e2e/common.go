@@ -182,7 +182,7 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 	}
 }
 
-func (s *linuxInstallerTestSuite) flushAndAssert() {
+func (s *linuxInstallerTestSuite) flush() {
 	t := s.T()
 	vm := s.Env().VM
 
@@ -196,6 +196,21 @@ func (s *linuxInstallerTestSuite) flushAndAssert() {
 
 	t.Log("Purge package")
 	vm.Execute(fmt.Sprintf("sudo apt remove --purge -y %s", flavor))
+}
+
+func (s *linuxInstallerTestSuite) assertFlush() {
+	t := s.T()
+	vm := s.Env().VM
+
+	if noFlush {
+		t.Skip()
+	}
+
+	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
+		t.Skip()
+	}
+
+	t.Log("Assert purge package")
 	_, err := vm.ExecuteWithError("id datadog-agent")
 	assert.Error(t, err, "dd-agent present after %s purge")
 	_, err = vm.ExecuteWithError(fmt.Sprintf("stat /etc/%s", s.baseName))
