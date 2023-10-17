@@ -20,7 +20,7 @@ type installFipsTestSuite struct {
 	linuxInstallerTestSuite
 }
 
-func TestLinuxInstallFipsSuite(t *testing.T) {
+func TestInstallFipsSuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("fips test supports only datadog-agent flavor")
 	}

@@ -17,7 +17,7 @@ type upgrade5TestSuite struct {
 	linuxInstallerTestSuite
 }
 
-func TestLinuxUpgrade5Suite(t *testing.T) {
+func TestUpgrade5Suite(t *testing.T) {
 	scriptType := "production"
 	if scriptURL != defaultScriptURL {
 		scriptType = "custom"
