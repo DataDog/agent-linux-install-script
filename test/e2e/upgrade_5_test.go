@@ -11,8 +11,6 @@ import (
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
-	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2os"
-	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2params"
 )
 
 type upgrade5TestSuite struct {
@@ -24,12 +22,12 @@ func TestLinuxUpgrade5Suite(t *testing.T) {
 	if scriptURL != defaultScriptURL {
 		scriptType = "custom"
 	}
-	t.Run(fmt.Sprintf("We will upgrade 5 %s with %s install_script on Ubuntu 22.04", flavor, scriptType), func(t *testing.T) {
+	t.Run(fmt.Sprintf("We will upgrade 5 %s with %s install_script on %s", flavor, scriptType, platform), func(t *testing.T) {
 		testSuite := &upgrade5TestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(ec2params.WithOS(ec2os.UbuntuOS)),
-			params.WithStackName(fmt.Sprintf("upgrade5-%s-ubuntu22", flavor)),
+			e2e.EC2VMStackDef(testSuite.ec2Options...),
+			params.WithStackName(fmt.Sprintf("upgrade5-%s-%s", flavor, platform)),
 		)
 	})
 }
