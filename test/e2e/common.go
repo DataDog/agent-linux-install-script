@@ -13,6 +13,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -88,7 +89,7 @@ func (s *linuxInstallerTestSuite) assertInstallScript() {
 		status := strings.TrimSuffix(vm.Execute(fmt.Sprintf("sudo status %s", s.baseName)), "\n")
 		assert.Contains(t, "running", status, fmt.Sprintf("%s not running after Agent install", s.baseName))
 	} else {
-		assert.FailNow(t, "Unknown service manager")
+		require.FailNow(t, "Unknown service manager")
 	}
 }
 
@@ -118,7 +119,7 @@ func (s *linuxInstallerTestSuite) uninstall() {
 		t.Log("Uninstall with zypper")
 		vm.Execute(fmt.Sprintf("sudo zypper remove -y %s", flavor))
 	} else {
-		assert.FailNow(t, "Unknown package manager")
+		require.FailNow(t, "Unknown package manager")
 	}
 }
 
@@ -126,59 +127,21 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 	t := s.T()
 	vm := s.Env().VM
 	t.Logf("Assert %s is removed", flavor)
-	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
-		// dd-agent user and config file should still be here
-		_, err := vm.ExecuteWithError("id dd-agent")
-		assert.NoError(t, err, "user datadog-agent not present after remove")
-		_, err = vm.ExecuteWithError(fmt.Sprintf("stat /etc/%s/%s", s.baseName, s.configFile))
-		assert.NoError(t, err, fmt.Sprintf("/etc/%s/%s absent after remove", s.baseName, s.configFile))
-		if flavor == "datadog-agent" {
-			// The custom file should still be here. All other files, including the extra integration, should be removed
-			_, err = vm.ExecuteWithError("stat /opt/datadog-agent/embedded/lib/python3.9/site-packages/testfile")
-			assert.NoError(t, err, "testfile absent after remove")
-			files := strings.Split(strings.TrimSuffix(vm.Execute("find /opt/datadog-agent -type f"), "\n"), "\n")
-			assert.Len(t, files, 1, fmt.Sprintf("/opt/datadog-agent present after remove, found %v", files))
-		} else {
-			// All files in /opt/datadog-agent should be removed
-			_, err = vm.ExecuteWithError(fmt.Sprintf("stat /opt/%s", s.baseName))
-			assert.Error(t, err, fmt.Sprintf("/opt/%s present after remove", s.baseName))
-		}
-	} else if _, err = vm.ExecuteWithError("command -v yum"); err == nil {
-		// dd-agent user and config file should still be here
-		_, err := vm.ExecuteWithError("id dd-agent")
-		assert.NoError(t, err, "user datadog-agent not present after remove")
-		_, err = vm.ExecuteWithError(fmt.Sprintf("stat /etc/%s/%s", s.baseName, s.configFile))
-		assert.NoError(t, err, fmt.Sprintf("/etc/%s/%s absent after remove", s.baseName, s.configFile))
-		if flavor == "datadog-agent" {
-			// The custom file should still be here. All other files, including the extra integration, should be removed
-			_, err = vm.ExecuteWithError("stat /opt/datadog-agent/embedded/lib/python3.9/site-packages/testfile")
-			assert.NoError(t, err, "testfile absent after remove")
-			files := strings.Split(strings.TrimSuffix(vm.Execute("find /opt/datadog-agent -type f"), "\n"), "\n")
-			assert.Len(t, files, 1, fmt.Sprintf("/opt/datadog-agent present after remove, found %v", files))
-		} else {
-			// All files in /opt/datadog-agent should be removed
-			_, err = vm.ExecuteWithError(fmt.Sprintf("stat /opt/%s", s.baseName))
-			assert.Error(t, err, fmt.Sprintf("/opt/%s present after remove", s.baseName))
-		}
-	} else if _, err = vm.ExecuteWithError("command -v zypper"); err == nil {
-		//	# dd-agent user and config file should still be here
-		_, err := vm.ExecuteWithError("id dd-agent")
-		assert.NoError(t, err, "user datadog-agent not present after remove")
-		_, err = vm.ExecuteWithError(fmt.Sprintf("stat /etc/%s/%s", s.baseName, s.configFile))
-		assert.NoError(t, err, fmt.Sprintf("/etc/%s/%s absent after remove", s.baseName, s.configFile))
-		if flavor == "datadog-agent" {
-			// The custom file should still be here. All other files, including the extra integration, should be removed
-			_, err = vm.ExecuteWithError("stat /opt/datadog-agent/embedded/lib/python3.9/site-packages/testfile")
-			assert.NoError(t, err, "testfile absent after remove")
-			files := strings.Split(strings.TrimSuffix(vm.Execute("find /opt/datadog-agent -type f"), "\n"), "\n")
-			assert.Len(t, files, 1, fmt.Sprintf("/opt/datadog-agent present after remove, found %v", files))
-		} else {
-			// All files in /opt/datadog-agent should be removed
-			_, err = vm.ExecuteWithError(fmt.Sprintf("stat /opt/%s", s.baseName))
-			assert.Error(t, err, fmt.Sprintf("/opt/%s present after remove", s.baseName))
-		}
+	// dd-agent user and config file should still be here
+	_, err := vm.ExecuteWithError("id dd-agent")
+	assert.NoError(t, err, "user datadog-agent not present after remove")
+	_, err = vm.ExecuteWithError(fmt.Sprintf("stat /etc/%s/%s", s.baseName, s.configFile))
+	assert.NoError(t, err, fmt.Sprintf("/etc/%s/%s absent after remove", s.baseName, s.configFile))
+	if flavor == "datadog-agent" {
+		// The custom file should still be here. All other files, including the extra integration, should be removed
+		_, err = vm.ExecuteWithError("stat /opt/datadog-agent/embedded/lib/python3.9/site-packages/testfile")
+		assert.NoError(t, err, "testfile absent after remove")
+		files := strings.Split(strings.TrimSuffix(vm.Execute("find /opt/datadog-agent -type f"), "\n"), "\n")
+		assert.Len(t, files, 1, fmt.Sprintf("/opt/datadog-agent present after remove, found %v", files))
 	} else {
-		assert.FailNow(t, "Unknown package manager")
+		// All files in /opt/datadog-agent should be removed
+		_, err = vm.ExecuteWithError(fmt.Sprintf("stat /opt/%s", s.baseName))
+		assert.Error(t, err, fmt.Sprintf("/opt/%s present after remove", s.baseName))
 	}
 }
 
