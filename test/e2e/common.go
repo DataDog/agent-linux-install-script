@@ -143,16 +143,6 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 			_, err = vm.ExecuteWithError(fmt.Sprintf("stat /opt/%s", s.baseName))
 			assert.Error(t, err, fmt.Sprintf("/opt/%s present after remove", s.baseName))
 		}
-		if !noFlush {
-			t.Log("Purge package")
-			vm.Execute(fmt.Sprintf("sudo apt remove --purge -y %s", flavor))
-			_, err := vm.ExecuteWithError("id datadog-agent")
-			assert.Error(t, err, "dd-agent present after %s purge")
-			_, err = vm.ExecuteWithError(fmt.Sprintf("stat /etc/%s", s.baseName))
-			assert.Error(t, err, fmt.Sprintf("stat /etc/%s present after apt purge", s.baseName))
-			_, err = vm.ExecuteWithError(fmt.Sprintf("stat /opt/%s", s.baseName))
-			assert.Error(t, err, fmt.Sprintf("stat /opt/%s present after apt purge", s.baseName))
-		}
 	} else if _, err = vm.ExecuteWithError("command -v yum"); err == nil {
 		// dd-agent user and config file should still be here
 		_, err := vm.ExecuteWithError("id dd-agent")
@@ -190,4 +180,26 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 	} else {
 		assert.FailNow(t, "Unknown package manager")
 	}
+}
+
+func (s *linuxInstallerTestSuite) flushAndAssert() {
+	t := s.T()
+	vm := s.Env().VM
+
+	if noFlush {
+		t.Skip()
+	}
+
+	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
+		t.Skip()
+	}
+
+	t.Log("Purge package")
+	vm.Execute(fmt.Sprintf("sudo apt remove --purge -y %s", flavor))
+	_, err := vm.ExecuteWithError("id datadog-agent")
+	assert.Error(t, err, "dd-agent present after %s purge")
+	_, err = vm.ExecuteWithError(fmt.Sprintf("stat /etc/%s", s.baseName))
+	assert.Error(t, err, fmt.Sprintf("stat /etc/%s present after purge", s.baseName))
+	_, err = vm.ExecuteWithError(fmt.Sprintf("stat /opt/%s", s.baseName))
+	assert.Error(t, err, fmt.Sprintf("stat /opt/%s present after purge", s.baseName))
 }
