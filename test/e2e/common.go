@@ -9,8 +9,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -60,4 +62,44 @@ func (s *linuxInstallerTestSuite) SetupSuite() {
 	}
 	s.baseName = baseNameByFlavor[flavor]
 	s.configFile = configFileByFlavor[flavor]
+}
+
+func (s *linuxInstallerTestSuite) assertInstallScript() {
+	t := s.T()
+	vm := s.Env().VM
+	t.Log("Check user, config file and service")
+	// check presence of the dd-agent user
+	_, err := vm.ExecuteWithError("id dd-agent")
+	assert.NoError(t, err, "user datadog-agent does not exist after install")
+	// Check presence of the config file - the file is added by the install script, so this should always be okay
+	// if the install succeeds
+	_, err = vm.ExecuteWithError(fmt.Sprintf("stat /etc/%s/%s", s.baseName, s.configFile))
+	assert.NoError(t, err, fmt.Sprintf("config file /etc/%s/%s does not exist after install", s.baseName, s.configFile))
+	// Check presence and ownership of the config and main directories
+	owner := strings.TrimSuffix(vm.Execute(fmt.Sprintf("stat -c \"%%U\" /etc/%s/", s.baseName)), "\n")
+	assert.Equal(t, "dd-agent", owner, fmt.Sprintf("dd-agent does not own /etc/%s", s.baseName))
+	owner = strings.TrimSuffix(vm.Execute(fmt.Sprintf("stat -c \"%%U\" /opt/%s/", s.baseName)), "\n")
+	assert.Equal(t, "dd-agent", owner, fmt.Sprintf("dd-agent does not own /opt/%s", s.baseName))
+	// Check that the service is active
+	if _, err = vm.ExecuteWithError("command -v systemctl"); err == nil {
+		_, err = vm.ExecuteWithError(fmt.Sprintf("systemctl is-active %s", s.baseName))
+		assert.NoError(t, err, fmt.Sprintf("%s not running after Agent install", s.baseName))
+	} else if _, err = vm.ExecuteWithError("command -v initctl"); err == nil {
+		status := strings.TrimSuffix(vm.Execute(fmt.Sprintf("sudo status %s", s.baseName)), "\n")
+		assert.Contains(t, "running", status, fmt.Sprintf("%s not running after Agent install", s.baseName))
+	} else {
+		assert.FailNow(t, "Unknown service manager")
+	}
+}
+
+func (s *linuxInstallerTestSuite) addExtraIntegration() {
+	t := s.T()
+	if flavor != "datadog-agent" {
+		t.Skip()
+	}
+	vm := s.Env().VM
+	t.Log("Install an extra integration, and create a custom file")
+	_, err := vm.ExecuteWithError("sudo -u dd-agent -- datadog-agent integration install -t datadog-bind9==0.1.0")
+	assert.NoError(t, err, "integration install failed")
+	_ = vm.Execute(fmt.Sprintf("sudo -u dd-agent -- touch /opt/%s/embedded/lib/python3.9/site-packages/testfile", s.baseName))
 }
