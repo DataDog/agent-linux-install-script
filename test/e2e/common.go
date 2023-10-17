@@ -145,7 +145,7 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 	}
 }
 
-func (s *linuxInstallerTestSuite) flush() {
+func (s *linuxInstallerTestSuite) purge() {
 	t := s.T()
 	vm := s.Env().VM
 
@@ -161,7 +161,7 @@ func (s *linuxInstallerTestSuite) flush() {
 	vm.Execute(fmt.Sprintf("sudo apt remove --purge -y %s", flavor))
 }
 
-func (s *linuxInstallerTestSuite) assertFlush() {
+func (s *linuxInstallerTestSuite) assertPurge() {
 	t := s.T()
 	vm := s.Env().VM
 

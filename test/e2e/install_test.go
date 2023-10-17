@@ -74,7 +74,7 @@ func (s *linuxInstallerTestSuite) TestInstallerScript() {
 
 	s.assertUninstall()
 
-	s.flush()
+	s.purge()
 
-	s.assertFlush()
+	s.assertPurge()
 }
