@@ -35,6 +35,9 @@ var (
 	}
 )
 
+// TestLinuxInstallMaximalAndRetrySuite tests agent 7 installer with a quite exaustive list of
+// environment variables. At first run variables will end up in agent configuration files, at
+// second run the configuration is kept unchanged.
 func TestLinuxInstallMaximalAndRetrySuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("maximal and retry test supports only datadog-agent flavor")
