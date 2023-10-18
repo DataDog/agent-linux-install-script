@@ -225,7 +225,7 @@ e2e_ubuntu_install:
     # Use S3 backend
     - pulumi login "s3://dd-pulumi-state?region=us-east-1&awssdk=v2&profile=$AWS_PROFILE"
   script:
-    - cd test/e2e && go test -timeout 0s . -v --flavor datadog-agent --mode install
+    - cd test/e2e && go test -timeout 0s . -v --flavor datadog-agent --run TestInstallSuite
   variables:
     KUBERNETES_MEMORY_REQUEST: 12Gi
     KUBERNETES_MEMORY_LIMIT: 16Gi

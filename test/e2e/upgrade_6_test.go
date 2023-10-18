@@ -15,32 +15,35 @@ import (
 	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2params"
 )
 
-type installTestSuite struct {
+type upgrade6TestSuite struct {
 	linuxInstallerTestSuite
 }
 
-func TestInstallSuite(t *testing.T) {
+func TestUpgrade6Suite(t *testing.T) {
 	scriptType := "production"
 	if scriptURL != defaultScriptURL {
 		scriptType = "custom"
 	}
-	t.Run(fmt.Sprintf("We will install %s with %s install_script on Ubuntu 22.04", flavor, scriptType), func(t *testing.T) {
-		testSuite := &installTestSuite{}
+	t.Run(fmt.Sprintf("We will upgrade 6 %s with %s install_script on Ubuntu 22.04", flavor, scriptType), func(t *testing.T) {
+		testSuite := &upgrade6TestSuite{}
 		e2e.Run(t,
 			testSuite,
 			e2e.EC2VMStackDef(ec2params.WithOS(ec2os.UbuntuOS)),
-			params.WithStackName(fmt.Sprintf("install-%s-ubuntu22", flavor)),
+			params.WithStackName(fmt.Sprintf("upgrade6-%s-ubuntu22", flavor)),
 		)
 	})
 }
 
-func (s *installTestSuite) TestInstall() {
+func (s *linuxInstallerTestSuite) TestInstallerScript() {
 	t := s.T()
 	vm := s.Env().VM
 
 	// Installation
+	t.Log("Install latest Agent 6")
+	cmd := fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=6 DD_API_KEY=%s bash -c \"$(curl -L %s/install_script_agent6.sh)\"", flavor, apiKey, scriptURL)
+	vm.Execute(cmd)
 	t.Log("Install latest Agent 7 RC")
-	cmd := fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -sL %s/install_script_agent7.sh)\"", flavor, apiKey, scriptURL)
+	cmd = fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/install_script_agent7.sh)\"", flavor, apiKey, scriptURL)
 	vm.Execute(cmd)
 
 	s.assertInstallScript()
