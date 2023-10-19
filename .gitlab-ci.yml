@@ -225,7 +225,6 @@ e2e:
     # Use S3 backend
     - pulumi login "s3://dd-pulumi-state?region=us-east-1&awssdk=v2&profile=$AWS_PROFILE"
   script:
-    - cd test/e2e && go test -timeout 0s . -v --flavor datadog-agent --run TestInstallSuite
     - cd test/e2e && go test -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} ${EXTRA_PARAMS}
   rules:
     - if: $CI_COMMIT_TAG
