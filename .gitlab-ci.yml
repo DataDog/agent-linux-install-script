@@ -255,7 +255,7 @@ e2e:
           - --run TestUpgrade7Suite
           - --run TestInstallFipsSuite
           - --run TestInstallMaximalAndRetrySuite
-          - --skip "Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite"
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
       - FLAVOR: datadog-dogstatsd
         PLATFORM:
           - Debian_11
@@ -269,7 +269,7 @@ e2e:
           - --run TestUpgrade5Suite
           - --run TestUpgrade6Suite
           - --run TestUpgrade7Suite
-          - --skip "Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite"
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
       - FLAVOR: datadog-iot-agent
         PLATFORM:
           - Debian_11
@@ -283,7 +283,7 @@ e2e:
           - --run TestUpgrade5Suite
           - --run TestUpgrade6Suite
           - --run TestUpgrade7Suite
-          - --skip "Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite"
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
 
 deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
