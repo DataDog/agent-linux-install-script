@@ -32,7 +32,7 @@ func TestUpgrade6Suite(t *testing.T) {
 	})
 }
 
-func (s *linuxInstallerTestSuite) TestInstallerScript() {
+func (s *upgrade6TestSuite) TestUpgrade6() {
 	t := s.T()
 	vm := s.Env().VM
 
