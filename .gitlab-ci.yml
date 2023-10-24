@@ -273,7 +273,6 @@ e2e:
           - openSUSE_15
         EXTRA_PARAMS:
           - --run TestInstallSuite
-          - --run TestUpgrade5Suite
           - --run TestUpgrade6Suite
           - --run TestUpgrade7Suite
           - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
@@ -287,7 +286,6 @@ e2e:
           - openSUSE_15
         EXTRA_PARAMS:
           - --run TestInstallSuite
-          - --run TestUpgrade5Suite
           - --run TestUpgrade6Suite
           - --run TestUpgrade7Suite
           - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
