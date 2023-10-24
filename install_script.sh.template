@@ -397,11 +397,11 @@ if [ -n "${host_injection_enabled}" ] && [ -n "${no_agent}" ] ; then
     exit 1;
 fi
 
-daemon_config_dir="/etc/docker"
+docker_config_dir="/etc/docker"
 
 if [ -n "$docker_injection_enabled" ]; then
-    if [ ! -d "$daemon_config_dir" ]; then
-      ERROR_MESSAGE="$daemon_config_dir does not exist. Please ensure docker is installed"
+    if [ ! -d "$docker_config_dir" ]; then
+      ERROR_MESSAGE="$docker_config_dir does not exist. Please ensure docker is installed"
       ERROR_CODE=$INVALID_PARAMETERS_CODE
       echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
       report_telemetry
@@ -1269,6 +1269,12 @@ for current_service in "${services[@]}"; do
   And to run it again run:
 
       $start_instructions\033[0m\n\n"
+
+  if [ -d "$docker_config_dir" ]; then
+    groups dd-agent 2>&1 | grep -v docker > /dev/null && printf "\033[32m  Consider adding dd-agent to the docker group to enable the docker support, run:
+
+      sudo usermod -a -G docker dd-agent\033[0m\n\n"
+  fi
 done
 
 report_telemetry
