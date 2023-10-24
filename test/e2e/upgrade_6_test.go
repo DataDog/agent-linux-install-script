@@ -22,6 +22,9 @@ func TestUpgrade6Suite(t *testing.T) {
 	if scriptURL != defaultScriptURL {
 		scriptType = "custom"
 	}
+	if flavor != "datadog-agent" {
+		t.Skipf("%s not supported on Agent 6", flavor)
+	}
 	t.Run(fmt.Sprintf("We will upgrade 6 %s with %s install_script on %s", flavor, scriptType, platform), func(t *testing.T) {
 		testSuite := &upgrade6TestSuite{}
 		e2e.Run(t,
