@@ -22,6 +22,9 @@ func TestUpgrade5Suite(t *testing.T) {
 	if scriptURL != defaultScriptURL {
 		scriptType = "custom"
 	}
+	if flavor != "datadog-agent" {
+		t.Skipf("%s not supported on Agent 5", flavor)
+	}
 	t.Run(fmt.Sprintf("We will upgrade 5 %s with %s install_script on %s", flavor, scriptType, platform), func(t *testing.T) {
 		testSuite := &upgrade5TestSuite{}
 		e2e.Run(t,
@@ -37,10 +40,6 @@ func (s *upgrade5TestSuite) TestUpgrade5() {
 	vm := s.Env().VM
 
 	// Installation
-	if flavor != "datadog-agent" {
-		t.Logf("%s not supported on Agent 5", flavor)
-		t.FailNow()
-	}
 	t.Log("Install latest Agent 5")
 	cmd := fmt.Sprintf("DD_API_KEY=%s bash -c \"$(curl -L https://raw.githubusercontent.com/DataDog/dd-agent/master/packaging/datadog-agent/source/install_agent.sh)\"", apiKey)
 	vm.Execute(cmd)
