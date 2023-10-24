@@ -306,10 +306,9 @@ e2e_test_upload:
     - e2e
   script:
     - set +x
-    - find . -name "kitchen-rspec-common-*.tar.gz"
     - export DATADOG_API_KEY=$(aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.datadog_api_key --with-decryption --query "Parameter.Value" --out text)
     - set -x
-    - for f in "test/e2e/junit-*.xml"; do datadog-ci junit upload --service agent-linux-install-script --tags codeowners:@DataDog/agent-platform "$f"; done
+    - for f in test/e2e/*.xml; do datadog-ci junit upload --service agent-linux-install-script --tags codeowners:@DataDog/agent-platform "$f"; done
 
 deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
