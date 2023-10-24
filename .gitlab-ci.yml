@@ -2,6 +2,7 @@ stages:
   - generate
   - test
   - e2e
+  - e2e_test_upload
   - deploy
 
 variables:
@@ -225,7 +226,7 @@ e2e:
     # Use S3 backend
     - pulumi login "s3://dd-pulumi-state?region=us-east-1&awssdk=v2&profile=$AWS_PROFILE"
   script:
-    - cd test/e2e && go test -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} ${EXTRA_PARAMS}
+    - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_NAME}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} ${EXTRA_PARAMS}
   rules:
     - if: $CI_COMMIT_TAG
       when: always
@@ -238,6 +239,13 @@ e2e:
     E2E_PRIVATE_KEY_PATH: /tmp/agent-qa-ssh-key
     E2E_KEY_PAIR_NAME: ci.agent-linux-install-script
     TEAM: agent-platform
+  artifacts:
+    expire_in: 2 weeks
+    when: always
+    paths:
+      - test/e2e/junit-*.xml
+    reports:
+      junit: test/e2e/junit-*.xml
   parallel:
     matrix:
       - FLAVOR: datadog-agent
@@ -284,6 +292,25 @@ e2e:
           - --run TestUpgrade6Suite
           - --run TestUpgrade7Suite
           - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
+
+e2e_test_upload:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/datadog-ci-uploader:$DATADOG_AGENT_BUILDIMAGES
+  tags: ["arch:amd64"]
+  stage: e2e_test_upload
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: always
+    - when: manual
+      allow_failure: true
+  dependencies:
+    - e2e
+  script:
+    - set +x
+    - find . -name "kitchen-rspec-common-*.tar.gz"
+    - export DATADOG_API_KEY=$(aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.datadog_api_key --with-decryption --query "Parameter.Value" --out text)
+    - set -x
+    - for f in "test/e2e/junit-*.xml"; do datadog-ci junit upload --service agent-linux-install-script --tags codeowners:@DataDog/agent-platform "$f"; done
 
 deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
