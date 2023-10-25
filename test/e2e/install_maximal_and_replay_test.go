@@ -11,8 +11,6 @@ import (
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
-	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2os"
-	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
@@ -35,10 +33,10 @@ var (
 	}
 )
 
-// TestLinuxInstallMaximalAndRetrySuite tests agent 7 installer with a quite exaustive list of
+// TestInstallMaximalAndRetrySuite tests agent 7 installer with a quite exaustive list of
 // environment variables. At first run variables will end up in agent configuration files, at
 // second run the configuration is kept unchanged.
-func TestLinuxInstallMaximalAndRetrySuite(t *testing.T) {
+func TestInstallMaximalAndRetrySuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("maximal and retry test supports only datadog-agent flavor")
 	}
@@ -46,12 +44,12 @@ func TestLinuxInstallMaximalAndRetrySuite(t *testing.T) {
 	if scriptURL != defaultScriptURL {
 		scriptType = "custom"
 	}
-	t.Run(fmt.Sprintf("We will install with maximal options and retry %s with %s install_script on Ubuntu 22.04", flavor, scriptType), func(t *testing.T) {
+	t.Run(fmt.Sprintf("We will install with maximal options and retry %s with %s install_script on %s", flavor, scriptType, platform), func(t *testing.T) {
 		testSuite := &installMaximalAndRetryTestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(ec2params.WithOS(ec2os.UbuntuOS)),
-			params.WithStackName(fmt.Sprintf("install-maximal-%s-ubuntu22", flavor)),
+			e2e.EC2VMStackDef(testSuite.ec2Options...),
+			params.WithStackName(fmt.Sprintf("install-maximal-%s-%s", flavor, platform)),
 		)
 	})
 }
@@ -68,6 +66,8 @@ func (s *installMaximalAndRetryTestSuite) TestInstallMaximalAndReplayScript() {
 	output = vm.Execute(cmd)
 
 	s.assertInstallMaximal(output)
+
+	s.addExtraIntegration()
 
 	t.Log("install Agent 7 RC again with new environment variables")
 	cmd = fmt.Sprintf("DD_HOST_TAGS=\"john:doe,john:lennon\" DD_ENV=totoro DD_HOSTNAME=kiki DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_API_KEY=%s DD_SITE=darthmaul.com DD_URL=otherintake.com DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/install_script_agent7.sh)\"",
@@ -131,12 +131,12 @@ func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	var securityAgentConfig map[string]any
 	err = yaml.Unmarshal([]byte(securityAgentConfigContent), &securityAgentConfig)
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
-	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[string]any)["enabled"])
-	assert.Equal(t, true, securityAgentConfig["compliance_config"].(map[string]any)["enabled"])
+	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[any]any)["enabled"])
+	assert.Equal(t, true, securityAgentConfig["compliance_config"].(map[any]any)["enabled"])
 
 	systemProbeConfigContent := vm.Execute(fmt.Sprintf("sudo cat /etc/%s/system-probe.yaml", s.baseName))
 	var systemProbeConfig map[string]any
 	err = yaml.Unmarshal([]byte(systemProbeConfigContent), &systemProbeConfig)
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
-	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[string]any)["enabled"])
+	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[any]any)["enabled"])
 }

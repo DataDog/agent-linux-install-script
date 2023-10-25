@@ -12,13 +12,22 @@ import (
 	"strings"
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
+	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2os"
+	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+type osConfig struct {
+	ami    string
+	osType ec2os.Type
+}
+
 const (
 	defaultScriptURL               = "https://s3.amazonaws.com/dd-agent/scripts"
 	defaultAgentFlavor agentFlavor = agentFlavorDatadogAgent
+	defaultPlatform                = "Ubuntu_22_04"
+	defaultMode                    = "install"
 )
 
 var (
@@ -27,6 +36,7 @@ var (
 	apiKey    string      // Needs to be valid, at least for the upgrade5 scenario
 	scriptURL string      // To test a non-published script
 	noFlush   bool        // To prevent eventual cleanup, to test install_script won't override existing configuration
+	platform  string      // Platform under test
 
 	baseNameByFlavor = map[agentFlavor]string{
 		agentFlavorDatadogAgent:     "datadog-agent",
@@ -38,6 +48,14 @@ var (
 		agentFlavorDatadogDogstatsd: "dogstatsd.yaml",
 		agentFlavorDatadogIOTAgent:  "datadog.yaml",
 	}
+	osConfigByPlatform = map[string]osConfig{
+		"Debian_11":         {osType: ec2os.DebianOS},
+		"Ubuntu_22_04":      {osType: ec2os.UbuntuOS},
+		"RedHat_CentOS_7":   {osType: ec2os.CentOS},
+		"RedHat_8":          {osType: ec2os.RedHatOS, ami: "ami-06640050dc3f556bb"},
+		"Amazon_Linux_2023": {osType: ec2os.AmazonLinuxOS, ami: "ami-0889a44b331db0194"},
+		"openSUSE_15":       {osType: ec2os.SuseOS},
+	}
 )
 
 // note: no need to call flag.Parse() on test code, go test does it
@@ -46,18 +64,24 @@ func init() {
 	flag.BoolVar(&noFlush, "noFlush", false, "To prevent eventual cleanup, to test install_script won't override existing configuration")
 	flag.StringVar(&apiKey, "apiKey", os.Getenv("DD_API_KEY"), "Datadog API key")
 	flag.StringVar(&scriptURL, "scriptURL", defaultScriptURL, fmt.Sprintf("Defines the script URL, default %s", defaultScriptURL))
+	flag.StringVar(&platform, "platform", defaultPlatform, fmt.Sprintf("Defines the target platform, default %s", defaultPlatform))
 }
 
 type linuxInstallerTestSuite struct {
 	e2e.Suite[e2e.VMEnv]
 	baseName   string
 	configFile string
+	ec2Options []ec2params.Option
 }
 
 // SetupSuite is called at suite initialisation, once before all tests
 func (s *linuxInstallerTestSuite) SetupSuite() {
+	t := s.T()
+	if _, ok := osConfigByPlatform[platform]; !ok {
+		t.Skipf("not supported platform %s", platform)
+	}
 	if flavor == "" {
-		s.T().Log("setting default agent flavor")
+		t.Log("setting default agent flavor")
 		flavor = defaultAgentFlavor
 	}
 	s.baseName = baseNameByFlavor[flavor]

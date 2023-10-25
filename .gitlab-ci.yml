@@ -2,6 +2,7 @@ stages:
   - generate
   - test
   - e2e
+  - e2e_test_upload
   - deploy
 
 variables:
@@ -9,7 +10,6 @@ variables:
   DATADOG_AGENT_BUILDIMAGES: v13321514-644fed4
   S3_CP_CMD: aws s3 cp --only-show-errors --region us-east-1 --sse AES256
   TEST_INFRA_DEFINITIONS_BUILDIMAGES: cb9e86993fd5
-  KUBERNETES_SERVICE_ACCOUNT_OVERWRITE: agent-linux-install-script
 
 generate-scripts:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
@@ -210,7 +210,7 @@ test-vector:
   script:
     - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_vector0.sh --vector "true"
 
-e2e_ubuntu_install:
+e2e:
   stage: e2e
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/test-infra-definitions/runner:$TEST_INFRA_DEFINITIONS_BUILDIMAGES
   tags: ["arch:amd64"]
@@ -225,7 +225,12 @@ e2e_ubuntu_install:
     # Use S3 backend
     - pulumi login "s3://dd-pulumi-state?region=us-east-1&awssdk=v2&profile=$AWS_PROFILE"
   script:
-    - cd test/e2e && go test -timeout 0s . -v --flavor datadog-agent --run TestInstallSuite
+    - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_NAME}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} ${EXTRA_PARAMS}
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: always
+    - when: manual
+      allow_failure: true
   variables:
     KUBERNETES_MEMORY_REQUEST: 12Gi
     KUBERNETES_MEMORY_LIMIT: 16Gi
@@ -233,11 +238,73 @@ e2e_ubuntu_install:
     E2E_PRIVATE_KEY_PATH: /tmp/agent-qa-ssh-key
     E2E_KEY_PAIR_NAME: ci.agent-linux-install-script
     TEAM: agent-platform
+  artifacts:
+    expire_in: 2 weeks
+    when: always
+    paths:
+      - test/e2e/junit-*.xml
+    reports:
+      junit: test/e2e/junit-*.xml
+  parallel:
+    matrix:
+      - FLAVOR: datadog-agent
+        PLATFORM:
+          - Debian_11
+          - Ubuntu_22_04
+          - RedHat_CentOS_7
+          - RedHat_8
+          - Amazon_Linux_2023
+          - openSUSE_15
+        EXTRA_PARAMS:
+          - --run TestInstallSuite
+          - --run TestUpgrade5Suite
+          - --run TestUpgrade6Suite
+          - --run TestUpgrade7Suite
+          - --run TestInstallFipsSuite
+          - --run TestInstallMaximalAndRetrySuite
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
+      - FLAVOR: datadog-dogstatsd
+        PLATFORM:
+          - Debian_11
+          - Ubuntu_22_04
+          - RedHat_CentOS_7
+          - RedHat_8
+          - Amazon_Linux_2023
+          - openSUSE_15
+        EXTRA_PARAMS:
+          - --run TestInstallSuite
+          - --run TestUpgrade7Suite
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
+      - FLAVOR: datadog-iot-agent
+        PLATFORM:
+          - Debian_11
+          - Ubuntu_22_04
+          - RedHat_CentOS_7
+          - RedHat_8
+          - Amazon_Linux_2023
+          - openSUSE_15
+        EXTRA_PARAMS:
+          - --run TestInstallSuite
+          - --run TestUpgrade7Suite
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
+
+e2e_test_upload:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/datadog-ci-uploader:$DATADOG_AGENT_BUILDIMAGES
+  tags: ["arch:amd64"]
+  stage: e2e_test_upload
+  allow_failure: true
   rules:
     - if: $CI_COMMIT_TAG
       when: always
     - when: manual
       allow_failure: true
+  dependencies:
+    - e2e
+  script:
+    - set +x
+    - export DATADOG_API_KEY=$(aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.datadog_api_key --with-decryption --query "Parameter.Value" --out text)
+    - set -x
+    - for f in test/e2e/*.xml; do datadog-ci junit upload --service agent-linux-install-script --tags test.codeowners:@DataDog/agent-platform --tags ci.job.name:e2e --tags ci.stage.name:e2e "$f"; done
 
 deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
