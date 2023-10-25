@@ -225,7 +225,7 @@ e2e:
     # Use S3 backend
     - pulumi login "s3://dd-pulumi-state?region=us-east-1&awssdk=v2&profile=$AWS_PROFILE"
   script:
-    - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_NAME}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} ${EXTRA_PARAMS}
+    - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_NAME}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} --scriptURL ${SCRIPT_URL}  ${EXTRA_PARAMS}
   rules:
     - if: $CI_COMMIT_TAG
       when: always
@@ -238,6 +238,7 @@ e2e:
     E2E_PRIVATE_KEY_PATH: /tmp/agent-qa-ssh-key
     E2E_KEY_PAIR_NAME: ci.agent-linux-install-script
     TEAM: agent-platform
+    SCRIPT_URL: https://s3.amazonaws.com/dd-agent/scripts
   artifacts:
     expire_in: 2 weeks
     when: always
