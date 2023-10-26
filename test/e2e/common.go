@@ -26,7 +26,6 @@ type osConfig struct {
 }
 
 const (
-	defaultScriptURL               = "https://s3.amazonaws.com/dd-agent/scripts"
 	defaultAgentFlavor agentFlavor = agentFlavorDatadogAgent
 	defaultPlatform                = "Ubuntu_22_04"
 	defaultMode                    = "install"
@@ -34,11 +33,10 @@ const (
 
 var (
 	// flags
-	flavor    agentFlavor // datadog-agent, datadog-iot-agent, datadog-dogstatsd
-	apiKey    string      // Needs to be valid, at least for the upgrade5 scenario
-	scriptURL string      // To test a non-published script
-	noFlush   bool        // To prevent eventual cleanup, to test install_script won't override existing configuration
-	platform  string      // Platform under test
+	flavor   agentFlavor // datadog-agent, datadog-iot-agent, datadog-dogstatsd
+	apiKey   string      // Needs to be valid, at least for the upgrade5 scenario
+	noFlush  bool        // To prevent eventual cleanup, to test install_script won't override existing configuration
+	platform string      // Platform under test
 
 	baseNameByFlavor = map[agentFlavor]string{
 		agentFlavorDatadogAgent:     "datadog-agent",
@@ -65,7 +63,6 @@ func init() {
 	flag.Var(&flavor, "flavor", "defines agent install flavor, supported values are [datadog-agent, datadog-iot-agent, datadog-dogstatsd]")
 	flag.BoolVar(&noFlush, "noFlush", false, "To prevent eventual cleanup, to test install_script won't override existing configuration")
 	flag.StringVar(&apiKey, "apiKey", os.Getenv("DD_API_KEY"), "Datadog API key")
-	flag.StringVar(&scriptURL, "scriptURL", defaultScriptURL, fmt.Sprintf("Defines the script URL, default %s", defaultScriptURL))
 	flag.StringVar(&platform, "platform", defaultPlatform, fmt.Sprintf("Defines the target platform, default %s", defaultPlatform))
 }
 
