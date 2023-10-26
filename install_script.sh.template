@@ -421,6 +421,9 @@ if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
       cur_version=":$cur_version"
     fi
     case $cur_lib in
+      all)
+        apm_libraries+=("datadog-apm-library-java" "datadog-apm-library-js" "datadog-apm-library-python" "datadog-apm-library-dotnet" "datadog-apm-library-ruby")
+        ;;
       java)
         apm_libraries+=("datadog-apm-library-java${cur_version}")
         ;;
@@ -437,7 +440,7 @@ if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
         apm_libraries+=("datadog-apm-library-ruby${cur_version}")
         ;;
       *)
-        ERROR_MESSAGE="Unknown apm library: $cur_lib. Must be one of: java, js, python, dotnet, ruby"
+        ERROR_MESSAGE="Unknown apm library: $cur_lib. Must be one of: all, java, js, python, dotnet, ruby"
         ERROR_CODE=$INVALID_PARAMETERS_CODE
         echo "$ERROR_MESSAGE"
         report_telemetry
