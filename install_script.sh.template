@@ -613,7 +613,7 @@ if [[ $(uname -m) == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]] && [ 
     exit 1;
 fi
 
-if [ ${#apm_libraries[@]} -gt 0 ] && [ $agent_major_version = "6" ] ; then
+if [ ${#apm_libraries[@]} -gt 0 ] && [ "$agent_major_version" = "6" ] ; then
   ERROR_MESSAGE="APM library injection is not supported with Agent version 6"
   ERROR_CODE=$INVALID_PARAMETERS_CODE
   echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
@@ -1150,6 +1150,15 @@ function update_hosttags(){
       $sudo_cmd sh -c "sed -i \"s/^# tags:.*$/tags: ""$formatted_host_tags""/\" $config_file"
   fi
 }
+function update_env(){
+  local sudo_cmd="$1"
+  local dd_env="$2"
+  local config_file="$3"
+  if [ -n "$dd_env" ]; then
+    printf "\033[34m\n* Adding your DD_ENV to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's/^# env:.*/env: $dd_env/' $config_file"
+  fi
+}
 function update_runtime_security(){
   local sudo_cmd="$1"
   local security_config="$2"
@@ -1184,6 +1193,7 @@ elif [ ! "$no_agent" ]; then
     fi
     update_hostname "$sudo_cmd" "$hostname" "$config_file"
     update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
+    update_env "$sudo_cmd" "$dd_env" "$config_file"
   fi
   if ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "root"; then
     update_runtime_security "$sudo_cmd" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$security_agent_config_file"
