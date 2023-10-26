@@ -150,19 +150,11 @@ fi
 if [ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] || [ "${SCRIPT_FLAVOR}" == "docker_injection" ]; then
   if command -v dpkg > /dev/null; then
       debsums -c datadog-apm-inject
-      debsums -c datadog-apm-library-java
-      debsums -c datadog-apm-library-js
-      debsums -c datadog-apm-library-python
-      debsums -c datadog-apm-library-dotnet
-      debsums -c datadog-apm-library-ruby
+      debsums -c datadog-apm-library-all
       echo "[OK] Inject libraries installed"
   else
       rpm --verify --nomode --nouser --nogroup datadog-apm-inject
-      rpm --verify --nomode --nouser --nogroup datadog-apm-library-java
-      rpm --verify --nomode --nouser --nogroup datadog-apm-library-js
-      rpm --verify --nomode --nouser --nogroup datadog-apm-library-python
-      rpm --verify --nomode --nouser --nogroup datadog-apm-library-dotnet
-      rpm --verify --nomode --nouser --nogroup datadog-apm-library-ruby
+      rpm --verify --nomode --nouser --nogroup datadog-apm-library-all
       echo "[OK] Inject libraries installed"
   fi
 
@@ -188,18 +180,10 @@ fi
 
 if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
   if command -v dpkg > /dev/null; then
-    debsums -c datadog-apm-library-java
-    debsums -c datadog-apm-library-js
-    debsums -c datadog-apm-library-python
-    debsums -c datadog-apm-library-dotnet
-    debsums -c datadog-apm-library-ruby
+    debsums -c datadog-apm-library-all
     echo "[OK] Inject libraries installed"
   else
-    rpm --verify --nomode --nouser --nogroup datadog-apm-library-java
-    rpm --verify --nomode --nouser --nogroup datadog-apm-library-js
-    rpm --verify --nomode --nouser --nogroup datadog-apm-library-python
-    rpm --verify --nomode --nouser --nogroup datadog-apm-library-dotnet
-    rpm --verify --nomode --nouser --nogroup datadog-apm-library-ruby
+    rpm --verify --nomode --nouser --nogroup datadog-apm-library-all
     echo "[OK] Inject libraries installed"
   fi
 fi
