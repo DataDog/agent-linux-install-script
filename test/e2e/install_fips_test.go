@@ -32,7 +32,7 @@ func TestInstallFipsSuite(t *testing.T) {
 		testSuite := &installFipsTestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(testSuite.ec2Options...),
+			e2e.EC2VMStackDef(testSuite.getEC2Options()...),
 			params.WithStackName(fmt.Sprintf("install-fips-%s-%s", flavor, platform)),
 		)
 	})
