@@ -131,7 +131,7 @@ func (s *linuxInstallerTestSuite) assertInstallScript() {
 func (s *linuxInstallerTestSuite) addExtraIntegration() {
 	t := s.T()
 	if flavor != "datadog-agent" {
-		t.Skip()
+		return
 	}
 	vm := s.Env().VM
 	t.Log("Install an extra integration, and create a custom file")
@@ -185,11 +185,11 @@ func (s *linuxInstallerTestSuite) purge() {
 	vm := s.Env().VM
 
 	if noFlush {
-		t.Skip()
+		return
 	}
 
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
-		t.Skip()
+		return
 	}
 
 	t.Log("Purge package")
@@ -201,11 +201,11 @@ func (s *linuxInstallerTestSuite) assertPurge() {
 	vm := s.Env().VM
 
 	if noFlush {
-		t.Skip()
+		return
 	}
 
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
-		t.Skip()
+		return
 	}
 
 	t.Log("Assert purge package")

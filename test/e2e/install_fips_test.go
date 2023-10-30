@@ -91,7 +91,8 @@ func (s *installFipsTestSuite) purgeFips() {
 	vm := s.Env().VM
 	// Remove installed binary
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
-		t.Skip("Purge supported only with apt")
+		t.Log("Purge supported only with apt")
+		return
 	}
 	t.Log("Purge")
 	vm.Execute(fmt.Sprintf("sudo apt remove --purge -y %s datadog-fips-proxy", flavor))
