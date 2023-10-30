@@ -26,7 +26,7 @@ func TestInstallSuite(t *testing.T) {
 		testSuite := &installTestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(testSuite.ec2Options...),
+			e2e.EC2VMStackDef(testSuite.getEC2Options()...),
 			params.WithStackName(fmt.Sprintf("install-%s-%s", flavor, platform)),
 		)
 	})

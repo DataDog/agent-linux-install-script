@@ -26,7 +26,7 @@ func TestUpgrade7Suite(t *testing.T) {
 		testSuite := &upgrade7TestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(testSuite.ec2Options...),
+			e2e.EC2VMStackDef(testSuite.getEC2Options()...),
 			params.WithStackName(fmt.Sprintf("upgrade7-%s-%s", flavor, platform)),
 		)
 	})
