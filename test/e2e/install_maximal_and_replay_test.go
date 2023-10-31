@@ -40,16 +40,14 @@ func TestInstallMaximalAndRetrySuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("maximal and retry test supports only datadog-agent flavor")
 	}
-	scriptType := "production"
-	if scriptURL != defaultScriptURL {
-		scriptType = "custom"
-	}
-	t.Run(fmt.Sprintf("We will install with maximal options and retry %s with %s install_script on %s", flavor, scriptType, platform), func(t *testing.T) {
+	stackName := fmt.Sprintf("install-maximal-%s-%s", flavor, platform)
+	t.Run(stackName, func(t *testing.T) {
+		t.Logf("We will install with maximal options and retry %s with install script from %s on %s", flavor, scriptSource, platform)
 		testSuite := &installMaximalAndRetryTestSuite{}
 		e2e.Run(t,
 			testSuite,
 			e2e.EC2VMStackDef(testSuite.getEC2Options()...),
-			params.WithStackName(fmt.Sprintf("install-maximal-%s-%s", flavor, platform)),
+			params.WithStackName(stackName),
 		)
 	})
 }
@@ -59,10 +57,10 @@ func (s *installMaximalAndRetryTestSuite) TestInstallMaximalAndReplayScript() {
 	vm := s.Env().VM
 	var output string
 	t.Log("install agent 7 with maximal environment variables")
-	cmd := fmt.Sprintf("DD_HOST_TAGS=\"foo:bar,baz:toto\" DD_ENV=kiki DD_HOSTNAME=totoro DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_API_KEY=%s DD_SITE=\"mysite.com\" DD_URL=myintake.com DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/install_script_agent7.sh)\"",
+	cmd := fmt.Sprintf("DD_HOST_TAGS=\"foo:bar,baz:toto\" DD_ENV=kiki DD_HOSTNAME=totoro DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_API_KEY=%s DD_SITE=\"mysite.com\" DD_URL=myintake.com DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(%s/install_script_agent7.sh)\"",
 		flavor,
 		apiKey,
-		scriptURL)
+		scriptSource)
 	output = vm.Execute(cmd)
 
 	s.assertInstallMaximal(output)
@@ -70,10 +68,10 @@ func (s *installMaximalAndRetryTestSuite) TestInstallMaximalAndReplayScript() {
 	s.addExtraIntegration()
 
 	t.Log("install Agent 7 RC again with new environment variables")
-	cmd = fmt.Sprintf("DD_HOST_TAGS=\"john:doe,john:lennon\" DD_ENV=totoro DD_HOSTNAME=kiki DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_API_KEY=%s DD_SITE=darthmaul.com DD_URL=otherintake.com DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/install_script_agent7.sh)\"",
+	cmd = fmt.Sprintf("DD_HOST_TAGS=\"john:doe,john:lennon\" DD_ENV=totoro DD_HOSTNAME=kiki DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_API_KEY=%s DD_SITE=darthmaul.com DD_URL=otherintake.com DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(%s/install_script_agent7.sh)\"",
 		flavor,
 		apiKey,
-		scriptURL)
+		scriptSource)
 	output = vm.Execute(cmd)
 
 	s.assertRetryInstall(output)

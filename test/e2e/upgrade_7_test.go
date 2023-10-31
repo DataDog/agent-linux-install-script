@@ -18,16 +18,14 @@ type upgrade7TestSuite struct {
 }
 
 func TestUpgrade7Suite(t *testing.T) {
-	scriptType := "production"
-	if scriptURL != defaultScriptURL {
-		scriptType = "custom"
-	}
-	t.Run(fmt.Sprintf("We will upgrade 7 %s with %s install_script on %s", flavor, scriptType, platform), func(t *testing.T) {
+	stackName := fmt.Sprintf("upgrade7-%s-%s", flavor, platform)
+	t.Run(stackName, func(t *testing.T) {
+		t.Logf("We will upgrade 7 %s with install script from %s on %s", flavor, scriptSource, platform)
 		testSuite := &upgrade7TestSuite{}
 		e2e.Run(t,
 			testSuite,
 			e2e.EC2VMStackDef(testSuite.getEC2Options()...),
-			params.WithStackName(fmt.Sprintf("upgrade7-%s-%s", flavor, platform)),
+			params.WithStackName(stackName),
 		)
 	})
 }
@@ -38,10 +36,10 @@ func (s *upgrade7TestSuite) TestUpgrade7() {
 
 	// Installation
 	t.Log("Install latest Agent 7")
-	cmd := fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s bash -c \"$(curl -L %s/install_script_agent7.sh)\"", flavor, apiKey, scriptURL)
+	cmd := fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s bash -c \"$(%s/install_script_agent7.sh)\"", flavor, apiKey, scriptSource)
 	vm.Execute(cmd)
 	t.Log("Install latest Agent 7 RC")
-	cmd = fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/install_script_agent7.sh)\"", flavor, apiKey, scriptURL)
+	cmd = fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(%s/install_script_agent7.sh)\"", flavor, apiKey, scriptSource)
 	vm.Execute(cmd)
 
 	s.assertInstallScript()

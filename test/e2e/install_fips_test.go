@@ -25,16 +25,14 @@ func TestInstallFipsSuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("fips test supports only datadog-agent flavor")
 	}
-	scriptType := "production"
-	if scriptURL != defaultScriptURL {
-		scriptType = "custom"
-	}
-	t.Run(fmt.Sprintf("We will install with fips %s with %s install_script on %s", flavor, scriptType, platform), func(t *testing.T) {
+	stackName := fmt.Sprintf("install-fips-%s-%s", flavor, platform)
+	t.Run(stackName, func(t *testing.T) {
+		t.Logf("We will install with fips %s with install script from %s on %s", flavor, scriptSource, platform)
 		testSuite := &installFipsTestSuite{}
 		e2e.Run(t,
 			testSuite,
 			e2e.EC2VMStackDef(testSuite.getEC2Options()...),
-			params.WithStackName(fmt.Sprintf("install-fips-%s-%s", flavor, platform)),
+			params.WithStackName(stackName),
 		)
 	})
 }
@@ -43,10 +41,10 @@ func (s *installFipsTestSuite) TestInstallFips() {
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Install latest Agent 7 RC")
-	cmd := fmt.Sprintf("DD_FIPS_MODE=true DD_URL=\"fake.url.com\" DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"darth.vador.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/install_script_agent7.sh)\"",
+	cmd := fmt.Sprintf("DD_FIPS_MODE=true DD_URL=\"fake.url.com\" DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"darth.vador.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(%s/install_script_agent7.sh)\"",
 		flavor,
 		apiKey,
-		scriptURL)
+		scriptSource)
 	output := vm.Execute(cmd)
 
 	s.assertInstallFips(output)
