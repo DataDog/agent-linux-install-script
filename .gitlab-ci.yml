@@ -242,7 +242,7 @@ e2e:
     E2E_PRIVATE_KEY_PATH: /tmp/agent-qa-ssh-key
     E2E_KEY_PAIR_NAME: ci.agent-linux-install-script
     TEAM: agent-platform
-    SCRIPT_SOURCE: cat ../..
+    SCRIPT_SOURCE: ../..
   artifacts:
     expire_in: 2 weeks
     when: always
