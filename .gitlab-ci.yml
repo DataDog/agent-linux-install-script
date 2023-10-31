@@ -214,6 +214,10 @@ e2e:
   stage: e2e
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/test-infra-definitions/runner:$TEST_INFRA_DEFINITIONS_BUILDIMAGES
   tags: ["arch:amd64"]
+  needs:
+    - generate-scripts
+  dependencies:
+    - generate-scripts
   before_script:
     # Setup AWS Credentials
     - mkdir -p ~/.aws
