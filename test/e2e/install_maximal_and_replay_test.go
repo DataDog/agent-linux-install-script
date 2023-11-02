@@ -68,7 +68,7 @@ func (s *installMaximalAndRetryTestSuite) TestInstallMaximalAndReplayScript() {
 	s.addExtraIntegration()
 
 	t.Log("install Agent 7 RC again with new environment variables")
-	cmd = fmt.Sprintf("DD_HOST_TAGS=\"john:doe,john:lennon\" DD_ENV=totoro DD_HOSTNAME=kiki DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_API_KEY=%s DD_SITE=darthmaul.com DD_URL=otherintake.com DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/ install_script_agent7.sh)\"",
+	cmd = fmt.Sprintf("DD_HOST_TAGS=\"john:doe,john:lennon\" DD_ENV=totoro DD_HOSTNAME=kiki DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_API_KEY=%s DD_SITE=darthmaul.com DD_URL=otherintake.com DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"",
 		flavor,
 		apiKey)
 	output = vm.Execute(cmd)
