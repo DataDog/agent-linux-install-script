@@ -28,8 +28,8 @@ var (
 		"* Adding your HOSTNAME to the Datadog Agent configuration: /etc/datadog-agent/datadog.yaml",
 		"* Adding your HOST TAGS to the Datadog Agent configuration: /etc/datadog-agent/datadog.yaml",
 		"* Adding your DD_ENV to the Datadog Agent configuration: /etc/datadog-agent/datadog.yaml",
-		"* Enabling compliance monitoring in configuration",
-		"* Enabling runtime security in configuration",
+		"* Enabling compliance monitoring in security-agent.yaml configuration",
+		"* Enabling runtime security in system-probe.yaml configuration",
 	}
 )
 
