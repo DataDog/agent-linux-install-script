@@ -13,7 +13,7 @@ variables:
 
 generate-scripts:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
-  tags: ["runner:main"]
+  tags: [arch:amd64]
   stage: generate
   script:
     - make
@@ -26,6 +26,17 @@ generate-scripts:
       - install_script_docker_injection.sh
       - install_script_op_worker1.sh
       - install_script_vector0.sh
+
+unit_tests:
+  image: registry.ddbuild.io/images/mirror/ubuntu:22.04
+  tags: [arch:amd64]
+  stage: test
+  dependencies: ["generate-scripts"]
+  script:
+    - apt-get update && apt-get install -y shunit2 yamllint curl sudo
+    - DD_API_KEY=123 DD_SITE="datadoghq.com" DD_INSTALL_ONLY=true bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script_agent7.sh)"
+    - python3 unit_tests/extract_functions.py
+    - ./unit_tests/test_install_script.sh
 
 .test:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
@@ -129,6 +140,33 @@ test:
       - IMAGE: opensuse/leap:15.4
         FLAVOR: datadog-iot-agent
       - IMAGE: debian:12.1
+  artifacts:
+    name: "artifacts"
+    paths:
+      - artifacts/
+
+.test-yaml:
+  image: registry.ddbuild.io/images/mirror/python:3.9.6-alpine3.14
+  tags: [arch:amd64]
+  stage: test
+  script:
+    - pip install yamllint
+    - for file in $CI_PROJECT_DIR/artifacts/*; do yamllint -c .yamllint.yaml --no-warnings $file; done
+
+test-yaml-redhat:
+  extends: .test-yaml
+  needs:
+    - "test: [centos:centos7]"
+
+test-yaml-debian:
+  extends: .test-yaml
+  needs:
+    - "test: [ubuntu:14.04]"
+
+test-yaml-suse:
+  extends: .test-yaml
+  needs:
+    - "test: [opensuse/archive:42.3]"
 
 test-apm-injection:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
@@ -214,6 +252,10 @@ e2e:
   stage: e2e
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/test-infra-definitions/runner:$TEST_INFRA_DEFINITIONS_BUILDIMAGES
   tags: ["arch:amd64"]
+  needs:
+    - generate-scripts
+  dependencies:
+    - generate-scripts
   before_script:
     # Setup AWS Credentials
     - mkdir -p ~/.aws
@@ -224,8 +266,10 @@ e2e:
     - export DD_API_KEY=$(aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.datadog_api_key --with-decryption --query "Parameter.Value" --out text)
     # Use S3 backend
     - pulumi login "s3://dd-pulumi-state?region=us-east-1&awssdk=v2&profile=$AWS_PROFILE"
+    # Put install scripts in a folder for copy
+    - mkdir -p $CI_PROJECT_DIR/test/e2e/scripts && cp $CI_PROJECT_DIR/install_script*.sh $CI_PROJECT_DIR/test/e2e/scripts
   script:
-    - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_NAME}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} --scriptURL ${SCRIPT_URL}  ${EXTRA_PARAMS}
+    - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_NAME}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} --scriptPath ${SCRIPT_PATH} ${EXTRA_PARAMS}
   rules:
     - if: $CI_COMMIT_TAG
       when: always
@@ -238,7 +282,7 @@ e2e:
     E2E_PRIVATE_KEY_PATH: /tmp/agent-qa-ssh-key
     E2E_KEY_PAIR_NAME: ci.agent-linux-install-script
     TEAM: agent-platform
-    SCRIPT_URL: https://s3.amazonaws.com/dd-agent/scripts
+    SCRIPT_PATH: $CI_PROJECT_DIR/test/e2e/scripts
   artifacts:
     expire_in: 2 weeks
     when: always
@@ -317,7 +361,7 @@ e2e_test_upload:
 
 deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
-  tags: ["runner:main"]
+  tags: ["arch:amd64"]
   stage: deploy
   dependencies: ["generate-scripts"]
   rules:

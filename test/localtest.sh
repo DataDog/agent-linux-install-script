@@ -1,13 +1,21 @@
 #!/bin/bash -e
 
+function get_os_type() {
+  if command -v dpkg > /dev/null; then
+    echo "ubuntu"
+  else
+    echo "redhat"
+  fi
+}
+
 EXPECTED_FLAVOR=${DD_AGENT_FLAVOR:-datadog-agent}
-SCRIPT_FLAVOR=$(echo ${SCRIPT} | sed "s|.*install_script_\(.*\).sh|\1|")
+SCRIPT_FLAVOR=$(echo "${SCRIPT}" | sed "s|.*install_script_\(.*\).sh|\1|")
 if [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] && echo "${SCRIPT}" | grep "agent6.sh$" >/dev/null; then
     echo "[PASS] Can't install flavor '${DD_AGENT_FLAVOR}' with install_script_agent6.sh"
     exit 0
 fi
 
-cp $SCRIPT /tmp/script.sh
+cp "$SCRIPT" /tmp/script.sh
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "$DD_APM_INSTRUMENTATION_ENABLED" == "docker" ] || [ "$SCRIPT_FLAVOR" == "docker_injection" ]; then
     # fake presence of docker and make sure the script doesn't try to restart it
     mkdir /etc/docker
@@ -15,6 +23,7 @@ if [ "$DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "$DD_APM_INSTRUMENTATION_
 fi
 /tmp/script.sh
 
+OS_TYPE=$(get_os_type)
 INSTALLED_VERSION=
 RESULT=0
 EXPECTED_MAJOR_VERSION=6
@@ -27,12 +36,12 @@ fi
 EXPECTED_MINOR_VERSION="${EXPECTED_MINOR_VERSION:-${DD_AGENT_MINOR_VERSION}}"
 
 # basic checks to ensure that the correct flavor was installed
-if command -v dpkg > /dev/null; then
+if [[ "$OS_TYPE" == "ubuntu" ]]; then
     apt-get install -y debsums
 
     if [ -z "$DD_NO_AGENT_INSTALL" ]; then
-      debsums -c ${EXPECTED_FLAVOR}
-      INSTALLED_VERSION=$(dpkg-query -W ${EXPECTED_FLAVOR} | cut -f2 | cut -d: -f2)
+      debsums -c "${EXPECTED_FLAVOR}"
+      INSTALLED_VERSION=$(dpkg-query -W "${EXPECTED_FLAVOR}" | cut -f2 | cut -d: -f2)
     elif debsums -c datadog-agent ; then
       echo "[FAIL] datadog-agent should not be installed"
       RESULT=1
@@ -94,7 +103,7 @@ if [ -n "${EXPECTED_TOOL_VERSION}" ] && [ -z "$DD_NO_AGENT_INSTALL" ]; then
         INSTALL_INFO_FILE=/etc/datadog-dogstatsd/install_info
     fi
 
-    TOOL_VERSION=$(cat "$INSTALL_INFO_FILE" | grep "tool_version:" | cut -d":" -f 2)
+    TOOL_VERSION=$(grep "tool_version:" "$INSTALL_INFO_FILE" | cut -d":" -f 2)
     if echo "${TOOL_VERSION}" | grep "${EXPECTED_TOOL_VERSION}$" >/dev/null; then
         echo "[OK] Correct tool_version found in install_info file"
     else
@@ -123,7 +132,18 @@ if [ "${EXPECTED_FLAVOR}" == "datadog-agent" ] && [ -z "$DD_NO_AGENT_INSTALL" ];
     fi
 fi
 
+# Lint configuration files
+config_file=/etc/datadog-agent/datadog.yaml
+security_agent_config_file=/etc/datadog-agent/security-agent.yaml
 system_probe_config_file=/etc/datadog-agent/system-probe.yaml
+config_files=( "$config_file" "$security_agent_config_file" "$system_probe_config_file" )
+mkdir -p "/tmp/vol/artifacts"
+if [[ -z "$DD_AGENT_FLAVOR" && -z "$DD_NO_AGENT_INSTALL" ]]; then
+  for file in "${config_files[@]}"; do
+    cp "$file" "/tmp/vol/artifacts"
+  done
+fi
+
 if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
     if [ -e "$system_probe_config_file" ]; then
         echo "[OK] Found system-probe configuration file $system_probe_config_file"
@@ -148,7 +168,7 @@ if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
 fi
 
 if [ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] || [ "${SCRIPT_FLAVOR}" == "docker_injection" ]; then
-  if command -v dpkg > /dev/null; then
+  if [[ "$OS_TYPE" == "ubuntu" ]]; then
       debsums -c datadog-apm-inject
       debsums -c datadog-apm-library-all
       echo "[OK] Inject libraries installed"
@@ -167,10 +187,10 @@ if [ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] || [ "${SCRIPT_FLAVOR}" == "docker_i
     fi
   fi
 else
-  if command -v dpkg > /dev/null && debsums -c datadog-apm-inject ; then
+  if [[ "$OS_TYPE" == "ubuntu" ]] && debsums -c datadog-apm-inject ; then
     echo "[FAIL] datadog-apm-inject should not be installed"
     RESULT=1
-  elif rpm --verify --nomode --nouser --nogroup datadog-apm-inject ; then
+  elif [[ "$OS_TYPE" == "redhat" ]] && rpm --verify --nomode --nouser --nogroup datadog-apm-inject ; then
     echo "[FAIL] datadog-apm-inject should not be installed"
     RESULT=1
   else
@@ -179,7 +199,7 @@ else
 fi
 
 if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
-  if command -v dpkg > /dev/null; then
+  if [[ "$OS_TYPE" == "ubuntu" ]]; then
     debsums -c datadog-apm-library-all
     echo "[OK] Inject libraries installed"
   else
