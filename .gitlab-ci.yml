@@ -258,12 +258,20 @@ e2e:
           - openSUSE_15
         EXTRA_PARAMS:
           - --run TestInstallSuite
-          - --run TestUpgrade5Suite
           - --run TestUpgrade6Suite
           - --run TestUpgrade7Suite
-          - --run TestInstallFipsSuite
           - --run TestInstallMaximalAndRetrySuite
           - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
+      - FLAVOR: datadog-agent
+        PLATFORM:
+          - Debian_11
+          - Ubuntu_22_04
+          - RedHat_CentOS_7
+          - RedHat_8
+          - Amazon_Linux_2023
+        EXTRA_PARAMS:
+          - --run TestUpgrade5Suite
+          - --run TestInstallFipsSuite
       - FLAVOR: datadog-dogstatsd
         PLATFORM:
           - Debian_11

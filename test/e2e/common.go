@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
+
+	componentsos "github.com/DataDog/test-infra-definitions/components/os"
 	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2os"
 	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2params"
 	"github.com/stretchr/testify/assert"
@@ -71,21 +73,31 @@ type linuxInstallerTestSuite struct {
 	e2e.Suite[e2e.VMEnv]
 	baseName   string
 	configFile string
-	ec2Options []ec2params.Option
 }
 
 // SetupSuite is called at suite initialisation, once before all tests
 func (s *linuxInstallerTestSuite) SetupSuite() {
 	t := s.T()
-	if _, ok := osConfigByPlatform[platform]; !ok {
-		t.Skipf("not supported platform %s", platform)
-	}
 	if flavor == "" {
 		t.Log("setting default agent flavor")
 		flavor = defaultAgentFlavor
 	}
 	s.baseName = baseNameByFlavor[flavor]
 	s.configFile = configFileByFlavor[flavor]
+}
+
+func (s *linuxInstallerTestSuite) getEC2Options() []ec2params.Option {
+	t := s.T()
+	if _, ok := osConfigByPlatform[platform]; !ok {
+		t.Skipf("not supported platform %s", platform)
+	}
+	ec2Options := []ec2params.Option{}
+	if osConfigByPlatform[platform].ami != "" {
+		ec2Options = append(ec2Options, ec2params.WithImageName(osConfigByPlatform[platform].ami, componentsos.AMD64Arch, osConfigByPlatform[platform].osType))
+	} else {
+		ec2Options = append(ec2Options, ec2params.WithOS(osConfigByPlatform[platform].osType))
+	}
+	return ec2Options
 }
 
 func (s *linuxInstallerTestSuite) assertInstallScript() {
@@ -119,7 +131,7 @@ func (s *linuxInstallerTestSuite) assertInstallScript() {
 func (s *linuxInstallerTestSuite) addExtraIntegration() {
 	t := s.T()
 	if flavor != "datadog-agent" {
-		t.Skip()
+		return
 	}
 	vm := s.Env().VM
 	t.Log("Install an extra integration, and create a custom file")
@@ -173,11 +185,11 @@ func (s *linuxInstallerTestSuite) purge() {
 	vm := s.Env().VM
 
 	if noFlush {
-		t.Skip()
+		return
 	}
 
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
-		t.Skip()
+		return
 	}
 
 	t.Log("Purge package")
@@ -189,11 +201,11 @@ func (s *linuxInstallerTestSuite) assertPurge() {
 	vm := s.Env().VM
 
 	if noFlush {
-		t.Skip()
+		return
 	}
 
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
-		t.Skip()
+		return
 	}
 
 	t.Log("Assert purge package")
