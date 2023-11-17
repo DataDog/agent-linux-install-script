@@ -434,7 +434,7 @@ if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
   do
     case $lib in
       all)
-        apm_libraries+=("datadog-apm-library-all")
+        apm_libraries+=("datadog-apm-library-java" "datadog-apm-library-js" "datadog-apm-library-python" "datadog-apm-library-dotnet" "datadog-apm-library-ruby")
         ;;
       java)
         apm_libraries+=("datadog-apm-library-java")
@@ -462,7 +462,7 @@ if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
   done
 elif [ -n "$host_injection_enabled" ] || [ -n "$docker_injection_enabled" ]; then
   # Default to all libraries if injection is enabled
-  apm_libraries+=("datadog-apm-library-all")
+  apm_libraries+=("datadog-apm-library-java" "datadog-apm-library-js" "datadog-apm-library-python" "datadog-apm-library-dotnet" "datadog-apm-library-ruby")
 fi
 
 no_config_change=
