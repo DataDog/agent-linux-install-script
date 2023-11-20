@@ -65,25 +65,18 @@ test_pinned_version:
   extends: .test
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push"'
+  variables:
+    MINOR_VERSION: 38
   parallel:
     # NOTE: to keep the matrix reasonably sized, we don't test everything everywhere
     # for example, it's ok to test getting specific flavor/minor version only on
     # CentOS 7 (yum) and Rocky 9 (dnf) and not on all versions of all RHEL derivatives
     matrix:
-      - IMAGE: centos:centos7
-        MINOR_VERSION: 38
-      - IMAGE: rockylinux:9.0
-        MINOR_VERSION: 38
-      - IMAGE: ubuntu:14.04
-        MINOR_VERSION: 38
-      - IMAGE: debian:10.9
-        MINOR_VERSION: 38
       # When installing pinned minor version and some repos are broken,
       # `zypper search` used will fail. We need to figure out a fix for this.
       #- IMAGE: opensuse/archive:42.3
       #  MINOR_VERSION: 38
-      - IMAGE: opensuse/leap:15.4
-        MINOR_VERSION: 38
+      - IMAGE: [centos:centos7, rockylinux:9.0, ubuntu:14.04, debian:10.9, opensuse/leap:15.4]
 
 # Opensuse13 only supports Datadog Agent version up 6.32, hence these tests should not be launched on pipelines triggered by datadog-agent pipelines
 test_opensuse13:
