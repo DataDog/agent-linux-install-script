@@ -790,11 +790,16 @@ if [ "$OS" == "RedHat" ]; then
       packages+=("${apm_libraries[@]}")
     fi
 
-    echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+    # packages can be empty if no_agent is set
+    if [ ${#packages[@]} -ne 0 ]; then
+      echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd yum -y install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
+      $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd yum -y install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
 
-    ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
+      ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
+    else
+      echo -e "  \033[33mNo packages to install.\033[0m\n"
+    fi
 
 elif [ "$OS" == "Debian" ]; then
     apt_trusted_d_keyring="/etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg"
@@ -1057,15 +1062,19 @@ elif [ "$OS" == "SUSE" ]; then
     exit 1;
   fi
 
-  echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+  if [ ${#packages[@]} -ne 0 ]; then
+    echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-  if [ -z "$sudo_cmd" ]; then
-    ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
+    if [ -z "$sudo_cmd" ]; then
+      ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
+    else
+      $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
+    fi
+
+    ERR_SUMMARY=$(grep "Write error" -C1 /tmp/ddog_install_error_msg || true)
   else
-    $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
+    echo -e "  \033[33mNo packages to install.\033[0m\n"
   fi
-
-   ERR_SUMMARY=$(grep "Write error" -C1 /tmp/ddog_install_error_msg || true)
 
   # If zypper fails to refresh a random repo, it installs the package, but then fails
   # anyway. Therefore we let it do its thing and then see if curl was installed or not.
