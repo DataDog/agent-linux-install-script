@@ -93,10 +93,7 @@ test_opensuse13:
   parallel:
     matrix:
       - IMAGE: opensuse/archive:install_script_sles_11
-      - IMAGE: opensuse/archive:install_script_sles_11
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: opensuse/archive:install_script_sles_11
-        FLAVOR: datadog-iot-agent
+        FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
 
 test:
   extends: .test
@@ -106,39 +103,20 @@ test:
     # CentOS 7 (yum) and Rocky 9 (dnf) and not on all versions of all RHEL derivatives
     matrix:
       - IMAGE: centos:centos7
-      - IMAGE: centos:centos7
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: centos:centos7
-        FLAVOR: datadog-iot-agent
+        FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
       - IMAGE: rockylinux:9.0
-      - IMAGE: rockylinux:9.0
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: rockylinux:9.0
-        FLAVOR: datadog-iot-agent
+        FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
       - IMAGE: amazonlinux:2
       - IMAGE: amazonlinux:2022
       - IMAGE: ubuntu:14.04
-      - IMAGE: ubuntu:14.04
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: ubuntu:14.04
-        FLAVOR: datadog-iot-agent
+        FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
       - IMAGE: debian:10.9
-      - IMAGE: debian:10.9
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: debian:10.9
-        FLAVOR: datadog-iot-agent
-      - IMAGE: ubuntu:14.04
+        FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
       - IMAGE: ubuntu:22.04
       - IMAGE: opensuse/archive:42.3
-      - IMAGE: opensuse/archive:42.3
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: opensuse/archive:42.3
-        FLAVOR: datadog-iot-agent
+        FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
       - IMAGE: opensuse/leap:15.4
-      - IMAGE: opensuse/leap:15.4
-        FLAVOR: datadog-dogstatsd
-      - IMAGE: opensuse/leap:15.4
-        FLAVOR: datadog-iot-agent
+        FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
       - IMAGE: debian:12.1
   artifacts:
     name: "artifacts"
@@ -156,17 +134,17 @@ test:
 test-yaml-redhat:
   extends: .test-yaml
   needs:
-    - "test: [centos:centos7]"
+    - "test: [centos:centos7, datadog-agent]"
 
 test-yaml-debian:
   extends: .test-yaml
   needs:
-    - "test: [ubuntu:14.04]"
+    - "test: [ubuntu:14.04, datadog-agent]"
 
 test-yaml-suse:
   extends: .test-yaml
   needs:
-    - "test: [opensuse/archive:42.3]"
+    - "test: [opensuse/archive:42.3, datadog-agent]"
 
 test-apm-injection:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
@@ -205,27 +183,8 @@ test-observability-pipelines-worker:
   dependencies: ["generate-scripts"]
   parallel:
     matrix:
-      - IMAGE: amazonlinux:2
-      - IMAGE: amazonlinux:2023
-      - IMAGE: debian:10
-      - IMAGE: debian:11
-      - IMAGE: rockylinux:9.0
-      - IMAGE: ubuntu:20.04
-      - IMAGE: ubuntu:22.04
-      - IMAGE: amazonlinux:2
-        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
-      - IMAGE: amazonlinux:2023
-        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
-      - IMAGE: debian:10
-        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
-      - IMAGE: debian:11
-        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
-      - IMAGE: rockylinux:9.0
-        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
-      - IMAGE: ubuntu:20.04
-        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
-      - IMAGE: ubuntu:22.04
-        INSTALL_CLASSIC_AGENT: --opw-install-classic-agent install_script_agent7.sh
+      - IMAGE: [amazonlinux:2, amazonlinux:2023, debian:10, debian:11, rockylinux:9.0, ubuntu:20.04, ubuntu:22.04]
+        INSTALL_CLASSIC_AGENT: ['', --opw-install-classic-agent install_script_agent7.sh]
   script:
     - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_op_worker1.sh --observability-pipelines-worker "true" --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" ${INSTALL_CLASSIC_AGENT}
 
@@ -238,13 +197,7 @@ test-vector:
   dependencies: ["generate-scripts"]
   parallel:
     matrix:
-      - IMAGE: amazonlinux:2
-      - IMAGE: amazonlinux:2023
-      - IMAGE: debian:10
-      - IMAGE: debian:11
-      - IMAGE: rockylinux:9.0
-      - IMAGE: ubuntu:20.04
-      - IMAGE: ubuntu:22.04
+      - IMAGE: [amazonlinux:2, amazonlinux:2023, debian:10, debian:11, rockylinux:9.0, ubuntu:20.04, ubuntu:22.04]
   script:
     - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_vector0.sh --vector "true"
 
