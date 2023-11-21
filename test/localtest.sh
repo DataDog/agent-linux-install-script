@@ -138,7 +138,7 @@ security_agent_config_file=/etc/datadog-agent/security-agent.yaml
 system_probe_config_file=/etc/datadog-agent/system-probe.yaml
 config_files=( "$config_file" "$security_agent_config_file" "$system_probe_config_file" )
 mkdir -p "/tmp/vol/artifacts"
-if [[ -z "$DD_AGENT_FLAVOR" && -z "$DD_NO_AGENT_INSTALL" ]]; then
+if [[ ( -z "$DD_AGENT_FLAVOR" || "$DD_AGENT_FLAVOR" = "datadog-agent" ) && -z "$DD_NO_AGENT_INSTALL" ]]; then
   for file in "${config_files[@]}"; do
     cp "$file" "/tmp/vol/artifacts"
   done
