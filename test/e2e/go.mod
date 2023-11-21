@@ -3,7 +3,7 @@ module github.com/DataDog/agent-linux-install-script/test/e2e
 go 1.20
 
 require (
-	github.com/DataDog/datadog-agent/test/new-e2e v0.49.0-rc.2
+	github.com/DataDog/datadog-agent/test/new-e2e v0.49.0-rc.7
 	github.com/DataDog/test-infra-definitions v0.0.0-20231010181312-40c538510ddf
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/yaml.v2 v2.4.0
@@ -13,7 +13,7 @@ require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/DataDog/agent-payload/v5 v5.0.73 // indirect
-	github.com/DataDog/datadog-agent/test/fakeintake v0.49.0-rc.2 // indirect
+	github.com/DataDog/datadog-agent/test/fakeintake v0.49.0-rc.7 // indirect
 	github.com/DataDog/mmh3 v0.0.0-20200805151601-30884ca2197a // indirect
 	github.com/DataDog/zstd v1.5.0 // indirect
 	github.com/DataDog/zstd_0 v0.0.0-20210310093942-586c1286621f // indirect

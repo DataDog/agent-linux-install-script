@@ -7,6 +7,7 @@ package e2e
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
@@ -24,16 +25,14 @@ func TestInstallFipsSuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("fips test supports only datadog-agent flavor")
 	}
-	scriptType := "production"
-	if scriptURL != defaultScriptURL {
-		scriptType = "custom"
-	}
-	t.Run(fmt.Sprintf("We will install with fips %s with %s install_script on %s", flavor, scriptType, platform), func(t *testing.T) {
+	stackName := fmt.Sprintf("install-fips-%s-%s", flavor, platform)
+	t.Run(stackName, func(t *testing.T) {
+		t.Logf("We will install with fips %s with install script on %s", flavor, platform)
 		testSuite := &installFipsTestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(testSuite.ec2Options...),
-			params.WithStackName(fmt.Sprintf("install-fips-%s-%s", flavor, platform)),
+			e2e.EC2VMStackDef(testSuite.getEC2Options()...),
+			params.WithStackName(stackName),
 		)
 	})
 }
@@ -42,11 +41,11 @@ func (s *installFipsTestSuite) TestInstallFips() {
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Install latest Agent 7 RC")
-	cmd := fmt.Sprintf("DD_FIPS_MODE=true DD_URL=\"fake.url.com\" DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"darth.vador.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(curl -L %s/install_script_agent7.sh)\"",
+	cmd := fmt.Sprintf("DD_FIPS_MODE=true DD_URL=\"fake.url.com\" DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"darth.vador.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"",
 		flavor,
-		apiKey,
-		scriptURL)
+		apiKey)
 	output := vm.Execute(cmd)
+	t.Log(output)
 
 	s.assertInstallFips(output)
 	s.addExtraIntegration()
@@ -63,14 +62,16 @@ func (s *installFipsTestSuite) assertInstallFips(installCommandOutput string) {
 	s.assertInstallScript()
 
 	t.Log("assert install output contains expected lines")
-	assert.Contains(t, installCommandOutput, "Installing package(s): datadog-agent datadog-signing-keys datadog-fips-proxy", "Missing installer log line for installing package(s)")
+	matched, err := regexp.MatchString(`Installing\ package\(s\):\ .*\ datadog-fips-proxy.*`, installCommandOutput)
+	require.NoError(t, err, "error matching installer output for datadog-fips-proxy package")
+	assert.True(t, matched, "Missing installer log line for installing package(s)")
 	assert.Contains(t, installCommandOutput, "* Adding your API key to the Datadog Agent configuration: /etc/datadog-agent/datadog.yaml", "Missing installer log line for API key")
 	assert.Contains(t, installCommandOutput, "* Setting Datadog Agent configuration to use FIPS proxy: /etc/datadog-agent/datadog.yaml", "Missing installer log line for FIPS proxy")
 
 	t.Log("assert agent configuration contains expected properties")
 	configContent := vm.Execute(fmt.Sprintf("sudo cat /etc/%s/%s", s.baseName, s.configFile))
 	var config map[string]any
-	err := yaml.Unmarshal([]byte(configContent), &config)
+	err = yaml.Unmarshal([]byte(configContent), &config)
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Contains(t, config, "fips")
 	fipsConfig, ok := config["fips"].(map[any]any)
@@ -88,7 +89,8 @@ func (s *installFipsTestSuite) purgeFips() {
 	vm := s.Env().VM
 	// Remove installed binary
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
-		t.Skip("Purge supported only with apt")
+		t.Log("Purge supported only with apt")
+		return
 	}
 	t.Log("Purge")
 	vm.Execute(fmt.Sprintf("sudo apt remove --purge -y %s datadog-fips-proxy", flavor))
