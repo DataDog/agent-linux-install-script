@@ -9,7 +9,7 @@ set -e
 
 DEPRECATION_MESSAGE_PLACEHOLDER
 
-install_script_version=1.23.0.post
+install_script_version=1.24.0
 logfile="ddagent-install.log"
 support_email=support@datadoghq.com
 variant=install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
@@ -74,11 +74,28 @@ function report(){
 }
 
 function report_telemetry() {
+  local install_id="$1"
+  local install_type="$2"
+  local install_time="$3"
+
   if [ "$DD_INSTRUMENTATION_TELEMETRY_ENABLED" == "false" ] || \
     [ "$site" == "ddog-gov.com" ] || \
     [ -z "${apikey}" ] || \
     [ -z "$telemetry_url" ]; then
     return
+  fi
+
+  install_id_tag=
+  install_type_tag=
+  install_time_tag=
+  if [ -n "$install_id" ] ; then
+    install_id_tag="\"install_id\": \"$install_id\","
+  fi
+  if [ -n "$install_type" ] ; then
+    install_type_tag="\"install_type\": \"$install_type\","
+  fi
+  if [ -n "$install_time" ] ; then
+    install_time_tag="\"install_time\": $install_time,"
   fi
 
   if [ -n "$agent_minor_version" ] ; then
@@ -96,6 +113,9 @@ function report_telemetry() {
    \"payload\": {
        \"event_name\": \"agent.installation.success\",
        \"tags\": {
+           $install_id_tag
+           $install_type_tag
+           $install_time_tag
            \"agent_platform\": \"native\",
            \"agent_version\": \"$safe_agent_version\",
            \"script_version\": \"$install_script_version\"
@@ -105,6 +125,8 @@ function report_telemetry() {
 "
   else
     safe_error_message=$(echo -n "$ERROR_MESSAGE" | tr '\n' ' ' | tr '"' '_')
+    # Install ID, time and type are typically not reported if the installation does not succeed,
+    # but if the function is called with those arguments, we will pass them along anyway.
     telemetry_event="
 {
    \"request_type\": \"apm-onboarding-event\",
@@ -112,6 +134,9 @@ function report_telemetry() {
    \"payload\": {
        \"event_name\": \"agent.installation.error\",
        \"tags\": {
+           $install_id_tag
+           $install_type_tag
+           $install_time_tag
            \"agent_platform\": \"native\",
            \"agent_version\": \"$safe_agent_version\",
            \"script_version\": \"$install_script_version\"
@@ -169,7 +194,7 @@ function on_error() {
 
     printf "\033[31m$ERROR_MESSAGE
 It looks like you hit an issue when trying to install the $nice_flavor.
-    
+
     $ERR_SUMMARY
 
 Troubleshooting and basic usage information for the $nice_flavor are available at:
@@ -239,19 +264,6 @@ function remove_rpm_gpg_keys() {
     done
 }
 
-function create_config_file() {
-    local sudo_cmd="$1"
-    local config_file="$2"
-    local owner="$3"
-
-    if [ ! -e "$config_file" ]; then
-        $sudo_cmd cp "$config_file.example" "$config_file"
-    fi
-
-    $sudo_cmd chown "$owner:dd-agent" "$config_file"
-    $sudo_cmd chmod 640 "$config_file"
-}
-
 function ensure_config_file_exists() {
     local sudo_cmd="$1"
     local config_file="$2"
@@ -259,8 +271,15 @@ function ensure_config_file_exists() {
 
     if [ -e "$config_file" ]; then
         printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
+        return 1
     else
-        create_config_file "$sudo_cmd" "$config_file" "$owner"
+        $sudo_cmd cp "$config_file.example" "$config_file"
+        cp_res=$?
+        $sudo_cmd chown "$owner:dd-agent" "$config_file"
+        chown_res=$?
+        $sudo_cmd chmod 640 "$config_file"
+        chmod_res=$?
+        return $((cp_res + chown_res + chmod_res))
     fi
 }
 
@@ -456,7 +475,7 @@ elif [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
   do
     case $lib in
       all)
-        apm_libraries+=("datadog-apm-library-all")
+        apm_libraries+=("datadog-apm-library-java" "datadog-apm-library-js" "datadog-apm-library-python" "datadog-apm-library-dotnet" "datadog-apm-library-ruby")
         ;;
       java)
         apm_libraries+=("datadog-apm-library-java")
@@ -503,7 +522,7 @@ if [ -n "$DD_AGENT_FLAVOR" ]; then
 fi
 
 # Emulate hashmap with simple switch case
-getMapData() {
+function getMapData() {
 
     if [ "$1" = "flavor_to_readable" ]; then
         case "$2" in
@@ -660,7 +679,7 @@ if [[ $(uname -m) == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]] && [ 
     exit 1;
 fi
 
-if [ ${#apm_libraries[@]} -gt 0 ] && [ $agent_major_version = "6" ] ; then
+if [ ${#apm_libraries[@]} -gt 0 ] && [ "$agent_major_version" = "6" ] ; then
   ERROR_MESSAGE="APM library injection is not supported with Agent version 6"
   ERROR_CODE=$INVALID_PARAMETERS_CODE
   echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
@@ -821,11 +840,16 @@ if [ "$OS" == "RedHat" ]; then
       done
     fi
 
-    echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+    # packages can be empty if no_agent is set
+    if [ ${#packages[@]} -ne 0 ]; then
+      echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd yum -y install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
-    
-    ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
+      $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd yum -y install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
+
+      ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
+    else
+      echo -e "  \033[33mNo packages to install.\033[0m\n"
+    fi
 
 elif [ "$OS" == "Debian" ]; then
     apt_trusted_d_keyring="/etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg"
@@ -952,7 +976,7 @@ If the cause is unclear, please contact Datadog support.
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
     $sudo_cmd apt-get install -y --force-yes "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
-    
+
     ERR_SUMMARY=$(grep "No space left on device" -C1 /tmp/ddog_install_error_msg || true)
 
     ERROR_MESSAGE=""
@@ -1097,15 +1121,19 @@ elif [ "$OS" == "SUSE" ]; then
     exit 1;
   fi
 
-  echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+  if [ ${#packages[@]} -ne 0 ]; then
+    echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-  if [ -z "$sudo_cmd" ]; then
-    ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
+    if [ -z "$sudo_cmd" ]; then
+      ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
+    else
+      $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
+    fi
+
+    ERR_SUMMARY=$(grep "Write error" -C1 /tmp/ddog_install_error_msg || true)
   else
-    $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
+    echo -e "  \033[33mNo packages to install.\033[0m\n"
   fi
-
-   ERR_SUMMARY=$(grep "Write error" -C1 /tmp/ddog_install_error_msg || true)
 
   # If zypper fails to refresh a random repo, it installs the package, but then fails
   # anyway. Therefore we let it do its thing and then see if curl was installed or not.
@@ -1146,12 +1174,11 @@ if [ -n "$upgrade" ] && [ "$agent_flavor" != "datadog-dogstatsd" ]; then
 fi
 
 # Set the configuration
-if [ -e "$config_file" ] && [ -z "$upgrade" ]; then
-  printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
-elif [ ! "$no_agent" ]; then
-  if [ ! -e "$config_file" ]; then
-    $sudo_cmd cp "$config_file.example" "$config_file"
-  fi
+# Unit method
+function update_api_key() {
+  local sudo_cmd="$1"
+  local apikey="$2"
+  local config_file="$3"
   if [ -n "$apikey" ]; then
     printf "\033[34m\n* Adding your API key to the $nice_flavor configuration: $config_file\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/api_key:.*/api_key: $apikey/' $config_file"
@@ -1164,20 +1191,31 @@ elif [ ! "$no_agent" ]; then
       no_start=true
     fi
   fi
-
-  if [ -z "$fips_mode" ]; then
-    if [ -n "$site" ]; then
-      printf "\033[34m\n* Setting SITE in the $nice_flavor configuration: $config_file\n\033[0m\n"
-      $sudo_cmd sh -c "sed -i 's/# site:.*/site: $site/' $config_file"
-    fi
-    if [ -n "$DD_URL" ]; then
-      printf "\033[34m\n* Setting DD_URL in the $nice_flavor configuration: $config_file\n\033[0m\n"
-      $sudo_cmd sh -c "sed -i 's|# dd_url:.*|dd_url: $DD_URL|' $config_file"
-    fi
-  else
-    printf "\033[34m\n* Setting $nice_flavor configuration to use FIPS proxy: $config_file\n\033[0m\n"
-    $sudo_cmd cp "$config_file" "${config_file}.orig"
-    $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+}
+function update_site() {
+  local sudo_cmd="$1"
+  local site="$2"
+  local config_file="$3"
+  if [ -n "$site" ]; then
+    printf "\033[34m\n* Setting SITE in the $nice_flavor configuration: $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's/^# site:.*$/site: $site/' $config_file"
+  fi
+}
+function update_url() {
+  local sudo_cmd="$1"
+  local url="$2"
+  local config_file="$3"
+  if [ -n "$url" ]; then
+    printf "\033[34m\n* Setting DD_URL in the $nice_flavor configuration: $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's|^# dd_url:.*$|dd_url: $url|' $config_file"
+  fi
+}
+function update_fips() {
+  local sudo_cmd="$1"
+  local config_file="$2"
+  printf "\033[34m\n* Setting $nice_flavor configuration to use FIPS proxy: $config_file\n\033[0m\n"
+  $sudo_cmd cp "$config_file" "${config_file}.orig"
+  $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
 # Configuration for the agent to use datadog-fips-proxy to communicate with Datadog via FIPS-compliant channel.
 
 fips:
@@ -1185,36 +1223,77 @@ fips:
     port_range_start: 9803
     https: false
 EOF
-  fi
+}
+function update_hostname(){
+  local sudo_cmd="$1"
+  local hostname="$2"
+  local config_file="$3"
   if [ -n "$hostname" ]; then
     printf "\033[34m\n* Adding your HOSTNAME to the $nice_flavor configuration: $config_file\n\033[0m\n"
-    $sudo_cmd sh -c "sed -i 's/# hostname:.*/hostname: $hostname/' $config_file"
+    $sudo_cmd sh -c "sed -i 's/^# hostname:.*$/hostname: $hostname/' $config_file"
   fi
+}
+function update_hosttags(){
+  local sudo_cmd="$1"
+  local host_tags="$2"
+  local config_file="$3"
   if [ -n "$host_tags" ]; then
       printf "\033[34m\n* Adding your HOST TAGS to the $nice_flavor configuration: $config_file\n\033[0m\n"
-      formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/','/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
-      $sudo_cmd sh -c "sed -i \"s/^# tags:.*/tags: ""$formatted_host_tags""/\" $config_file"
+      formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/', '/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
+      $sudo_cmd sh -c "sed -i \"s/^# tags:.*$/tags: ""$formatted_host_tags""/\" $config_file"
   fi
+}
+function update_env(){
+  local sudo_cmd="$1"
+  local dd_env="$2"
+  local config_file="$3"
   if [ -n "$dd_env" ]; then
     printf "\033[34m\n* Adding your DD_ENV to the $nice_flavor configuration: $config_file\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/^# env:.*/env: $dd_env/' $config_file"
   fi
-
-  if [ "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" == "true" ]; then
-    ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
-    ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "root"
-
-    printf "\033[34m\n* Enabling runtime security in configuration\n\033[0m\n"
-    $sudo_cmd sh -c "sed -i 's/^#\s*runtime_security_config:/runtime_security_config:/' $security_agent_config_file $system_probe_config_file"
-    $sudo_cmd sh -c "sed -i '/^runtime_security_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $security_agent_config_file $system_probe_config_file"
+}
+function update_runtime_security(){
+  local sudo_cmd="$1"
+  local security_config="$2"
+  local local_config_file="$3"
+  if [ "$security_config" == "true" ]; then
+    printf "\033[34m\n* Enabling runtime security in $(basename "$local_config_file") configuration\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's/^#\s*runtime_security_config:$/runtime_security_config:/' $local_config_file"
+    $sudo_cmd sh -c "sed -i '/^runtime_security_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $local_config_file"
   fi
-
-  if [ "$DD_COMPLIANCE_CONFIG_ENABLED" == "true" ]; then
-    ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "root"
-
-    printf "\033[34m\n* Enabling compliance monitoring in configuration\n\033[0m\n"
-    $sudo_cmd sh -c "sed -i 's/^#\s*compliance_config:/compliance_config:/' $security_agent_config_file"
-    $sudo_cmd sh -c "sed -i '/^compliance_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $security_agent_config_file"
+}
+function update_compliance_configuration(){
+  local sudo_cmd="$1"
+  local compliance_config="$2"
+  local local_config_file="$3"
+  if [ "$compliance_config" == "true" ]; then
+    printf "\033[34m\n* Enabling compliance monitoring in $(basename "$local_config_file") configuration\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's/^#\s*compliance_config:$/compliance_config:/' $local_config_file"
+    $sudo_cmd sh -c "sed -i '/^compliance_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $local_config_file"
+  fi
+}
+# "Main" configuration update
+if [ -e "$config_file" ] && [ -z "$upgrade" ]; then
+  printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
+elif [ ! "$no_agent" ]; then
+  if ensure_config_file_exists "$sudo_cmd" "$config_file" "dd-agent"; then
+    update_api_key "$sudo_cmd" "$apikey" "$config_file"
+    if [ -z "$fips_mode" ]; then
+      update_site "$sudo_cmd" "$site" "$config_file"
+      update_url "$sudo_cmd" "$DD_URL" "$config_file"
+    else
+      update_fips "$sudo_cmd" "$config_file"
+    fi
+    update_hostname "$sudo_cmd" "$hostname" "$config_file"
+    update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
+    update_env "$sudo_cmd" "$dd_env" "$config_file"
+  fi
+  if ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "root"; then
+    update_runtime_security "$sudo_cmd" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$security_agent_config_file"
+    update_compliance_configuration "$sudo_cmd" "$DD_COMPLIANCE_CONFIG_ENABLED" "$security_agent_config_file"
+  fi
+  if ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"; then
+    update_runtime_security "$sudo_cmd" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$system_probe_config_file"
   fi
 fi
 
@@ -1225,13 +1304,17 @@ fi
 
 # set the FIPS configuration
 if [ -n "$fips_mode" ]; then
-  ensure_config_file_exists "$sudo_cmd" "$config_file_fips" "dd-agent"
+  if ! ensure_config_file_exists "$sudo_cmd" "$config_file_fips" "dd-agent"; then
+    echo "Fips config file already created"
+  fi
   # TODO: set port range in file, or environment variable
 fi
 
 # set the system-probe configuration
 if [ -n "$system_probe_ensure_config" ]; then
-  ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
+  if ! ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"; then
+    echo "System probe config file already created"
+  fi
 fi
 
 # run apm injection scripts
@@ -1244,6 +1327,44 @@ if [ -n "$docker_injection_enabled" ]; then
 fi
 
 # Creating or overriding the install information
+function generate_install_id() {
+  # Try generating a UUID based on /proc/sys/kernel/random/uuid
+  uuid=$(cat /proc/sys/kernel/random/uuid 2>/dev/null)
+  # If that does not work, then try uuidgen
+  if [ ${#uuid} -ne 36 ]; then
+    uuid=$(uuidgen 2>/dev/null)
+  fi
+  # Convert to lowercase
+  uuid=$(echo "$uuid" | tr '[:upper:]' '[:lower:]')
+  printf "$uuid"
+}
+
+function generate_install_signature() {
+  local install_id="$1"
+  local install_type="$2"
+  local install_time="$3"
+  printf "{\"install_id\":\"$install_id\",\"install_type\":\"$install_type\",\"install_time\":$install_time}"
+}
+
+install_id=$(generate_install_id)
+install_type="linux_agent_installer"
+install_time=$(date +%s)
+
+# If an install.json already exists, is formatted correctly, and was generated by this script,
+# reuse the original install ID and time.
+if [ -f "$etcdir/install.json" ]; then
+  # Parse the JSON file using substring extraction to avoid a dependency on any JSON parser
+  install_info=$(cat "$etcdir/install.json" 2>/dev/null)
+  if [ ${#install_info} -eq 118 ]; then
+    if [ "${install_info:2:10}" == "install_id" ] && [ "${install_info:53:38}" == "\"install_type\":\"$install_type\"" ] && [ "${install_info:93:12}" == "install_time" ]; then
+      install_id=${install_info:15:36}
+      install_time=${install_info:107:10}
+    fi
+  fi
+fi
+
+install_signature=$(generate_install_signature "$install_id" "$install_type" "$install_time")
+
 install_info_content="---
 install_method:
   tool: install_script
@@ -1252,6 +1373,8 @@ install_method:
 "
 
 if [ ! "$no_agent" ]; then
+  $sudo_cmd sh -c "echo '$install_signature' > $etcdir/install.json"
+  $sudo_cmd chmod 644 "$etcdir/install.json"
   $sudo_cmd sh -c "echo '$install_info_content' > $etcdir/install_info"
 fi
 
@@ -1336,4 +1459,4 @@ for current_service in "${services[@]}"; do
   fi
 done
 
-report_telemetry
+report_telemetry "$install_id" "$install_type" "$install_time"

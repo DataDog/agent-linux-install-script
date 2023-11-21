@@ -8,3 +8,4 @@ install_script_agent6.sh
 install_script_agent7.sh
 .vscode/launch.json
 .vscode/settings.json
+unit_tests/extracted_functions.sh

@@ -8,8 +8,12 @@ github.com/DataDog/agent-payload/v5 v5.0.73 h1:fnCnAR+nWY+q//fBZSab4cDFFng0scPEf
 github.com/DataDog/agent-payload/v5 v5.0.73/go.mod h1:oQZi1VZp1e3QvlSUX4iphZCpJaFepUxWq0hNXxihKBM=
 github.com/DataDog/datadog-agent/test/fakeintake v0.49.0-rc.2 h1:OigMUgT9WJprfsIO1sAvl4KVNE2XLmrYGwBgbGUz6wg=
 github.com/DataDog/datadog-agent/test/fakeintake v0.49.0-rc.2/go.mod h1:Kae43AbwoNvSGQo9Pt2rb4FeP+wEsF43ltMa0vp9xO0=
+github.com/DataDog/datadog-agent/test/fakeintake v0.49.0-rc.7 h1:jyiWyDIXKbijM7PcDAtyJtBFP79Ysbqtfp6N3hShBh4=
+github.com/DataDog/datadog-agent/test/fakeintake v0.49.0-rc.7/go.mod h1:Kae43AbwoNvSGQo9Pt2rb4FeP+wEsF43ltMa0vp9xO0=
 github.com/DataDog/datadog-agent/test/new-e2e v0.49.0-rc.2 h1:9nBDnbGglRHkaADnLqQfUibgiQcFKbDroBfom+YlJ3A=
 github.com/DataDog/datadog-agent/test/new-e2e v0.49.0-rc.2/go.mod h1:xls9BnL0WiltwN0ZxICxdxlQZh02xUFQgox4GLDAnak=
+github.com/DataDog/datadog-agent/test/new-e2e v0.49.0-rc.7 h1:/Sf7kLxU59+TgFLWZxFa7zPdVssSSGzRwYqEZ1o4Hjw=
+github.com/DataDog/datadog-agent/test/new-e2e v0.49.0-rc.7/go.mod h1:ocD1CzJ8hpdaFjO1qWR7h7iK48WhOFBQi6WHdkQbT/o=
 github.com/DataDog/mmh3 v0.0.0-20200805151601-30884ca2197a h1:m9REhmyaWD5YJ0P53ygRHxKKo+KM+nw+zz0hEdKztMo=
 github.com/DataDog/mmh3 v0.0.0-20200805151601-30884ca2197a/go.mod h1:SvsjzyJlSg0rKsqYgdcFxeEVflx3ZNAyFfkUHP0TxXg=
 github.com/DataDog/test-infra-definitions v0.0.0-20231010181312-40c538510ddf h1:MnpFtU1NBqYw+jhrta1pInTAwq7dJ7Y2NOTI4WJW2hM=
