@@ -44,11 +44,11 @@ unit_tests:
   stage: test
   dependencies: ["generate-scripts"]
   script:
+    - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_YUM_VERSION_PATH="testing/pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}/${MAJOR_VERSION}"'
+    - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_APT_REPO_VERSION="pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}-x86_64 ${MAJOR_VERSION}"'
     - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent${MAJOR_VERSION}.sh
       --apt-url "$APT_URL"
-      --apt-repo-version "$APT_REPO_VERSION_AGENT6"
       --yum-url "$YUM_URL"
-      --yum-version-path "$YUM_VERSION_PATH_AGENT6"
 
 test_pinned_version:
   extends: .test
