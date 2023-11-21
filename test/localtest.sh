@@ -215,7 +215,6 @@ if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
     debsums -c datadog-apm-library-ruby
     echo "[OK] Inject libraries installed"
   else
-    rpm --verify --nomode --nouser --nogroup datadog-apm-inject
     rpm --verify --nomode --nouser --nogroup datadog-apm-library-dotnet
     rpm --verify --nomode --nouser --nogroup datadog-apm-library-java
     rpm --verify --nomode --nouser --nogroup datadog-apm-library-js
