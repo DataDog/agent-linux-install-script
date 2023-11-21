@@ -1,9 +1,13 @@
-=============
 Release Notes
 =============
 
-Unreleased
+1.24.0
 ================
+
+- Remove usage of the datadog-apm-library-all (#111)
+- Prevent errors when trying to install with no_agent in RHEL OS (#112)
+- Generate an install signature on success and include in telemetry events (#110)
+- invite users to add dd-agent to docker group (#105)
 
 1.23.0
 ================
