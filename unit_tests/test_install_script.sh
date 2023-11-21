@@ -151,16 +151,16 @@ testNoEnv(){
 }
 ### update_runtime_security
 testRuntimeSecurityUpdated() {
-  sudo cp ${security_agent_config_file}.example $security_agent_config_file
-  update_runtime_security "sudo" "true" $security_agent_config_file
+  sudo rm $security_agent_config_file
+  update_runtime_security "sudo" $security_agent_config_file
   yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
   assertEquals 0 $?
   sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
   assertEquals 0 $?
 }
 testRuntimeSecurityUpdatedSystemPrope() {
-  sudo cp ${system_probe_config_file}.example $system_probe_config_file
-  update_runtime_security "sudo" "true" $system_probe_config_file
+  sudo rm $system_probe_config_file
+  update_runtime_security "sudo" $system_probe_config_file
   yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
   assertEquals 0 $?
   sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $system_probe_config_file | grep -v "#" | grep -q "enabled: true"
@@ -168,15 +168,15 @@ testRuntimeSecurityUpdatedSystemPrope() {
 }
 testRuntimeSecurityDisabled() {
   sudo cp ${security_agent_config_file}.example $security_agent_config_file
-  update_runtime_security "sudo" "false" $security_agent_config_file
+  update_runtime_security "sudo" $security_agent_config_file
   sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
   assertEquals 1 $?
 }
 
 ### update_compliance_configuration
 testComplianceConfigurationUpdated() {
-  sudo cp ${security_agent_config_file}.example $security_agent_config_file
-  update_compliance_configuration "sudo" "true" $security_agent_config_file
+  sudo rm $security_agent_config_file
+  update_compliance_configuration "sudo" $security_agent_config_file
   yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
   assertEquals 0 $?
   sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
@@ -184,7 +184,7 @@ testComplianceConfigurationUpdated() {
 }
 testComplianceConfigurationDisabled() {
   sudo cp ${security_agent_config_file}.example $security_agent_config_file
-  update_compliance_configuration "sudo" "false" $security_agent_config_file
+  update_compliance_configuration "sudo" $security_agent_config_file
   sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
   assertEquals 1 $?
 }
