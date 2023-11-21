@@ -8,15 +8,6 @@ while [[ $# -gt 0 ]]; do
     -i|--image)
       IMAGE="$2"
       ;;
-    -v|--minor-version)
-      MINOR_VERSION="$2"
-      ;;
-    -e|--expected-minor-version)
-      EXPECTED_MINOR_VERSION="$2"
-      ;;
-    -f|--flavor)
-      FLAVOR="$2"
-      ;;
     --injection)
       DD_APM_INSTRUMENTATION_ENABLED="$2"
       ;;
