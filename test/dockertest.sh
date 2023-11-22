@@ -1,7 +1,5 @@
 #!/bin/bash -e
 
-PLATFORM="linux/amd64"
-
 while [[ $# -gt 0 ]]; do
   case $1 in
     -s|--script)
@@ -9,18 +7,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     -i|--image)
       IMAGE="$2"
-      ;;
-    -v|--minor-version)
-      MINOR_VERSION="$2"
-      ;;
-    -e|--expected-minor-version)
-      EXPECTED_MINOR_VERSION="$2"
-      ;;
-    -f|--flavor)
-      FLAVOR="$2"
-      ;;
-    -p|--platform)
-      PLATFORM="$2"
       ;;
     --injection)
       DD_APM_INSTRUMENTATION_ENABLED="$2"
@@ -71,7 +57,7 @@ else
     ENTRYPOINT_PATH="/tmp/vol/test/localtest.sh"
 fi
 
-docker run --rm --platform "$PLATFORM" -v "$(pwd):/tmp/vol" \
+docker run --rm -v "$(pwd):/tmp/vol" \
   -e DD_SYSTEM_PROBE_ENSURE_CONFIG="${DD_SYSTEM_PROBE_ENSURE_CONFIG}" \
   -e DD_COMPLIANCE_CONFIG_ENABLED="${DD_COMPLIANCE_CONFIG_ENABLED}" \
   -e DD_RUNTIME_SECURITY_CONFIG_ENABLED="${DD_RUNTIME_SECURITY_CONFIG_ENABLED}" \

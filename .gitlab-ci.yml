@@ -44,22 +44,11 @@ unit_tests:
   stage: test
   dependencies: ["generate-scripts"]
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent6.sh
-      --minor-version "${MINOR_VERSION}"
-      --expected-minor-version "${EXPECTED_MINOR_VERSION}"
-      --flavor "${FLAVOR}"
+    - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_YUM_VERSION_PATH="testing/pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}/${MAJOR_VERSION}"'
+    - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_APT_REPO_VERSION="pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}-x86_64 ${MAJOR_VERSION}"'
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent${MAJOR_VERSION}.sh
       --apt-url "$APT_URL"
-      --apt-repo-version "$APT_REPO_VERSION_AGENT6"
       --yum-url "$YUM_URL"
-      --yum-version-path "$YUM_VERSION_PATH_AGENT6"
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent7.sh
-      --minor-version "${MINOR_VERSION}"
-      --expected-minor-version "${EXPECTED_MINOR_VERSION}"
-      --flavor "${FLAVOR}"
-      --apt-url "$APT_URL"
-      --apt-repo-version "$APT_REPO_VERSION_AGENT7"
-      --yum-url "$YUM_URL"
-      --yum-version-path "$YUM_VERSION_PATH_AGENT7"
 
 test_pinned_version:
   extends: .test
@@ -77,6 +66,7 @@ test_pinned_version:
       #- IMAGE: opensuse/archive:42.3
       #  MINOR_VERSION: 38
       - IMAGE: [centos:centos7, rockylinux:9.0, ubuntu:14.04, debian:10.9, opensuse/leap:15.4]
+        MAJOR_VERSION: [6, 7]
 
 # Opensuse13 only supports Datadog Agent version up 6.32, hence these tests should not be launched on pipelines triggered by datadog-agent pipelines
 test_opensuse13:
@@ -87,6 +77,7 @@ test_opensuse13:
     matrix:
       - IMAGE: opensuse/archive:install_script_sles_11
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
+        MAJOR_VERSION: [6, 7]
 
 test:
   extends: .test
@@ -97,20 +88,30 @@ test:
     matrix:
       - IMAGE: centos:centos7
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
+        MAJOR_VERSION: [6, 7]
       - IMAGE: rockylinux:9.0
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
+        MAJOR_VERSION: [6, 7]
       - IMAGE: amazonlinux:2
+        MAJOR_VERSION: [6, 7]
       - IMAGE: amazonlinux:2022
+        MAJOR_VERSION: [6, 7]
       - IMAGE: ubuntu:14.04
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
+        MAJOR_VERSION: [6, 7]
       - IMAGE: debian:10.9
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
+        MAJOR_VERSION: [6, 7]
       - IMAGE: ubuntu:22.04
+        MAJOR_VERSION: [6, 7]
       - IMAGE: opensuse/archive:42.3
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
+        MAJOR_VERSION: [6, 7]
       - IMAGE: opensuse/leap:15.4
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
+        MAJOR_VERSION: [6, 7]
       - IMAGE: debian:12.1
+        MAJOR_VERSION: [6, 7]
   artifacts:
     name: "artifacts"
     paths:
@@ -127,17 +128,17 @@ test:
 test-yaml-redhat:
   extends: .test-yaml
   needs:
-    - "test: [centos:centos7, datadog-agent]"
+    - "test: [centos:centos7, datadog-agent, 7]"
 
 test-yaml-debian:
   extends: .test-yaml
   needs:
-    - "test: [ubuntu:14.04, datadog-agent]"
+    - "test: [ubuntu:14.04, datadog-agent, 7]"
 
 test-yaml-suse:
   extends: .test-yaml
   needs:
-    - "test: [opensuse/archive:42.3, datadog-agent]"
+    - "test: [opensuse/archive:42.3, datadog-agent, 7]"
 
 test-apm-injection:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
@@ -179,7 +180,7 @@ test-observability-pipelines-worker:
       - IMAGE: [amazonlinux:2, amazonlinux:2023, debian:10, debian:11, rockylinux:9.0, ubuntu:20.04, ubuntu:22.04]
         INSTALL_CLASSIC_AGENT: ['', --opw-install-classic-agent install_script_agent7.sh]
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_op_worker1.sh --observability-pipelines-worker "true" --minor-version "${MINOR_VERSION}" --expected-minor-version "${EXPECTED_MINOR_VERSION}" ${INSTALL_CLASSIC_AGENT}
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_op_worker1.sh --observability-pipelines-worker "true" ${INSTALL_CLASSIC_AGENT}
 
 test-vector:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
