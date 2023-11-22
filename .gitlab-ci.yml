@@ -47,8 +47,6 @@ unit_tests:
     - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_YUM_VERSION_PATH="testing/pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}/${MAJOR_VERSION}"'
     - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_APT_REPO_VERSION="pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}-x86_64 ${MAJOR_VERSION}"'
     - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent${MAJOR_VERSION}.sh
-      --apt-url "$APT_URL"
-      --yum-url "$YUM_URL"
 
 test_pinned_version:
   extends: .test
@@ -152,21 +150,21 @@ test-apm-injection:
     # The matrix below tests the possible combinations with a subset of OSes
     matrix:
       - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7"]
-        INJECTION: "host"
+        DD_APM_INSTRUMENTATION_ENABLED: "host"
         SCRIPT: "install_script_agent7.sh"
       - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7"]
-        INJECTION: "docker"
-        NO_AGENT: "true"
-        APM_LIBRARIES: "all"
+        DD_APM_INSTRUMENTATION_ENABLED: "docker"
+        DD_NO_AGENT_INSTALL: "true"
+        DD_APM_INSTRUMENTATION_LANGUAGES: "all"
         SCRIPT: "install_script_agent7.sh"
       - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7"]
         # We intentionally don't pass NO_AGENT here to ensure this script works without it
         # NO_AGENT: "true"
-        APM_LIBRARIES: "all"
+        DD_APM_INSTRUMENTATION_LANGUAGES: "all"
         SCRIPT: "install_script_docker_injection.sh"
 
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script "$SCRIPT" --injection "$INJECTION" --no-agent "$NO_AGENT" --apm-libraries "$APM_LIBRARIES"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script "$SCRIPT"
 
 test-observability-pipelines-worker:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
@@ -175,12 +173,14 @@ test-observability-pipelines-worker:
   tags: ["runner:docker"]
   stage: test
   dependencies: ["generate-scripts"]
+  variables:
+    DD_OPW: 'true'
   parallel:
     matrix:
       - IMAGE: [amazonlinux:2, amazonlinux:2023, debian:10, debian:11, rockylinux:9.0, ubuntu:20.04, ubuntu:22.04]
-        INSTALL_CLASSIC_AGENT: ['', --opw-install-classic-agent install_script_agent7.sh]
+        DD_OPW_INSTALL_CLASSIC_AGENT: ['', install_script_agent7.sh]
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_op_worker1.sh --observability-pipelines-worker "true" ${INSTALL_CLASSIC_AGENT}
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_op_worker1.sh
 
 test-vector:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
@@ -189,11 +189,13 @@ test-vector:
   tags: ["runner:docker"]
   stage: test
   dependencies: ["generate-scripts"]
+  variables:
+    VECTOR: 'true'
   parallel:
     matrix:
       - IMAGE: [amazonlinux:2, amazonlinux:2023, debian:10, debian:11, rockylinux:9.0, ubuntu:20.04, ubuntu:22.04]
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_vector0.sh --vector "true"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_vector0.sh
 
 e2e:
   stage: e2e
