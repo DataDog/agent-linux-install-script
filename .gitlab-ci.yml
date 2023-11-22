@@ -155,16 +155,16 @@ test-apm-injection:
       - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7"]
         DD_APM_INSTRUMENTATION_ENABLED: "docker"
         NO_AGENT: "true"
-        APM_LIBRARIES: "all"
+        DD_APM_INSTRUMENTATION_LANGUAGES: "all"
         SCRIPT: "install_script_agent7.sh"
       - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7"]
         # We intentionally don't pass NO_AGENT here to ensure this script works without it
         # NO_AGENT: "true"
-        APM_LIBRARIES: "all"
+        DD_APM_INSTRUMENTATION_LANGUAGES: "all"
         SCRIPT: "install_script_docker_injection.sh"
 
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script "$SCRIPT" --no-agent "$NO_AGENT" --apm-libraries "$APM_LIBRARIES"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script "$SCRIPT" --no-agent "$NO_AGENT"
 
 test-observability-pipelines-worker:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
