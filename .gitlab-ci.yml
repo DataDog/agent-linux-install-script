@@ -178,9 +178,9 @@ test-observability-pipelines-worker:
   parallel:
     matrix:
       - IMAGE: [amazonlinux:2, amazonlinux:2023, debian:10, debian:11, rockylinux:9.0, ubuntu:20.04, ubuntu:22.04]
-        INSTALL_CLASSIC_AGENT: ['', --opw-install-classic-agent install_script_agent7.sh]
+        DD_OPW_INSTALL_CLASSIC_AGENT: ['', install_script_agent7.sh]
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_op_worker1.sh ${INSTALL_CLASSIC_AGENT}
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_op_worker1.sh
 
 test-vector:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
