@@ -189,11 +189,13 @@ test-vector:
   tags: ["runner:docker"]
   stage: test
   dependencies: ["generate-scripts"]
+  variables:
+    VECTOR: 'true'
   parallel:
     matrix:
       - IMAGE: [amazonlinux:2, amazonlinux:2023, debian:10, debian:11, rockylinux:9.0, ubuntu:20.04, ubuntu:22.04]
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_vector0.sh --vector "true"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_vector0.sh
 
 e2e:
   stage: e2e
