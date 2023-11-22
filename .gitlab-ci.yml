@@ -150,10 +150,10 @@ test-apm-injection:
     # The matrix below tests the possible combinations with a subset of OSes
     matrix:
       - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7"]
-        INJECTION: "host"
+        DD_APM_INSTRUMENTATION_ENABLED: "host"
         SCRIPT: "install_script_agent7.sh"
       - IMAGE: ["ubuntu:14.04", "ubuntu:22.04", "centos:centos7"]
-        INJECTION: "docker"
+        DD_APM_INSTRUMENTATION_ENABLED: "docker"
         NO_AGENT: "true"
         APM_LIBRARIES: "all"
         SCRIPT: "install_script_agent7.sh"
@@ -164,7 +164,7 @@ test-apm-injection:
         SCRIPT: "install_script_docker_injection.sh"
 
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script "$SCRIPT" --injection "$INJECTION" --no-agent "$NO_AGENT" --apm-libraries "$APM_LIBRARIES"
+    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script "$SCRIPT" --no-agent "$NO_AGENT" --apm-libraries "$APM_LIBRARIES"
 
 test-observability-pipelines-worker:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
