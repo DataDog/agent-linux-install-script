@@ -137,9 +137,9 @@ config_file=/etc/datadog-agent/datadog.yaml
 security_agent_config_file=/etc/datadog-agent/security-agent.yaml
 system_probe_config_file=/etc/datadog-agent/system-probe.yaml
 config_files=( "$config_file" "$security_agent_config_file" "$system_probe_config_file" )
-mkdir -p "/tmp/vol/artifacts"
+mkdir -p "${TESTING_DIR}/artifacts"
 for file in "${config_files[@]}"; do
-  [ -e "$file" ] && cp "$file" "/tmp/vol/artifacts"
+  [ -e "$file" ] && cp "$file" "${TESTING_DIR}/artifacts"
 done
 
 if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
