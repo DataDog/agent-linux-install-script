@@ -12,6 +12,10 @@ variables:
   TEST_INFRA_DEFINITIONS_BUILDIMAGES: cb9e86993fd5
   DEFAULT_MAJOR_VERSION: 7
   TESTING_DIR: ${CI_PROJECT_DIR}
+  DD_INSTALL_ONLY: 'true'
+  DD_API_KEY: 123
+  DD_OP_PIPELINE_ID: 123
+  DD_ENV: testenv
 
 default:
   # Handle inputs when running as a downstream pipeline from the datadog-agent repo
@@ -48,12 +52,14 @@ unit_tests:
     - ./unit_tests/test_install_script.sh
 
 .test:
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
-  tags: ["runner:docker"]
+  image: registry.ddbuild.io/images/mirror/${IMAGE}
+  tags: ["arch:amd64"]
   stage: test
   dependencies: ["generate-scripts"]
+  variables:
+    SCRIPT: 'install_script_agent${MAJOR_VERSION}.sh'
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_agent${MAJOR_VERSION}.sh
+    - ./test/localtest.sh
 
 test_pinned_version:
   extends: .test
@@ -146,8 +152,8 @@ test-yaml-suse:
     - "test: [opensuse/archive:42.3, datadog-agent, 7]"
 
 test-apm-injection:
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
-  tags: ["runner:docker"]
+  image: registry.ddbuild.io/images/mirror/${IMAGE}
+  tags: ["arch:amd64"]
   stage: test
   dependencies: ["generate-scripts"]
   rules:
@@ -173,38 +179,38 @@ test-apm-injection:
         SCRIPT: "install_script_docker_injection.sh"
 
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script "$SCRIPT"
+    - ./test/localtest.sh
 
 test-observability-pipelines-worker:
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
+  image: registry.ddbuild.io/images/mirror/${IMAGE}
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push"'
-  tags: ["runner:docker"]
+  tags: ["arch:amd64"]
   stage: test
   dependencies: ["generate-scripts"]
   variables:
-    DD_OPW: 'true'
+    SCRIPT: ./install_script_op_worker1.sh
   parallel:
     matrix:
       - IMAGE: [amazonlinux:2, amazonlinux:2023, debian:10, debian:11, rockylinux:9.0, ubuntu:20.04, ubuntu:22.04]
         DD_OPW_INSTALL_CLASSIC_AGENT: ['', install_script_agent7.sh]
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_op_worker1.sh
+    - ./test/op-worker-test.sh
 
 test-vector:
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/docker_x64:$DATADOG_AGENT_BUILDIMAGES
+  image: registry.ddbuild.io/images/mirror/${IMAGE}
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push"'
-  tags: ["runner:docker"]
+  tags: ["arch:amd64"]
   stage: test
   dependencies: ["generate-scripts"]
   variables:
-    VECTOR: 'true'
+    SCRIPT: ./install_script_vector0.sh
   parallel:
     matrix:
       - IMAGE: [amazonlinux:2, amazonlinux:2023, debian:10, debian:11, rockylinux:9.0, ubuntu:20.04, ubuntu:22.04]
   script:
-    - ./test/dockertest.sh --image "registry.ddbuild.io/images/mirror/${IMAGE}" --script install_script_vector0.sh
+    - ./test/vector-test.sh
 
 e2e:
   stage: e2e
