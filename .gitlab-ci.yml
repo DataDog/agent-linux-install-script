@@ -10,11 +10,12 @@ variables:
   DATADOG_AGENT_BUILDIMAGES: v13321514-644fed4
   S3_CP_CMD: aws s3 cp --only-show-errors --region us-east-1 --sse AES256
   TEST_INFRA_DEFINITIONS_BUILDIMAGES: cb9e86993fd5
+  DEFAULT_MAJOR_VERSION: 7
 
 default:
   # Handle inputs when running as a downstream pipeline from the datadog-agent repo
   before_script:
-    - '[ -z "$MAJOR_VERSION" ] && export MAJOR_VERSION=7'
+    - '[ -z "$MAJOR_VERSION" ] && export MAJOR_VERSION=${DEFAULT_MAJOR_VERSION}'
     - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_YUM_VERSION_PATH="testing/pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}/${MAJOR_VERSION}"'
     - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_APT_REPO_VERSION="pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}-x86_64 ${MAJOR_VERSION}"'
 
