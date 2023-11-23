@@ -149,6 +149,8 @@ test-apm-injection:
   tags: ["runner:docker"]
   stage: test
   dependencies: ["generate-scripts"]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
   parallel:
     # Docker testing is not possible because of docker-in-docker
     # Host injection requires the agent to be present
