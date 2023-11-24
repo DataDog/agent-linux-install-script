@@ -1195,9 +1195,8 @@ function update_env(){
 }
 function update_runtime_security(){
   local sudo_cmd="$1"
-  local security_config="$2"
-  local local_config_file="$3"
-  if [ "$security_config" == "true" ]; then
+  local local_config_file="$2"
+  if ensure_config_file_exists "$sudo_cmd" "$local_config_file" "root"; then
     printf "\033[34m\n* Enabling runtime security in $(basename "$local_config_file") configuration\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/^#\s*runtime_security_config:$/runtime_security_config:/' $local_config_file"
     $sudo_cmd sh -c "sed -i '/^runtime_security_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $local_config_file"
@@ -1205,9 +1204,8 @@ function update_runtime_security(){
 }
 function update_compliance_configuration(){
   local sudo_cmd="$1"
-  local compliance_config="$2"
-  local local_config_file="$3"
-  if [ "$compliance_config" == "true" ]; then
+  local local_config_file="$2"
+  if ensure_config_file_exists "$sudo_cmd" "$local_config_file" "root"; then
     printf "\033[34m\n* Enabling compliance monitoring in $(basename "$local_config_file") configuration\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/^#\s*compliance_config:$/compliance_config:/' $local_config_file"
     $sudo_cmd sh -c "sed -i '/^compliance_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $local_config_file"
@@ -1229,12 +1227,12 @@ elif [ ! "$no_agent" ]; then
     update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
     update_env "$sudo_cmd" "$dd_env" "$config_file"
   fi
-  if ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "root"; then
-    update_runtime_security "$sudo_cmd" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$security_agent_config_file"
-    update_compliance_configuration "$sudo_cmd" "$DD_COMPLIANCE_CONFIG_ENABLED" "$security_agent_config_file"
+  if [ "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" == "true" ]; then
+    update_runtime_security "$sudo_cmd" "$security_agent_config_file"
+    update_runtime_security "$sudo_cmd" "$system_probe_config_file"
   fi
-  if ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"; then
-    update_runtime_security "$sudo_cmd" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$system_probe_config_file"
+  if [ "$DD_COMPLIANCE_CONFIG_ENABLED" == "true" ]; then
+    update_compliance_configuration "$sudo_cmd" "$security_agent_config_file"
   fi
 fi
 
@@ -1245,17 +1243,13 @@ fi
 
 # set the FIPS configuration
 if [ -n "$fips_mode" ]; then
-  if ! ensure_config_file_exists "$sudo_cmd" "$config_file_fips" "dd-agent"; then
-    echo "Fips config file already created"
-  fi
+  ensure_config_file_exists "$sudo_cmd" "$config_file_fips" "dd-agent"
   # TODO: set port range in file, or environment variable
 fi
 
 # set the system-probe configuration
 if [ -n "$system_probe_ensure_config" ]; then
-  if ! ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"; then
-    echo "System probe config file already created"
-  fi
+  ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
 fi
 
 # run apm injection scripts
