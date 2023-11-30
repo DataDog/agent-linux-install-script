@@ -231,7 +231,7 @@ func assertFileExists(t *testing.T, vm *client.VM, filepath string) {
 
 func assertFileNotExists(t *testing.T, vm *client.VM, filepath string) {
 	t.Helper()
-	t.Logf("Check %s exists", filepath)
+	t.Logf("Check %s does not exists", filepath)
 	// Check absence of file, should return error
 	_, err := vm.ExecuteWithError(fmt.Sprintf("stat %s", filepath))
 	assert.Error(t, err, fmt.Sprintf("file %s does exist", filepath))
