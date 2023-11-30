@@ -45,7 +45,7 @@ func TestInstallMaximalAndRetrySuite(t *testing.T) {
 		testSuite := &installMaximalAndRetryTestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(testSuite.getEC2Options()...),
+			e2e.EC2VMStackDef(getEC2Options(t)...),
 			params.WithStackName(stackName),
 		)
 	})

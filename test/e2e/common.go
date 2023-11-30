@@ -90,8 +90,7 @@ func (s *linuxInstallerTestSuite) SetupSuite() {
 	s.Env().VM.CopyFolder(scriptPath, "scripts")
 }
 
-func (s *linuxInstallerTestSuite) getEC2Options() []ec2params.Option {
-	t := s.T()
+func getEC2Options(t *testing.T) []ec2params.Option {
 	t.Helper()
 	if _, ok := osConfigByPlatform[platform]; !ok {
 		t.Skipf("not supported platform %s", platform)
