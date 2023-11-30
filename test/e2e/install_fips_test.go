@@ -14,7 +14,6 @@ import (
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
 
 type installFipsTestSuite struct {
@@ -70,9 +69,7 @@ func (s *installFipsTestSuite) assertInstallFips(installCommandOutput string) {
 	assert.Contains(t, installCommandOutput, "* Setting Datadog Agent configuration to use FIPS proxy: /etc/datadog-agent/datadog.yaml", "Missing installer log line for FIPS proxy")
 
 	t.Log("assert agent configuration contains expected properties")
-	configContent := vm.Execute(fmt.Sprintf("sudo cat /etc/%s/%s", s.baseName, s.configFile))
-	var config map[string]any
-	err = yaml.Unmarshal([]byte(configContent), &config)
+	config, err := unmarshalConfiFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Contains(t, config, "fips")
 	fipsConfig, ok := config["fips"].(map[any]any)

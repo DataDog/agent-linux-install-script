@@ -14,6 +14,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/client"
+	"gopkg.in/yaml.v2"
 
 	componentsos "github.com/DataDog/test-infra-definitions/components/os"
 	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2os"
@@ -235,4 +236,10 @@ func assertFileNotExists(t *testing.T, vm *client.VM, filepath string) {
 	// Check absence of file, should return error
 	_, err := vm.ExecuteWithError(fmt.Sprintf("stat %s", filepath))
 	assert.Error(t, err, fmt.Sprintf("file %s does exist", filepath))
+}
+
+func unmarshalConfiFile(vm *client.VM, configFilePath string) (config map[string]any, err error) {
+	configContent := vm.Execute(fmt.Sprintf("sudo cat /%s", configFilePath))
+	err = yaml.Unmarshal([]byte(configContent), &config)
+	return config, err
 }

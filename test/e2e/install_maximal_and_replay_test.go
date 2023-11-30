@@ -13,7 +13,6 @@ import (
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
 
 type installMaximalAndRetryTestSuite struct {
@@ -85,6 +84,8 @@ func (s *installMaximalAndRetryTestSuite) TestInstallMaximalAndReplayScript() {
 
 func (s *installMaximalAndRetryTestSuite) assertInstallMaximal(installCommandOutput string) {
 	t := s.T()
+	t.Helper()
+	vm := s.Env().VM
 	t.Log("assert install output contains configuration changes")
 
 	for _, line := range maximalInstallLogLines {
@@ -93,12 +94,17 @@ func (s *installMaximalAndRetryTestSuite) assertInstallMaximal(installCommandOut
 
 	s.assertInstallScript()
 
+	assertFileNotExists(t, vm, "/etc/datadog-fips-proxy/fips/datadog-fips-proxy.cfg")
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
+
 	s.assertMaximalConfiguration()
 }
 
 func (s *installMaximalAndRetryTestSuite) assertRetryInstall(installCommandOutput string) {
 	t := s.T()
 	t.Helper()
+	vm := s.Env().VM
 	t.Log("assert install output contains configuration changes")
 
 	for _, line := range maximalInstallLogLines {
@@ -106,6 +112,10 @@ func (s *installMaximalAndRetryTestSuite) assertRetryInstall(installCommandOutpu
 	}
 
 	assert.Contains(t, installCommandOutput, "* Keeping old /etc/datadog-agent/datadog.yaml configuration file")
+
+	assertFileNotExists(t, vm, "/etc/datadog-fips-proxy/fips/datadog-fips-proxy.cfg")
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
 
 	t.Log("assert configuration did not change")
 	s.assertMaximalConfiguration()
@@ -115,10 +125,8 @@ func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	t := s.T()
 	t.Helper()
 	vm := s.Env().VM
-	t.Log("assert comfiguration contains expected properties")
-	configContent := vm.Execute(fmt.Sprintf("sudo cat /etc/%s/%s", s.baseName, s.configFile))
-	var config map[string]any
-	err := yaml.Unmarshal([]byte(configContent), &config)
+	t.Log("assert configuration contains expected properties")
+	config, err := unmarshalConfiFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Equal(t, apiKey, config["api_key"], "not matching api key in config")
 	assert.Equal(t, "mysite.com", config["site"])
@@ -127,16 +135,12 @@ func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	assert.Equal(t, []any{"foo:bar", "baz:toto"}, config["tags"].([]any))
 	assert.Equal(t, "kiki", config["env"])
 
-	securityAgentConfigContent := vm.Execute(fmt.Sprintf("sudo cat /etc/%s/security-agent.yaml", s.baseName))
-	var securityAgentConfig map[string]any
-	err = yaml.Unmarshal([]byte(securityAgentConfigContent), &securityAgentConfig)
+	securityAgentConfig, err := unmarshalConfiFile(vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[any]any)["enabled"])
 	assert.Equal(t, true, securityAgentConfig["compliance_config"].(map[any]any)["enabled"])
 
-	systemProbeConfigContent := vm.Execute(fmt.Sprintf("sudo cat /etc/%s/system-probe.yaml", s.baseName))
-	var systemProbeConfig map[string]any
-	err = yaml.Unmarshal([]byte(systemProbeConfigContent), &systemProbeConfig)
+	systemProbeConfig, err := unmarshalConfiFile(vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
-	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[any]any)["enabled"])
+	assert.Equal(t, true, systemProbeConfig["runtime_security_config"].(map[any]any)["enabled"])
 }
