@@ -98,6 +98,7 @@ func (s *installMaximalAndRetryTestSuite) assertInstallMaximal(installCommandOut
 
 func (s *installMaximalAndRetryTestSuite) assertRetryInstall(installCommandOutput string) {
 	t := s.T()
+	t.Helper()
 	t.Log("assert install output contains configuration changes")
 
 	for _, line := range maximalInstallLogLines {
@@ -112,6 +113,7 @@ func (s *installMaximalAndRetryTestSuite) assertRetryInstall(installCommandOutpu
 
 func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	t := s.T()
+	t.Helper()
 	vm := s.Env().VM
 	t.Log("assert comfiguration contains expected properties")
 	configContent := vm.Execute(fmt.Sprintf("sudo cat /etc/%s/%s", s.baseName, s.configFile))

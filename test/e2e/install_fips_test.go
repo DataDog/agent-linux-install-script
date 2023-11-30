@@ -57,6 +57,7 @@ func (s *installFipsTestSuite) TestInstallFips() {
 
 func (s *installFipsTestSuite) assertInstallFips(installCommandOutput string) {
 	t := s.T()
+	t.Helper()
 	vm := s.Env().VM
 
 	s.assertInstallScript()
@@ -82,10 +83,13 @@ func (s *installFipsTestSuite) assertInstallFips(installCommandOutput string) {
 	assert.Equal(t, apiKey, config["api_key"], "not matching api key in config")
 	assert.NotContains(t, config, "site", "site modified in config")
 	assert.NotContains(t, config, "dd_url", "dd_url modified in config")
+
+	assertFileExists(t, vm, "/etc/datadog-fips-proxy/fips/datadog-fips-proxy.cfg")
 }
 
 func (s *installFipsTestSuite) purgeFips() {
 	t := s.T()
+	t.Helper()
 	vm := s.Env().VM
 	// Remove installed binary
 	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
