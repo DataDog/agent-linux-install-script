@@ -238,7 +238,7 @@ func assertFileNotExists(t *testing.T, vm *client.VM, filepath string) {
 	assert.Error(t, err, fmt.Sprintf("file %s does exist", filepath))
 }
 
-func unmarshalConfiFile(vm *client.VM, configFilePath string) (config map[string]any, err error) {
+func unmarshalConfigFile(vm *client.VM, configFilePath string) (config map[string]any, err error) {
 	configContent := vm.Execute(fmt.Sprintf("sudo cat /%s", configFilePath))
 	err = yaml.Unmarshal([]byte(configContent), &config)
 	return config, err

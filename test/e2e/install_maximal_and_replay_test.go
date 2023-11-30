@@ -126,7 +126,7 @@ func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	t.Helper()
 	vm := s.Env().VM
 	t.Log("assert configuration contains expected properties")
-	config, err := unmarshalConfiFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
+	config, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Equal(t, apiKey, config["api_key"], "not matching api key in config")
 	assert.Equal(t, "mysite.com", config["site"])
@@ -135,12 +135,12 @@ func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	assert.Equal(t, []any{"foo:bar", "baz:toto"}, config["tags"].([]any))
 	assert.Equal(t, "kiki", config["env"])
 
-	securityAgentConfig, err := unmarshalConfiFile(vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
+	securityAgentConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[any]any)["enabled"])
 	assert.Equal(t, true, securityAgentConfig["compliance_config"].(map[any]any)["enabled"])
 
-	systemProbeConfig, err := unmarshalConfiFile(vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
+	systemProbeConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Equal(t, true, systemProbeConfig["runtime_security_config"].(map[any]any)["enabled"])
 }
