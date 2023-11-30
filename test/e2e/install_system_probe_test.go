@@ -45,22 +45,19 @@ func (s *installSystemProbeTestSuite) TestInstallSystemProbe() {
 
 	s.assertInstallScript()
 
-	s.assertSecurityAgentAndSystemProbeConfig()
-
 	s.addExtraIntegration()
 
 	s.uninstall()
 
 	s.assertUninstall()
 
-	s.assertSystemProbeConfigAfterUninstall()
-
 	s.purge()
 
 	s.assertPurge()
 }
 
-func (s *installSystemProbeTestSuite) assertSecurityAgentAndSystemProbeConfig() {
+func (s *installSystemProbeTestSuite) assertInstallScript() {
+	s.linuxInstallerTestSuite.assertInstallScript()
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Assert system probe config and security-agent are created")
@@ -72,7 +69,8 @@ func (s *installSystemProbeTestSuite) assertSecurityAgentAndSystemProbeConfig() 
 	assert.NotContains(t, systemProbeConfig, "runtime_security_config")
 }
 
-func (s *installSystemProbeTestSuite) assertSystemProbeConfigAfterUninstall() {
+func (s *installSystemProbeTestSuite) assertUninstall() {
+	s.linuxInstallerTestSuite.assertUninstall()
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Assert system probe is removed after uninstall")

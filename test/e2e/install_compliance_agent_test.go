@@ -45,25 +45,26 @@ func (s *installComplianceAgentTestSuite) TestInstallComplianceAgent() {
 
 	s.assertInstallScript()
 
-	t.Log("Assert fips config is not created")
-	assertFileNotExists(t, vm, "/etc/datadog-fips-proxy/fips/datadog-fips-proxy.cfg")
-
-	s.assertSecurityAgentAndSystemProbeConfig()
+	s.addExtraIntegration()
 
 	s.uninstall()
 
 	s.assertUninstall()
-
-	s.assertSecurityAgentAndSystemProbeConfigAfterUninstall()
 
 	s.purge()
 
 	s.assertPurge()
 }
 
-func (s *installComplianceAgentTestSuite) assertSecurityAgentAndSystemProbeConfig() {
+func (s *installComplianceAgentTestSuite) assertInstallScript() {
+	s.linuxInstallerTestSuite.assertInstallScript()
+
 	t := s.T()
 	vm := s.Env().VM
+
+	t.Log("Assert fips config is not created")
+	assertFileNotExists(t, vm, "/etc/datadog-fips-proxy/fips/datadog-fips-proxy.cfg")
+
 	t.Log("Assert system probe config is not created")
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
 
@@ -76,7 +77,8 @@ func (s *installComplianceAgentTestSuite) assertSecurityAgentAndSystemProbeConfi
 	assert.NotContains(t, securityAgentConfig, "runtime_security_config")
 }
 
-func (s *installComplianceAgentTestSuite) assertSecurityAgentAndSystemProbeConfigAfterUninstall() {
+func (s *installComplianceAgentTestSuite) assertUninstall() {
+	s.linuxInstallerTestSuite.assertUninstall()
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Assert security-agent is removed after uninstall")

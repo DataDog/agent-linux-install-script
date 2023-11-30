@@ -45,25 +45,26 @@ func (s *installSecurityAgentTestSuite) TestInstallSecurityAgent() {
 
 	s.assertInstallScript()
 
-	t.Log("Assert fips config is not created")
-	assertFileNotExists(t, vm, "/etc/datadog-fips-proxy/fips/datadog-fips-proxy.cfg")
-
-	s.assertSecurityAgentAndSystemProbeConfig()
+	s.addExtraIntegration()
 
 	s.uninstall()
 
 	s.assertUninstall()
-
-	s.assertSecurityAgentAndSystemProbeConfigAfterUninstall()
 
 	s.purge()
 
 	s.assertPurge()
 }
 
-func (s *installSecurityAgentTestSuite) assertSecurityAgentAndSystemProbeConfig() {
+func (s *installSecurityAgentTestSuite) assertInstallScript() {
+	s.linuxInstallerTestSuite.assertInstallScript()
+
 	t := s.T()
 	vm := s.Env().VM
+
+	t.Log("Assert fips config is not created")
+	assertFileNotExists(t, vm, "/etc/datadog-fips-proxy/fips/datadog-fips-proxy.cfg")
+
 	t.Log("Assert system probe config and security-agent are created")
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
@@ -78,7 +79,8 @@ func (s *installSecurityAgentTestSuite) assertSecurityAgentAndSystemProbeConfig(
 	assert.Equal(t, true, systemProbeConfig["runtime_security_config"].(map[any]any)["enabled"])
 }
 
-func (s *installSecurityAgentTestSuite) assertSecurityAgentAndSystemProbeConfigAfterUninstall() {
+func (s *installSecurityAgentTestSuite) assertUninstall() {
+	s.linuxInstallerTestSuite.assertUninstall()
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Assert system probe config and security-agent are removed after uninstall")
