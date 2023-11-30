@@ -23,7 +23,7 @@ func TestInstallComplianceAgentSuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("security-agent test supports only datadog-agent flavor")
 	}
-	stackName := fmt.Sprintf("install-security-agent-%s-%s", flavor, platform)
+	stackName := fmt.Sprintf("install-compliance-agent-%s-%s", flavor, platform)
 	t.Run(stackName, func(t *testing.T) {
 		t.Logf("We will install with security-agent %s with install script on %s", flavor, platform)
 		testSuite := &installComplianceAgentTestSuite{}
