@@ -135,11 +135,13 @@ func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	assert.Equal(t, []any{"foo:bar", "baz:toto"}, config["tags"].([]any))
 	assert.Equal(t, "kiki", config["env"])
 
+	t.Log("assert security agent configuration contains expected properties")
 	securityAgentConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[any]any)["enabled"])
 	assert.Equal(t, true, securityAgentConfig["compliance_config"].(map[any]any)["enabled"])
 
+	t.Log("assert system probe configuration contains expected properties")
 	systemProbeConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Equal(t, true, systemProbeConfig["runtime_security_config"].(map[any]any)["enabled"])

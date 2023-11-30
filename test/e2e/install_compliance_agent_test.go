@@ -81,6 +81,14 @@ func (s *installComplianceAgentTestSuite) assertUninstall() {
 	s.linuxInstallerTestSuite.assertUninstall()
 	t := s.T()
 	vm := s.Env().VM
-	t.Log("Assert security-agent is removed after uninstall")
+	t.Log("Assert security-agent is there after uninstall")
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
+}
+
+func (s *installComplianceAgentTestSuite) assertPurge() {
+	s.linuxInstallerTestSuite.assertPurge()
+	t := s.T()
+	vm := s.Env().VM
+	t.Log("Assert security-agent is removed after purge")
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
 }

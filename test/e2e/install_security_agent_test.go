@@ -83,7 +83,16 @@ func (s *installSecurityAgentTestSuite) assertUninstall() {
 	s.linuxInstallerTestSuite.assertUninstall()
 	t := s.T()
 	vm := s.Env().VM
-	t.Log("Assert system probe config and security-agent are removed after uninstall")
+	t.Log("Assert system probe config and security-agent are there after uninstall")
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
+}
+
+func (s *installSecurityAgentTestSuite) assertPurge() {
+	s.linuxInstallerTestSuite.assertPurge()
+	t := s.T()
+	vm := s.Env().VM
+	t.Log("Assert system probe config and security-agent are removed after purge")
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
 }

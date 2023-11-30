@@ -73,6 +73,14 @@ func (s *installSystemProbeTestSuite) assertUninstall() {
 	s.linuxInstallerTestSuite.assertUninstall()
 	t := s.T()
 	vm := s.Env().VM
+	t.Log("Assert system probe is there after uninstall")
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
+}
+
+func (s *installSystemProbeTestSuite) assertPurge() {
+	s.linuxInstallerTestSuite.assertPurge()
+	t := s.T()
+	vm := s.Env().VM
 	t.Log("Assert system probe is removed after uninstall")
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
 }
