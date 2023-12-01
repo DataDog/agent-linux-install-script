@@ -83,6 +83,7 @@ func (s *installMaximalAndRetryTestSuite) TestInstallMaximalAndReplayScript() {
 
 func (s *installMaximalAndRetryTestSuite) assertInstallMaximal(installCommandOutput string) {
 	t := s.T()
+	vm := s.Env().VM
 	t.Log("assert install output contains configuration changes")
 
 	for _, line := range maximalInstallLogLines {
@@ -91,16 +92,25 @@ func (s *installMaximalAndRetryTestSuite) assertInstallMaximal(installCommandOut
 
 	s.assertInstallScript()
 
+	assertFileNotExists(t, vm, fipsConfigFilepath)
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
+
 	s.assertMaximalConfiguration()
 }
 
 func (s *installMaximalAndRetryTestSuite) assertRetryInstall(installCommandOutput string) {
 	t := s.T()
+	vm := s.Env().VM
 	t.Log("assert install output contains configuration changes")
 
 	for _, line := range maximalInstallLogLines {
 		assert.NotContains(t, installCommandOutput, line)
 	}
+
+	assertFileNotExists(t, vm, fipsConfigFilepath)
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 
 	assert.Contains(t, installCommandOutput, "* Keeping old /etc/datadog-agent/datadog.yaml configuration file")
 
@@ -120,10 +130,10 @@ func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	assert.Equal(t, []any{"foo:bar", "baz:toto"}, config["tags"].([]any))
 	assert.Equal(t, "kiki", config["env"])
 
-	securityAgentConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("etc/%s/security-agent.yaml", s.baseName))
+	securityAgentConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("etc/%s/%s", s.baseName, securityAgentConfigFileName))
 	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[any]any)["enabled"])
 	assert.Equal(t, true, securityAgentConfig["compliance_config"].(map[any]any)["enabled"])
 
-	systemProbeConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("etc/%s/system-probe.yaml", s.baseName))
+	systemProbeConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assert.Equal(t, true, systemProbeConfig["runtime_security_config"].(map[any]any)["enabled"])
 }
