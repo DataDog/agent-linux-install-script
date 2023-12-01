@@ -294,7 +294,10 @@ e2e:
           - --run TestUpgrade6Suite
           - --run TestUpgrade7Suite
           - --run TestInstallMaximalAndRetrySuite
-          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
+          - --run TestInstallSecurityAgentSuite
+          - --run TestInstallSystemProbeSuite
+          - --run TestInstallComplianceAgentSuite
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent)Suite
       - FLAVOR: datadog-agent
         PLATFORM:
           - Debian_11
@@ -316,7 +319,6 @@ e2e:
         EXTRA_PARAMS:
           - --run TestInstallSuite
           - --run TestUpgrade7Suite
-          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
       - FLAVOR: datadog-iot-agent
         PLATFORM:
           - Debian_11
@@ -328,7 +330,6 @@ e2e:
         EXTRA_PARAMS:
           - --run TestInstallSuite
           - --run TestUpgrade7Suite
-          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
 
 e2e_test_upload:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/datadog-ci-uploader:$DATADOG_AGENT_BUILDIMAGES
