@@ -12,7 +12,6 @@ import (
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type installComplianceAgentTestSuite struct {
@@ -71,9 +70,8 @@ func (s *installComplianceAgentTestSuite) assertInstallScript() {
 	t.Log("Assert security-agent is created")
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 
-	securityAgentConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
-	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
-	assert.Equal(t, true, securityAgentConfig["compliance_config"].(map[any]any)["enabled"])
+	securityAgentConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
+	assert.Equal(t, true, securityAgentConfig["compliance_config"].(map[any]any)["enabled"], fmt.Sprintf("compliance_config should be enabled, raw config content:\n%v\n\n", securityAgentConfig))
 	assert.NotContains(t, securityAgentConfig, "runtime_security_config")
 }
 

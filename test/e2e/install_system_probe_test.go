@@ -12,7 +12,6 @@ import (
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type installSystemProbeTestSuite struct {
@@ -64,8 +63,7 @@ func (s *installSystemProbeTestSuite) assertInstallScript() {
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 
-	systemProbeConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
-	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
+	systemProbeConfig := c(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assert.NotContains(t, systemProbeConfig, "runtime_security_config")
 }
 

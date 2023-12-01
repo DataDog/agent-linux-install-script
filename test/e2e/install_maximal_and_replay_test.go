@@ -12,7 +12,6 @@ import (
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type installMaximalAndRetryTestSuite struct {
@@ -126,8 +125,7 @@ func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	t.Helper()
 	vm := s.Env().VM
 	t.Log("assert configuration contains expected properties")
-	config, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
-	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
+	config := unmarshalConfigFile(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
 	assert.Equal(t, apiKey, config["api_key"], "not matching api key in config")
 	assert.Equal(t, "mysite.com", config["site"])
 	assert.Equal(t, "myintake.com", config["dd_url"])
@@ -136,13 +134,11 @@ func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	assert.Equal(t, "kiki", config["env"])
 
 	t.Log("assert security agent configuration contains expected properties")
-	securityAgentConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
-	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
+	securityAgentConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[any]any)["enabled"])
 	assert.Equal(t, true, securityAgentConfig["compliance_config"].(map[any]any)["enabled"])
 
 	t.Log("assert system probe configuration contains expected properties")
-	systemProbeConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
-	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
+	systemProbeConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assert.Equal(t, true, systemProbeConfig["runtime_security_config"].(map[any]any)["enabled"])
 }
