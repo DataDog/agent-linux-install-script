@@ -12,8 +12,6 @@ import (
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
 
 type installMaximalAndRetryTestSuite struct {
@@ -46,7 +44,7 @@ func TestInstallMaximalAndRetrySuite(t *testing.T) {
 		testSuite := &installMaximalAndRetryTestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(testSuite.getEC2Options()...),
+			e2e.EC2VMStackDef(getEC2Options(t)...),
 			params.WithStackName(stackName),
 		)
 	})
@@ -85,6 +83,7 @@ func (s *installMaximalAndRetryTestSuite) TestInstallMaximalAndReplayScript() {
 
 func (s *installMaximalAndRetryTestSuite) assertInstallMaximal(installCommandOutput string) {
 	t := s.T()
+	vm := s.Env().VM
 	t.Log("assert install output contains configuration changes")
 
 	for _, line := range maximalInstallLogLines {
@@ -93,16 +92,25 @@ func (s *installMaximalAndRetryTestSuite) assertInstallMaximal(installCommandOut
 
 	s.assertInstallScript()
 
+	assertFileNotExists(t, vm, fipsConfigFilepath)
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
+
 	s.assertMaximalConfiguration()
 }
 
 func (s *installMaximalAndRetryTestSuite) assertRetryInstall(installCommandOutput string) {
 	t := s.T()
+	vm := s.Env().VM
 	t.Log("assert install output contains configuration changes")
 
 	for _, line := range maximalInstallLogLines {
 		assert.NotContains(t, installCommandOutput, line)
 	}
+
+	assertFileNotExists(t, vm, fipsConfigFilepath)
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 
 	assert.Contains(t, installCommandOutput, "* Keeping old /etc/datadog-agent/datadog.yaml configuration file")
 
@@ -114,10 +122,7 @@ func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("assert comfiguration contains expected properties")
-	configContent := vm.Execute(fmt.Sprintf("sudo cat /etc/%s/%s", s.baseName, s.configFile))
-	var config map[string]any
-	err := yaml.Unmarshal([]byte(configContent), &config)
-	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
+	config := unmarshalConfigFile(t, vm, fmt.Sprintf("etc/%s/%s", s.baseName, s.configFile))
 	assert.Equal(t, apiKey, config["api_key"], "not matching api key in config")
 	assert.Equal(t, "mysite.com", config["site"])
 	assert.Equal(t, "myintake.com", config["dd_url"])
@@ -125,16 +130,10 @@ func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	assert.Equal(t, []any{"foo:bar", "baz:toto"}, config["tags"].([]any))
 	assert.Equal(t, "kiki", config["env"])
 
-	securityAgentConfigContent := vm.Execute(fmt.Sprintf("sudo cat /etc/%s/security-agent.yaml", s.baseName))
-	var securityAgentConfig map[string]any
-	err = yaml.Unmarshal([]byte(securityAgentConfigContent), &securityAgentConfig)
-	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
+	securityAgentConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("etc/%s/%s", s.baseName, securityAgentConfigFileName))
 	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[any]any)["enabled"])
 	assert.Equal(t, true, securityAgentConfig["compliance_config"].(map[any]any)["enabled"])
 
-	systemProbeConfigContent := vm.Execute(fmt.Sprintf("sudo cat /etc/%s/system-probe.yaml", s.baseName))
-	var systemProbeConfig map[string]any
-	err = yaml.Unmarshal([]byte(systemProbeConfigContent), &systemProbeConfig)
-	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
-	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[any]any)["enabled"])
+	systemProbeConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("etc/%s/%s", s.baseName, systemProbeConfigFileName))
+	assert.Equal(t, true, systemProbeConfig["runtime_security_config"].(map[any]any)["enabled"])
 }

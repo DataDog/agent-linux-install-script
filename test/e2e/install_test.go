@@ -24,7 +24,7 @@ func TestInstallSuite(t *testing.T) {
 		testSuite := &installTestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(testSuite.getEC2Options()...),
+			e2e.EC2VMStackDef(getEC2Options(t)...),
 			params.WithStackName(stackName),
 		)
 	})
@@ -51,4 +51,16 @@ func (s *installTestSuite) TestInstall() {
 	s.purge()
 
 	s.assertPurge()
+}
+
+func (s *installTestSuite) assertInstallScript() {
+	s.linuxInstallerTestSuite.assertInstallScript()
+
+	t := s.T()
+	vm := s.Env().VM
+
+	t.Log("Assert security agent, system probe and fips config are not created")
+	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
+	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
+	assertFileNotExists(t, vm, fipsConfigFilepath)
 }

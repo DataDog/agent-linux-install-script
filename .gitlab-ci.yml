@@ -9,10 +9,10 @@ variables:
   DATADOG_AGENT_BUILDERS: v9930706-ef9d493
   DATADOG_AGENT_BUILDIMAGES: v13321514-644fed4
   S3_CP_CMD: aws s3 cp --only-show-errors --region us-east-1 --sse AES256
-  TEST_INFRA_DEFINITIONS_BUILDIMAGES: cb9e86993fd5
+  TEST_INFRA_DEFINITIONS_BUILDIMAGES: 894572ece376
   DEFAULT_MAJOR_VERSION: 7
   TESTING_DIR: ${CI_PROJECT_DIR}
-  DD_INSTALL_ONLY: 'true'
+  DD_INSTALL_ONLY: "true"
   DD_API_KEY: 123
   DD_OP_PIPELINE_ID: 123
   DD_ENV: testenv
@@ -57,7 +57,7 @@ unit_tests:
   stage: test
   dependencies: ["generate-scripts"]
   variables:
-    SCRIPT: 'install_script_agent${MAJOR_VERSION}.sh'
+    SCRIPT: "install_script_agent${MAJOR_VERSION}.sh"
   script:
     - ./test/localtest.sh
 
@@ -76,7 +76,14 @@ test_pinned_version:
       # `zypper search` used will fail. We need to figure out a fix for this.
       #- IMAGE: opensuse/archive:42.3
       #  MINOR_VERSION: 38
-      - IMAGE: [centos:centos7, rockylinux:9.0, ubuntu:14.04, debian:10.9, opensuse/leap:15.4]
+      - IMAGE:
+          [
+            centos:centos7,
+            rockylinux:9.0,
+            ubuntu:14.04,
+            debian:10.9,
+            opensuse/leap:15.4,
+          ]
         MAJOR_VERSION: [6, 7]
 
 # Opensuse13 only supports Datadog Agent version up 6.32, hence these tests should not be launched on pipelines triggered by datadog-agent pipelines
@@ -192,8 +199,17 @@ test-observability-pipelines-worker:
     SCRIPT: ./install_script_op_worker1.sh
   parallel:
     matrix:
-      - IMAGE: [amazonlinux:2, amazonlinux:2023, debian:10, debian:11, rockylinux:9.0, ubuntu:20.04, ubuntu:22.04]
-        DD_OPW_INSTALL_CLASSIC_AGENT: ['', install_script_agent7.sh]
+      - IMAGE:
+          [
+            amazonlinux:2,
+            amazonlinux:2023,
+            debian:10,
+            debian:11,
+            rockylinux:9.0,
+            ubuntu:20.04,
+            ubuntu:22.04,
+          ]
+        DD_OPW_INSTALL_CLASSIC_AGENT: ["", install_script_agent7.sh]
   script:
     - ./test/op-worker-test.sh
 
@@ -208,7 +224,16 @@ test-vector:
     SCRIPT: ./install_script_vector0.sh
   parallel:
     matrix:
-      - IMAGE: [amazonlinux:2, amazonlinux:2023, debian:10, debian:11, rockylinux:9.0, ubuntu:20.04, ubuntu:22.04]
+      - IMAGE:
+          [
+            amazonlinux:2,
+            amazonlinux:2023,
+            debian:10,
+            debian:11,
+            rockylinux:9.0,
+            ubuntu:20.04,
+            ubuntu:22.04,
+          ]
   script:
     - ./test/vector-test.sh
 
@@ -269,7 +294,10 @@ e2e:
           - --run TestUpgrade6Suite
           - --run TestUpgrade7Suite
           - --run TestInstallMaximalAndRetrySuite
-          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
+          - --run TestInstallSecurityAgentSuite
+          - --run TestInstallSystemProbeSuite
+          - --run TestInstallComplianceAgentSuite
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent)Suite
       - FLAVOR: datadog-agent
         PLATFORM:
           - Debian_11
@@ -291,7 +319,6 @@ e2e:
         EXTRA_PARAMS:
           - --run TestInstallSuite
           - --run TestUpgrade7Suite
-          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
       - FLAVOR: datadog-iot-agent
         PLATFORM:
           - Debian_11
@@ -303,7 +330,6 @@ e2e:
         EXTRA_PARAMS:
           - --run TestInstallSuite
           - --run TestUpgrade7Suite
-          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry)Suite
 
 e2e_test_upload:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/datadog-ci-uploader:$DATADOG_AGENT_BUILDIMAGES
