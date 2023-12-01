@@ -43,9 +43,9 @@ func (s *installTestSuite) TestInstall() {
 	s.assertInstallScript()
 
 	t.Log("Assert security agent, system probe and fips config are not created")
-	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
-	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
-	assertFileNotExists(t, vm, "/etc/datadog-fips-proxy/fips/datadog-fips-proxy.cfg")
+	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
+	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
+	assertFileNotExists(t, vm, fipsConfigFilepath)
 
 	s.addExtraIntegration()
 

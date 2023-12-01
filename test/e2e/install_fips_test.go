@@ -81,7 +81,7 @@ func (s *installFipsTestSuite) assertInstallFips(installCommandOutput string) {
 	assert.NotContains(t, config, "site", "site modified in config")
 	assert.NotContains(t, config, "dd_url", "dd_url modified in config")
 
-	assertFileExists(t, vm, "/etc/datadog-fips-proxy/fips/datadog-fips-proxy.cfg")
+	assertFileExists(t, vm, fipsConfigFilepath)
 }
 
 func (s *installFipsTestSuite) purgeFips() {

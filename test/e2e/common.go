@@ -29,9 +29,12 @@ type osConfig struct {
 }
 
 const (
-	defaultAgentFlavor agentFlavor = agentFlavorDatadogAgent
-	defaultPlatform                = "Ubuntu_22_04"
-	defaultMode                    = "install"
+	defaultAgentFlavor          agentFlavor = agentFlavorDatadogAgent
+	defaultPlatform                         = "Ubuntu_22_04"
+	defaultMode                             = "install"
+	fipsConfigFilepath                      = "/etc/datadog-fips-proxy/datadog-fips-proxy.cfg"
+	systemProbeConfigFileName               = "system-probe.yaml"
+	securityAgentConfigFileName             = "security-agent.yaml"
 )
 
 var (

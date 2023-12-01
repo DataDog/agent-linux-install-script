@@ -94,9 +94,9 @@ func (s *installMaximalAndRetryTestSuite) assertInstallMaximal(installCommandOut
 
 	s.assertInstallScript()
 
-	assertFileNotExists(t, vm, "/etc/datadog-fips-proxy/fips/datadog-fips-proxy.cfg")
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
+	assertFileNotExists(t, vm, fipsConfigFilepath)
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 
 	s.assertMaximalConfiguration()
 }
@@ -113,9 +113,9 @@ func (s *installMaximalAndRetryTestSuite) assertRetryInstall(installCommandOutpu
 
 	assert.Contains(t, installCommandOutput, "* Keeping old /etc/datadog-agent/datadog.yaml configuration file")
 
-	assertFileNotExists(t, vm, "/etc/datadog-fips-proxy/fips/datadog-fips-proxy.cfg")
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
+	assertFileNotExists(t, vm, fipsConfigFilepath)
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 
 	t.Log("assert configuration did not change")
 	s.assertMaximalConfiguration()
@@ -136,13 +136,13 @@ func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	assert.Equal(t, "kiki", config["env"])
 
 	t.Log("assert security agent configuration contains expected properties")
-	securityAgentConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
+	securityAgentConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[any]any)["enabled"])
 	assert.Equal(t, true, securityAgentConfig["compliance_config"].(map[any]any)["enabled"])
 
 	t.Log("assert system probe configuration contains expected properties")
-	systemProbeConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
+	systemProbeConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Equal(t, true, systemProbeConfig["runtime_security_config"].(map[any]any)["enabled"])
 }

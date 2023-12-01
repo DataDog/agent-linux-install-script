@@ -63,18 +63,18 @@ func (s *installSecurityAgentTestSuite) assertInstallScript() {
 	vm := s.Env().VM
 
 	t.Log("Assert fips config is not created")
-	assertFileNotExists(t, vm, "/etc/datadog-fips-proxy/fips/datadog-fips-proxy.cfg")
+	assertFileNotExists(t, vm, fipsConfigFilepath)
 
 	t.Log("Assert system probe config and security-agent are created")
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 
-	securityAgentConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
+	securityAgentConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Equal(t, true, securityAgentConfig["runtime_security_config"].(map[any]any)["enabled"])
 	assert.NotContains(t, securityAgentConfig, "compliance_config")
 
-	systemProbeConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
+	systemProbeConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.Equal(t, true, systemProbeConfig["runtime_security_config"].(map[any]any)["enabled"])
 }
@@ -84,8 +84,8 @@ func (s *installSecurityAgentTestSuite) assertUninstall() {
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Assert system probe config and security-agent are there after uninstall")
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 }
 
 func (s *installSecurityAgentTestSuite) assertPurge() {
@@ -93,6 +93,6 @@ func (s *installSecurityAgentTestSuite) assertPurge() {
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Assert system probe config and security-agent are removed after purge")
-	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
-	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
+	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
+	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 }

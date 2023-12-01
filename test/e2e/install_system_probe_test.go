@@ -61,10 +61,10 @@ func (s *installSystemProbeTestSuite) assertInstallScript() {
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Assert system probe config and security-agent are created")
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
-	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/security-agent.yaml", s.baseName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
+	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 
-	systemProbeConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
+	systemProbeConfig, err := unmarshalConfigFile(vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
 	assert.NotContains(t, systemProbeConfig, "runtime_security_config")
 }
@@ -74,7 +74,7 @@ func (s *installSystemProbeTestSuite) assertUninstall() {
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Assert system probe is there after uninstall")
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 }
 
 func (s *installSystemProbeTestSuite) assertPurge() {
@@ -82,5 +82,5 @@ func (s *installSystemProbeTestSuite) assertPurge() {
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Assert system probe is removed after uninstall")
-	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/system-probe.yaml", s.baseName))
+	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 }
