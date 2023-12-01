@@ -105,6 +105,7 @@ func getEC2Options(t *testing.T) []ec2params.Option {
 func (s *linuxInstallerTestSuite) assertInstallScript() {
 	t := s.T()
 	vm := s.Env().VM
+	t.Helper()
 	t.Log("Check user, config file and service")
 	// check presence of the dd-agent user
 	_, err := vm.ExecuteWithError("id dd-agent")
@@ -132,6 +133,7 @@ func (s *linuxInstallerTestSuite) assertInstallScript() {
 
 func (s *linuxInstallerTestSuite) addExtraIntegration() {
 	t := s.T()
+	t.Helper()
 	if flavor != "datadog-agent" {
 		return
 	}
@@ -145,6 +147,7 @@ func (s *linuxInstallerTestSuite) addExtraIntegration() {
 func (s *linuxInstallerTestSuite) uninstall() {
 	t := s.T()
 	vm := s.Env().VM
+	t.Helper()
 	t.Logf("Remove %s", flavor)
 	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
 		t.Log("Uninstall with apt")
@@ -162,6 +165,7 @@ func (s *linuxInstallerTestSuite) uninstall() {
 
 func (s *linuxInstallerTestSuite) assertUninstall() {
 	t := s.T()
+	t.Helper()
 	vm := s.Env().VM
 	t.Logf("Assert %s is removed", flavor)
 	// dd-agent user and config file should still be here
@@ -184,6 +188,7 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 
 func (s *linuxInstallerTestSuite) purge() {
 	t := s.T()
+	t.Helper()
 	vm := s.Env().VM
 
 	if noFlush {
@@ -200,6 +205,7 @@ func (s *linuxInstallerTestSuite) purge() {
 
 func (s *linuxInstallerTestSuite) assertPurge() {
 	t := s.T()
+	t.Helper()
 	vm := s.Env().VM
 
 	if noFlush {
