@@ -190,32 +190,39 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 func (s *linuxInstallerTestSuite) purge() {
 	t := s.T()
 	t.Helper()
+
+	if s.shouldSkipPurge() {
+		return
+	}
+
 	vm := s.Env().VM
-
-	if noFlush {
-		return
-	}
-
-	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
-		return
-	}
 
 	t.Log("Purge package")
 	vm.Execute(fmt.Sprintf("sudo apt remove --purge -y %s", flavor))
 }
 
+func (s *linuxInstallerTestSuite) shouldSkipPurge() bool {
+	t := s.T()
+	vm := s.Env().VM
+	t.Helper()
+	if noFlush {
+		return true
+	}
+	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
+		return true
+	}
+	return false
+}
+
 func (s *linuxInstallerTestSuite) assertPurge() {
 	t := s.T()
 	t.Helper()
+
+	if s.shouldSkipPurge() {
+		return
+	}
+
 	vm := s.Env().VM
-
-	if noFlush {
-		return
-	}
-
-	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
-		return
-	}
 
 	t.Log("Assert purge package")
 	_, err := vm.ExecuteWithError("id datadog-agent")

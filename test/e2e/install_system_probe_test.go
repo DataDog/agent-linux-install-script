@@ -76,9 +76,12 @@ func (s *installSystemProbeTestSuite) assertUninstall() {
 }
 
 func (s *installSystemProbeTestSuite) assertPurge() {
+	if s.shouldSkipPurge() {
+		return
+	}
 	s.linuxInstallerTestSuite.assertPurge()
 	t := s.T()
 	vm := s.Env().VM
-	t.Log("Assert system probe is removed after uninstall")
+	t.Log("Assert system probe is removed after purge")
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 }

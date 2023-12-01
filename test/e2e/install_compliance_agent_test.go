@@ -84,6 +84,9 @@ func (s *installComplianceAgentTestSuite) assertUninstall() {
 }
 
 func (s *installComplianceAgentTestSuite) assertPurge() {
+	if s.shouldSkipPurge() {
+		return
+	}
 	s.linuxInstallerTestSuite.assertPurge()
 	t := s.T()
 	vm := s.Env().VM
