@@ -59,7 +59,7 @@ func (s *installSystemProbeTestSuite) assertInstallScript() {
 	s.linuxInstallerTestSuite.assertInstallScript()
 	t := s.T()
 	vm := s.Env().VM
-	t.Log("Assert system probe config and security-agent are created")
+	t.Log("Assert system probe config is created and security-agent is not created")
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 
