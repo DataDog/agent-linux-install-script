@@ -1,6 +1,6 @@
 {
   "go.useLanguageServer": true,
-  "go.testFlags": ["-v"],
+  "go.testFlags": ["-v", "-flavor=datadog-agent", "-scriptPath=../.."],
   "go.testTimeout": "0s",
   "go.alternateTools": {
     "go": "/usr/local/bin/awsgo",
