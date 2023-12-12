@@ -1322,7 +1322,9 @@ install_method:
 if [ ! "$no_agent" ]; then
   $sudo_cmd sh -c "echo '$install_signature' > $etcdir/install.json"
   $sudo_cmd chmod 644 "$etcdir/install.json"
-  $sudo_cmd sh -c "echo '$install_info_content' > $etcdir/install_info"
+  $sudo_cmd sh -c "exec cat > $etcdir/install_info " <<EOF
+$install_info_content
+EOF
 fi
 
 if [ -n "$fips_mode" ]; then
