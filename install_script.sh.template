@@ -9,7 +9,7 @@ set -e
 
 DEPRECATION_MESSAGE_PLACEHOLDER
 
-install_script_version=1.24.0
+install_script_version=1.24.0.post
 logfile="ddagent-install.log"
 support_email=support@datadoghq.com
 variant=install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
@@ -388,19 +388,23 @@ fi
 declare -a apm_libraries
 declare host_injection_enabled
 declare docker_injection_enabled
+install_type="linux_agent_installer"
 DD_APM_INSTRUMENTATION_ENABLED_DOCKER_PLACEHOLDER
 
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "all" ] ; then
   host_injection_enabled="true"
   docker_injection_enabled="true"
+  install_type="linux_single_step_all"
 fi
 
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "host" ] ; then
   host_injection_enabled="true"
+  install_type="linux_single_step_hst"
 fi
 
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "docker" ] ; then
   docker_injection_enabled="true"
+  install_type="linux_single_step_dkr"
   no_agent=true
 fi
 
@@ -1252,24 +1256,37 @@ function update_env(){
     $sudo_cmd sh -c "sed -i 's/^# env:.*/env: $dd_env/' $config_file"
   fi
 }
-function update_runtime_security(){
+function update_security_and_or_compliance(){
   local sudo_cmd="$1"
-  local security_config="$2"
-  local local_config_file="$3"
-  if [ "$security_config" == "true" ]; then
-    printf "\033[34m\n* Enabling runtime security in $(basename "$local_config_file") configuration\n\033[0m\n"
+  local local_config_file="$2"
+  local enable_security="$3"
+  local enable_compliance="$4"
+  if [ "$enable_security" == "true" ]; then
+    printf "\033[34m\n* Enabling runtime security in $local_config_file configuration\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/^#\s*runtime_security_config:$/runtime_security_config:/' $local_config_file"
     $sudo_cmd sh -c "sed -i '/^runtime_security_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $local_config_file"
   fi
-}
-function update_compliance_configuration(){
-  local sudo_cmd="$1"
-  local compliance_config="$2"
-  local local_config_file="$3"
-  if [ "$compliance_config" == "true" ]; then
-    printf "\033[34m\n* Enabling compliance monitoring in $(basename "$local_config_file") configuration\n\033[0m\n"
+  if [ "$enable_compliance" == "true" ]; then
+    printf "\033[34m\n* Enabling compliance monitoring in $local_config_file configuration\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/^#\s*compliance_config:$/compliance_config:/' $local_config_file"
     $sudo_cmd sh -c "sed -i '/^compliance_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $local_config_file"
+  fi
+}
+function manage_security_and_system_probe_config(){
+  local sudo_cmd="$1"
+  local security_config_file="$2"
+  local probe_config_file="$3"
+  local enable_security="$4"
+  local enable_compliance="$5"
+  if [ "$enable_security" == "true" ] || [ "$enable_compliance" == "true" ]; then
+    if ensure_config_file_exists "$sudo_cmd" "$security_config_file" "root"; then
+      update_security_and_or_compliance "$sudo_cmd" "$security_config_file" "$enable_security" "$enable_compliance"
+    fi
+    if [ "$enable_security" == "true" ]; then
+      if ensure_config_file_exists "$sudo_cmd" "$probe_config_file" "root"; then
+        update_security_and_or_compliance "$sudo_cmd" "$probe_config_file" "$enable_security" "false"
+      fi
+    fi
   fi
 }
 # "Main" configuration update
@@ -1288,13 +1305,7 @@ elif [ ! "$no_agent" ]; then
     update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
     update_env "$sudo_cmd" "$dd_env" "$config_file"
   fi
-  if ensure_config_file_exists "$sudo_cmd" "$security_agent_config_file" "root"; then
-    update_runtime_security "$sudo_cmd" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$security_agent_config_file"
-    update_compliance_configuration "$sudo_cmd" "$DD_COMPLIANCE_CONFIG_ENABLED" "$security_agent_config_file"
-  fi
-  if ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"; then
-    update_runtime_security "$sudo_cmd" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$system_probe_config_file"
-  fi
+  manage_security_and_system_probe_config "$sudo_cmd" "$security_agent_config_file" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
 fi
 
 if [ ! "$no_agent" ]; then
@@ -1304,17 +1315,13 @@ fi
 
 # set the FIPS configuration
 if [ -n "$fips_mode" ]; then
-  if ! ensure_config_file_exists "$sudo_cmd" "$config_file_fips" "dd-agent"; then
-    echo "Fips config file already created"
-  fi
+  ensure_config_file_exists "$sudo_cmd" "$config_file_fips" "dd-agent"
   # TODO: set port range in file, or environment variable
 fi
 
 # set the system-probe configuration
 if [ -n "$system_probe_ensure_config" ]; then
-  if ! ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"; then
-    echo "System probe config file already created"
-  fi
+  ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
 fi
 
 # run apm injection scripts
@@ -1347,7 +1354,6 @@ function generate_install_signature() {
 }
 
 install_id=$(generate_install_id)
-install_type="linux_agent_installer"
 install_time=$(date +%s)
 
 # If an install.json already exists, is formatted correctly, and was generated by this script,
@@ -1375,7 +1381,9 @@ install_method:
 if [ ! "$no_agent" ]; then
   $sudo_cmd sh -c "echo '$install_signature' > $etcdir/install.json"
   $sudo_cmd chmod 644 "$etcdir/install.json"
-  $sudo_cmd sh -c "echo '$install_info_content' > $etcdir/install_info"
+  $sudo_cmd sh -c "exec cat > $etcdir/install_info " <<EOF
+$install_info_content
+EOF
 fi
 
 if [ -n "$fips_mode" ]; then

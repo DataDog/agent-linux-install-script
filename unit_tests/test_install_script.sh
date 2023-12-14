@@ -13,19 +13,16 @@ testEnsureExists() {
   ensure_config_file_exists "sudo" "/etc/hosts" "root"
   assertEquals 1 $?
 }
-
 testEnsureExistsWrongSudo() {
   sudo rm /etc/datadog-agent/datadog.yaml
   ensure_config_file_exists "sumo" $config_file "dd-agent"
   assertEquals 125 $?
 }
-
 testEnsureExistsFailsWrongUser() {
   sudo rm /etc/datadog-agent/datadog.yaml
   ensure_config_file_exists "sudo" $config_file "datad0g-agent"
   assertEquals 1 $?
 }
-
 testEnsureNotExists() {
   sudo rm /etc/datadog-agent/datadog.yaml
   ensure_config_file_exists "sudo" $config_file "dd-agent"
@@ -149,10 +146,11 @@ testNoEnv(){
   sudo grep -wq "^# env: <environment name>$" $config_file
   assertEquals 0 $?
 }
-### update_runtime_security
+
+### update_security_and_or_compliance
 testRuntimeSecurityUpdated() {
   sudo cp ${security_agent_config_file}.example $security_agent_config_file
-  update_runtime_security "sudo" "true" $security_agent_config_file
+  update_security_and_or_compliance "sudo" $security_agent_config_file true false
   yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
   assertEquals 0 $?
   sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
@@ -160,32 +158,94 @@ testRuntimeSecurityUpdated() {
 }
 testRuntimeSecurityUpdatedSystemPrope() {
   sudo cp ${system_probe_config_file}.example $system_probe_config_file
-  update_runtime_security "sudo" "true" $system_probe_config_file
+  update_security_and_or_compliance "sudo" $system_probe_config_file true false
   yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
   assertEquals 0 $?
   sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $system_probe_config_file | grep -v "#" | grep -q "enabled: true"
   assertEquals 0 $?
 }
-testRuntimeSecurityDisabled() {
-  sudo cp ${security_agent_config_file}.example $security_agent_config_file
-  update_runtime_security "sudo" "false" $security_agent_config_file
-  sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
-  assertEquals 1 $?
-}
-
-### update_compliance_configuration
 testComplianceConfigurationUpdated() {
   sudo cp ${security_agent_config_file}.example $security_agent_config_file
-  update_compliance_configuration "sudo" "true" $security_agent_config_file
+  update_security_and_or_compliance "sudo" $security_agent_config_file false true
   yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
   assertEquals 0 $?
   sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
   assertEquals 0 $?
 }
-testComplianceConfigurationDisabled() {
+testSecurityAndComplianceEnabled() {
   sudo cp ${security_agent_config_file}.example $security_agent_config_file
-  update_compliance_configuration "sudo" "false" $security_agent_config_file
+  sudo cp ${system_probe_config_file}.example $system_probe_config_file
+  update_security_and_or_compliance "sudo" $security_agent_config_file true true
+  yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
+  assertEquals 0 $?
+  sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 0 $?
   sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 0 $?
+}
+testSecurityAndComplianceDisabled() {
+  sudo cp ${security_agent_config_file}.example $security_agent_config_file
+  update_security_and_or_compliance "sudo" $security_agent_config_file false false
+  sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 1 $?
+  sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 1 $?
+}
+
+### Manage security and probe config files
+testNoCreation() {
+  sudo rm $security_agent_config_file $system_probe_config_file 2> /dev/null
+  manage_security_and_system_probe_config "sudo" $security_agent_config_file $system_probe_config_file false false
+  sudo test -e $security_agent_config_file
+  assertEquals 1 $?
+  sudo test -e $system_probe_config_file
+  assertEquals 1 $?
+}
+testPreventOnBoth() {
+  sudo cp ${security_agent_config_file}.example $security_agent_config_file
+  sudo cp ${system_probe_config_file}.example $system_probe_config_file
+  manage_security_and_system_probe_config "sudo" $security_agent_config_file $system_probe_config_file true true
+  sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 1 $?
+  sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 1 $?
+}
+testComplianceOnSecurity(){
+  sudo rm $security_agent_config_file $system_probe_config_file 2> /dev/null
+  manage_security_and_system_probe_config "sudo" $security_agent_config_file $system_probe_config_file false true
+  yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
+  assertEquals 0 $?
+  sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 0 $?
+  sudo test -e $system_probe_config_file
+  assertEquals 1 $?
+}
+testSecOnBoth(){
+  sudo rm $security_agent_config_file $system_probe_config_file 2> /dev/null
+  manage_security_and_system_probe_config "sudo" $security_agent_config_file $system_probe_config_file true false
+  yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
+  assertEquals 0 $?
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 0 $?
+  sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $system_probe_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 0 $?
+}
+testFullConfig(){
+  sudo rm $security_agent_config_file $system_probe_config_file 2> /dev/null
+  manage_security_and_system_probe_config "sudo" $security_agent_config_file $system_probe_config_file true true
+  yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
+  assertEquals 0 $?
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 0 $?
+  sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 0 $?
+  sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $system_probe_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 0 $?
+  sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $system_probe_config_file | grep -v "#" | grep -q "enabled: true"
   assertEquals 1 $?
 }
 

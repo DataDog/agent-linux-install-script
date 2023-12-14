@@ -14,7 +14,6 @@ import (
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
 
 type installFipsTestSuite struct {
@@ -31,7 +30,7 @@ func TestInstallFipsSuite(t *testing.T) {
 		testSuite := &installFipsTestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(testSuite.getEC2Options()...),
+			e2e.EC2VMStackDef(getEC2Options(t)...),
 			params.WithStackName(stackName),
 		)
 	})
@@ -69,19 +68,18 @@ func (s *installFipsTestSuite) assertInstallFips(installCommandOutput string) {
 	assert.Contains(t, installCommandOutput, "* Setting Datadog Agent configuration to use FIPS proxy: /etc/datadog-agent/datadog.yaml", "Missing installer log line for FIPS proxy")
 
 	t.Log("assert agent configuration contains expected properties")
-	configContent := vm.Execute(fmt.Sprintf("sudo cat /etc/%s/%s", s.baseName, s.configFile))
-	var config map[string]any
-	err = yaml.Unmarshal([]byte(configContent), &config)
-	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v", err))
+	config := unmarshalConfigFile(t, vm, fmt.Sprintf("etc/%s/%s", s.baseName, s.configFile))
 	assert.Contains(t, config, "fips")
 	fipsConfig, ok := config["fips"].(map[any]any)
-	assert.True(t, ok, fmt.Sprintf("failed parsing config[fips] to map %v", config["fips"]))
-	assert.Equal(t, true, fipsConfig["enabled"], "fips config enabled should be true")
-	assert.Equal(t, 9803, fipsConfig["port_range_start"], "fips config port_range_start should be 9803")
-	assert.Equal(t, false, fipsConfig["https"], "fips config https should be false")
-	assert.Equal(t, apiKey, config["api_key"], "not matching api key in config")
-	assert.NotContains(t, config, "site", "site modified in config")
-	assert.NotContains(t, config, "dd_url", "dd_url modified in config")
+	assert.True(t, ok, fmt.Sprintf("failed parsing config[fips] to map \n%v\n\n", config["fips"]))
+	assert.Equal(t, true, fipsConfig["enabled"], fmt.Sprintf("fips config enabled should be true, content:\n%v\n\n", fipsConfig))
+	assert.Equal(t, 9803, fipsConfig["port_range_start"], fmt.Sprintf("fips config port_range_start should be 9803, content:\n%v\n\n", fipsConfig))
+	assert.Equal(t, false, fipsConfig["https"], fmt.Sprintf("fips config https should be false, content:\n%v\n\n", fipsConfig))
+	assert.Equal(t, apiKey, config["api_key"], fmt.Sprintf("not matching api key in config, content:\n%v\n\n", fipsConfig))
+	assert.NotContains(t, config, "site", fmt.Sprintf("site modified in config, content:\n%v\n\n", fipsConfig))
+	assert.NotContains(t, config, "dd_url", fmt.Sprintf("dd_url modified in config, content:\n%v\n\n", fipsConfig))
+
+	assertFileExists(t, vm, fipsConfigFilepath)
 }
 
 func (s *installFipsTestSuite) purgeFips() {

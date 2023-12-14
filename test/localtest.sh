@@ -132,17 +132,15 @@ if [ "${EXPECTED_FLAVOR}" == "datadog-agent" ] && [ -z "$DD_NO_AGENT_INSTALL" ];
     fi
 fi
 
-# Lint configuration files
+# Lint configuration files when they exist
 config_file=/etc/datadog-agent/datadog.yaml
 security_agent_config_file=/etc/datadog-agent/security-agent.yaml
 system_probe_config_file=/etc/datadog-agent/system-probe.yaml
 config_files=( "$config_file" "$security_agent_config_file" "$system_probe_config_file" )
-mkdir -p "/tmp/vol/artifacts"
-if [[ ( -z "$DD_AGENT_FLAVOR" || "$DD_AGENT_FLAVOR" = "datadog-agent" ) && -z "$DD_NO_AGENT_INSTALL" ]]; then
-  for file in "${config_files[@]}"; do
-    cp "$file" "/tmp/vol/artifacts"
-  done
-fi
+mkdir -p "${TESTING_DIR}/artifacts"
+for file in "${config_files[@]}"; do
+  [ -e "$file" ] && cp "$file" "${TESTING_DIR}/artifacts"
+done
 
 if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
     if [ -e "$system_probe_config_file" ]; then
