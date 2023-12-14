@@ -432,8 +432,8 @@ if [ -n "$docker_injection_enabled" ]; then
     fi
 fi
 
-if [ -n "$DD_APM_INSTRUMENTATION_LIB_VERSIONS" ]; then
-  read -r -a lib_array <<< "$(echo "$DD_APM_INSTRUMENTATION_LIB_VERSIONS" | tr , ' ')"
+if [ -n "$DD_APM_INSTRUMENTATION_LIBRARIES" ]; then
+  read -r -a lib_array <<< "$(echo "$DD_APM_INSTRUMENTATION_LIBRARIES" | tr , ' ')"
   for lib in "${lib_array[@]}"
   do
     cur_lib=$(echo "$lib" | cut -s -d':' -f1)
