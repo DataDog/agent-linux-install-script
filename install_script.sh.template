@@ -439,7 +439,7 @@ if [ -n "$DD_APM_INSTRUMENTATION_LIB_VERSIONS" ]; then
     elif [ "$cur_version" = "latest" ] ; then
       cur_version=""
     else
-      cur_version=":$cur_version"
+      cur_version=":${cur_version}-1"
     fi
     case $cur_lib in
       all)
