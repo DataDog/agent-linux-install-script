@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.25.0
 ================
+
+- Fix an error that could happen when writing install_info on Google Cloud (#132)
+- Distinguish single-step Linux installs from manual during reporting (#131)
 
 1.24.0
 ================
