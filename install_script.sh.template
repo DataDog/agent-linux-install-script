@@ -111,27 +111,28 @@ function report_telemetry() {
     do
       cur_lib=$(echo "$lib" | cut -s -d':' -f1)
       cur_version=$(echo "$lib" | cut -s -d':' -f2)
-      if [ -n "$cur_version" ] ; then
-        case $cur_lib in
-          datadog-apm-library-java)
-            library_telemetry_info="${library_telemetry_info},\"specified_java_lib_version\": \"${cur_version}\""
-            ;;
-          datadog-apm-library-js)
-            library_telemetry_info="${library_telemetry_info},\"specified_nodejs_lib_version\": \"${cur_version}\""
-            ;;
-          datadog-apm-library-python)
-            library_telemetry_info="${library_telemetry_info},\"specified_python_lib_version\": \"${cur_version}\""
-            ;;
-          datadog-apm-library-dotnet)
-            library_telemetry_info="${library_telemetry_info},\"specified_dotnet_lib_version\": \"${cur_version}\""
-            ;;
-          datadog-apm-library-ruby)
-            library_telemetry_info="${library_telemetry_info},\"specified_ruby_lib_version\": \"${cur_version}\""
-            ;;
-          *)
-            ;;
-        esac
+      if [ -z "$cur_version" ] ; then
+        cur_version="default"
       fi
+      case $cur_lib in
+        datadog-apm-library-java)
+          library_telemetry_info="${library_telemetry_info},\"specified_java_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-js)
+          library_telemetry_info="${library_telemetry_info},\"specified_nodejs_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-python)
+          library_telemetry_info="${library_telemetry_info},\"specified_python_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-dotnet)
+          library_telemetry_info="${library_telemetry_info},\"specified_dotnet_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-ruby)
+          library_telemetry_info="${library_telemetry_info},\"specified_ruby_lib_version\": \"${cur_version}\""
+          ;;
+        *)
+          ;;
+      esac
     done
   fi
 
