@@ -113,6 +113,7 @@ function report_telemetry() {
       cur_version=$(echo "$lib" | cut -s -d':' -f2)
       if [ -z "$cur_version" ] ; then
         cur_version="default"
+        cur_lib="$lib"
       fi
       case $cur_lib in
         datadog-apm-library-java)
