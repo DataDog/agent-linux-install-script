@@ -16,15 +16,15 @@ The install script allows installation of different flavors of the Agent binarie
 > All variables are optional except `DD_API_KEY`, which is required unless `DD_UPGRADE` (upgrade from datadog-agent 5) is set.
 
 > [!WARNING]
-> The install script input options are only considered at initial installation and they don't overwrite pre-existing configuration files
+> The install script input options are only considered at initial installation and they don't overwrite pre-existing configuration files.
 
 | Variable | Description|
 |-|-|
 |`DD_AGENT_FLAVOR`|The Agent binary to install. Possible values are `datadog-agent`(default), `datadog-iot-agent`, `datadog-dogstatsd`, `datadog-fips-proxy`, `datadog-heroku-agent`.|
 |`DD_API_KEY`|The application key to access Datadog's programatic API.|
-|`DD_SITE`|The site of the Datadog intake to send Agent data to. For example, `datadoghq.com`. For more information on Datadog sites, see [Getting Started with Datadog Sites](https://docs.datadoghq.com/getting_started/site/)|
+|`DD_SITE`|The site of the Datadog intake to send Agent data to. For example, `datadoghq.com`. For more information on Datadog sites, see [Getting Started with Datadog Sites](https://docs.datadoghq.com/getting_started/site/).|
 |`DD_URL`|The host of the Datadog intake server to send metrics to. For example, `https://app.datadoghq.com`. Only set this option if you need the Agent to send metrics to a custom URL: it overrides the site setting defined in `site`. It does not affect APM, Logs or Live Process intake which have their own `*_dd_url` settings.|
-|`DD_HOSTNAME`|Force the hostname name.|
+|`DD_HOSTNAME`|Force the hostname value.|
 |`DD_HOST_TAGS`|List of host tags, defined as a comma-separated list of `key:value` strings. For example, `team:infra,env:prod`. Host tags are attached in-app to every metric, event, log, trace, and service check emitted by this Agent.|
 |`DD_UPGRADE`|Set to any value to trigger a version upgrade from datadog-agent 5. Imports configuration files from `/etc/dd-agent/datadog.conf`. Not compatible with `DD_AGENT_FLAVOR=datadog-dogstatsd`.|
 |`DD_FIPS_MODE`|Set to any value to enable the use of the FIPS proxy to send data to the DataDog backend. Enabling this option forces all outgoing traffic from the Agent to the local proxy. It's important to note that enabling this will not make the Datadog Agent FIPS compliant, but will force all outgoing traffic to a local FIPS compliant proxy. By-pass `DD_SITE` and `DD_URL` when enabled. For more information on FIPS compliance, see [FIPS Compliance](https://docs.datadoghq.com/agent/configuration/agent-fips-proxy/).|
@@ -43,7 +43,7 @@ The install script allows installation of different flavors of the Agent binarie
 The install script also comes with its own configuration options for testing purpose.
 
 >[!WARNING]
-> These options are for Datadog internal use only.
+> These options are intended for Datadog internal use only.
 
 | Variable | Description|
 |-|-|
@@ -51,9 +51,9 @@ The install script also comes with its own configuration options for testing pur
 |`DD_REPO_URL`|Domain name of the package S3 bucket to target. Default to `datadoghq.com`.|
 |`REPO_URL`|Deprecated, use `DD_REPO_URL` instead.|
 |`DD_RPM_REPO_GPGCHECK`|Turn on or off the `repo_gpgcheck` on RPM distributions. Possible values are `0` or `1`. Unless explicitely set, we turn off when `DD_REPO_URL` is set.|
-|`DD_AGENT_MAJOR_VERSION`|The Agent major version. Must be `6` or `7`|
+|`DD_AGENT_MAJOR_VERSION`|The Agent major version. Must be `6` or `7`.|
 |`DD_AGENT_MINOR_VERSION`|Full or partial version numbers from the minor digit. Example: `20` defaults to the highest patch version. `20.0~rc.5` explicitly targets this version. An invalid minor version terminates the script.|
-|`DD_AGENT_DIST_CHANNEL`|The package distribution channel. Possible values are `stable` or `beta` on production repositories, and `stable`, `beta` or `nightly` on custom repositories. Other channels can be targeted with `TESTING_APT_URL` or `TESTING_YUM_URL`|
+|`DD_AGENT_DIST_CHANNEL`|The package distribution channel. Possible values are `stable` or `beta` on production repositories, and `stable`, `beta` or `nightly` on custom repositories. Other channels can be targeted with `TESTING_APT_URL` or `TESTING_YUM_URL`.|
 |`TESTING_KEYS_URL`|The URL to retrieve the package signature keys. Default to `keys.datadoghq.com`.|
 |`TESTING_APT_URL`|Replace the whole APT bucket URL. Useful to test with trial buckets.|
 |`TESTING_YUM_URL`|Replace the whole YUM bucket URL. Useful to test with trial buckets.|
@@ -63,7 +63,7 @@ The install script also comes with its own configuration options for testing pur
 
 
 ## Others scripts
-This repository also contains install scripts for Observability Pipelines Worker and Vector. For more information, see the documentation for [OPW](https://docs.datadoghq.com/observability_pipelines/setup/?tab=docker) and [Vector](https://vector.dev/docs/setup/installation/)
+This repository also contains install scripts for Observability Pipelines Worker and Vector. For more information, see the documentation for [OPW](https://docs.datadoghq.com/observability_pipelines/setup/?tab=docker) and [Vector](https://vector.dev/docs/setup/installation/).
 
 ## Working with this repository
 

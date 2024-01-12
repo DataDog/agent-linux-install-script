@@ -53,7 +53,7 @@ trap 'rm -f $npipe' EXIT
 
 ##
 # REPORTING AND COMMON METHODS
-#
+##
 function fallback_msg(){
   printf "
 If you are still having problems, please send an email to $support_email
