@@ -107,6 +107,39 @@ function report_telemetry() {
     safe_agent_version=$(echo -n "$agent_major_version" | tr '\n' ' ' | tr '"' '_')
   fi
 
+  library_telemetry_info=
+
+  if [ ${#apm_libraries[@]} -gt 0 ]; then
+    for lib in "${apm_libraries[@]}"
+    do
+      cur_lib=$(echo "$lib" | cut -s -d':' -f1)
+      cur_version=$(echo "$lib" | cut -s -d':' -f2)
+      if [ -z "$cur_version" ] ; then
+        cur_version="default"
+        cur_lib="$lib"
+      fi
+      case $cur_lib in
+        datadog-apm-library-java)
+          library_telemetry_info="${library_telemetry_info},\"specified_java_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-js)
+          library_telemetry_info="${library_telemetry_info},\"specified_nodejs_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-python)
+          library_telemetry_info="${library_telemetry_info},\"specified_python_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-dotnet)
+          library_telemetry_info="${library_telemetry_info},\"specified_dotnet_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-ruby)
+          library_telemetry_info="${library_telemetry_info},\"specified_ruby_lib_version\": \"${cur_version}\""
+          ;;
+        *)
+          ;;
+      esac
+    done
+  fi
+
   APM_TELEMETRY_SAFE_AGENT_VERSION_OVERRIDE_PLACEHOLDER
   if [ -z "${ERROR_CODE}" ] ; then
     telemetry_event="
@@ -121,7 +154,7 @@ function report_telemetry() {
            $install_time_tag
            \"agent_platform\": \"native\",
            \"agent_version\": \"$safe_agent_version\",
-           \"script_version\": \"$install_script_version\"
+           \"script_version\": \"$install_script_version\" $library_telemetry_info
        }
    }
 }
@@ -142,7 +175,7 @@ function report_telemetry() {
            $install_time_tag
            \"agent_platform\": \"native\",
            \"agent_version\": \"$safe_agent_version\",
-           \"script_version\": \"$install_script_version\"
+           \"script_version\": \"$install_script_version\" $library_telemetry_info
        },
        \"error\": {
           \"code\": $ERROR_CODE,
@@ -485,7 +518,48 @@ if [ -n "$docker_injection_enabled" ]; then
     fi
 fi
 
-if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
+if [ -n "$DD_APM_INSTRUMENTATION_LIBRARIES" ]; then
+  read -r -a lib_array <<< "$(echo "$DD_APM_INSTRUMENTATION_LIBRARIES" | tr , ' ')"
+  for lib in "${lib_array[@]}"
+  do
+    cur_lib=$(echo "$lib" | cut -s -d':' -f1)
+    cur_version=$(echo "$lib" | cut -s -d':' -f2)
+    if [ -z "$cur_lib" ] ; then
+      cur_lib="$lib"
+    elif [ "$cur_version" = "latest" ] ; then
+      cur_version=""
+    else
+      cur_version=":${cur_version}-1"
+    fi
+    case $cur_lib in
+      all)
+        apm_libraries+=("datadog-apm-library-java" "datadog-apm-library-js" "datadog-apm-library-python" "datadog-apm-library-dotnet" "datadog-apm-library-ruby")
+        ;;
+      java)
+        apm_libraries+=("datadog-apm-library-java${cur_version}")
+        ;;
+      js)
+        apm_libraries+=("datadog-apm-library-js${cur_version}")
+        ;;
+      python)
+        apm_libraries+=("datadog-apm-library-python${cur_version}")
+        ;;
+      dotnet)
+        apm_libraries+=("datadog-apm-library-dotnet${cur_version}")
+        ;;
+      ruby)
+        apm_libraries+=("datadog-apm-library-ruby${cur_version}")
+        ;;
+      *)
+        ERROR_MESSAGE="Unknown apm library: $cur_lib. Must be one of: all, java, js, python, dotnet, ruby"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
+        echo "$ERROR_MESSAGE"
+        report_telemetry
+        exit 1;
+        ;;
+    esac
+  done
+elif [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
   read -r -a lib_array <<< "$DD_APM_INSTRUMENTATION_LANGUAGES"
   for lib in "${lib_array[@]}"
   do
@@ -778,6 +852,8 @@ if [ "$OS" == "RedHat" ]; then
       gpgkeys="${gpgkeys:+"${gpgkeys}${separator}"}https://${keys_url}/${key_path}"
     done
 
+    # if some packages were previously pinned (using excludepkgs)
+    # this will unpin them as a side effect
     $sudo_cmd sh -c "echo -e '[datadog]\nname = Datadog, Inc.\nbaseurl = https://${yum_url}/${yum_version_path}/${ARCHI}/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\npriority=1\ngpgkey=${gpgkeys}' > /etc/yum.repos.d/datadog.repo"
 
     $sudo_cmd yum -y clean metadata
@@ -810,8 +886,19 @@ if [ "$OS" == "RedHat" ]; then
       packages+=("datadog-fips-proxy")
     fi
 
+    excludepkgs=""
     if [ ${#apm_libraries[@]} -gt 0 ]; then
-      packages+=("${apm_libraries[@]}")
+      for lib in "${apm_libraries[@]}"
+      do
+        cur_lib=$(echo "$lib" | cut -s -d':' -f1)
+        cur_version=$(echo "$lib" | cut -s -d':' -f2)
+        if [ -z "$cur_lib" ] ; then
+          packages+=("${lib}")
+        else
+          packages+=("${cur_lib}-${cur_version}")
+          excludepkgs="${excludepkgs:+${excludepkgs}, }${cur_lib}"
+        fi
+      done
     fi
 
     # packages can be empty if no_agent is set
@@ -823,6 +910,12 @@ if [ "$OS" == "RedHat" ]; then
       ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
     else
       echo -e "  \033[33mNo packages to install.\033[0m\n"
+    fi
+
+    if [ -n "$excludepkgs" ]; then
+        # exclude pinned tracer versions from updates
+        repofile_content=$(cat /etc/yum.repos.d/datadog.repo)
+        $sudo_cmd sh -c "echo -e '${repofile_content}\nexclude=${excludepkgs}' > /etc/yum.repos.d/datadog.repo"
     fi
 
 elif [ "$OS" == "Debian" ]; then
@@ -934,13 +1027,33 @@ If the cause is unclear, please contact Datadog support.
      packages+=("datadog-fips-proxy")
     fi
 
+    packages_to_lock=()
     if [ ${#apm_libraries[@]} -gt 0 ]; then
-      packages+=("${apm_libraries[@]}")
+      for lib in "${apm_libraries[@]}"
+      do
+        cur_lib=$(echo "$lib" | cut -s -d':' -f1)
+        cur_version=$(echo "$lib" | cut -s -d':' -f2)
+        if [ -z "$cur_lib" ] ; then
+          packages+=("${lib}")
+          # the tracer might have been excluded from updates previously => un-hold it
+          $sudo_cmd dpkg --set-selections <<< "${lib} install" >/dev/null 2>&1
+        else
+          packages_to_lock+=("${cur_lib}")
+          packages+=("${cur_lib}=${cur_version}")
+          $sudo_cmd dpkg --set-selections <<< "${cur_lib} install" >/dev/null 2>&1
+        fi
+      done
     fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
     $sudo_cmd apt-get install -y --force-yes "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
+
+    for pkg in "${packages_to_lock[@]}"
+    do
+        # exclude pinned tracer versions from updates
+        $sudo_cmd apt-mark hold "${pkg}" >/dev/null 2>&1
+    done
 
     ERR_SUMMARY=$(grep "No space left on device" -C1 /tmp/ddog_install_error_msg || true)
 
