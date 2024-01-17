@@ -832,6 +832,8 @@ if [ "$OS" == "RedHat" ]; then
       gpgkeys="${gpgkeys:+"${gpgkeys}${separator}"}https://${keys_url}/${key_path}"
     done
 
+    # if some packages were previously pinned (using excludepkgs)
+    # this will unpin them as a side effect
     $sudo_cmd sh -c "echo -e '[datadog]\nname = Datadog, Inc.\nbaseurl = https://${yum_url}/${yum_version_path}/${ARCHI}/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\npriority=1\ngpgkey=${gpgkeys}' > /etc/yum.repos.d/datadog.repo"
 
     $sudo_cmd yum -y clean metadata
@@ -864,6 +866,7 @@ if [ "$OS" == "RedHat" ]; then
       packages+=("datadog-fips-proxy")
     fi
 
+    excludepkgs=""
     if [ ${#apm_libraries[@]} -gt 0 ]; then
       for lib in "${apm_libraries[@]}"
       do
@@ -873,6 +876,7 @@ if [ "$OS" == "RedHat" ]; then
           packages+=("${lib}")
         else
           packages+=("${cur_lib}-${cur_version}")
+          excludepkgs="${excludepkgs:+${excludepkgs}, }${cur_lib}"
         fi
       done
     fi
@@ -886,6 +890,12 @@ if [ "$OS" == "RedHat" ]; then
       ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
     else
       echo -e "  \033[33mNo packages to install.\033[0m\n"
+    fi
+
+    if [ -n "$excludepkgs" ]; then
+        # exclude pinned tracer versions from updates
+        repofile_content=$(cat /etc/yum.repos.d/datadog.repo)
+        $sudo_cmd sh -c "echo -e '${repofile_content}\nexclude=${excludepkgs}' > /etc/yum.repos.d/datadog.repo"
     fi
 
 elif [ "$OS" == "Debian" ]; then
@@ -997,6 +1007,7 @@ If the cause is unclear, please contact Datadog support.
      packages+=("datadog-fips-proxy")
     fi
 
+    packages_to_lock=()
     if [ ${#apm_libraries[@]} -gt 0 ]; then
       for lib in "${apm_libraries[@]}"
       do
@@ -1004,8 +1015,12 @@ If the cause is unclear, please contact Datadog support.
         cur_version=$(echo "$lib" | cut -s -d':' -f2)
         if [ -z "$cur_lib" ] ; then
           packages+=("${lib}")
+          # the tracer might have been excluded from updates previously => un-hold it
+          $sudo_cmd dpkg --set-selections <<< "${lib} install" >/dev/null 2>&1
         else
+          packages_to_lock+=("${cur_lib}")
           packages+=("${cur_lib}=${cur_version}")
+          $sudo_cmd dpkg --set-selections <<< "${cur_lib} install" >/dev/null 2>&1
         fi
       done
     fi
@@ -1013,6 +1028,12 @@ If the cause is unclear, please contact Datadog support.
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
     $sudo_cmd apt-get install -y --force-yes "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
+
+    for pkg in "${packages_to_lock[@]}"
+    do
+        # exclude pinned tracer versions from updates
+        $sudo_cmd apt-mark hold "${pkg}" >/dev/null 2>&1
+    done
 
     ERR_SUMMARY=$(grep "No space left on device" -C1 /tmp/ddog_install_error_msg || true)
 
