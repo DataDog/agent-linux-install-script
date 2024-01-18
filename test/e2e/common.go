@@ -145,7 +145,7 @@ func (s *linuxInstallerTestSuite) addExtraIntegration() {
 	t.Log("Install an extra integration, and create a custom file")
 	_, err := vm.ExecuteWithError("sudo -u dd-agent -- datadog-agent integration install -t datadog-bind9==0.1.0")
 	assert.NoError(t, err, "integration install failed")
-	_ = vm.Execute(fmt.Sprintf("sudo -u dd-agent -- touch /opt/%s/embedded/lib/python3.9/site-packages/testfile", s.baseName))
+	_ = vm.Execute(fmt.Sprintf("sudo -u dd-agent -- touch /opt/%s/embedded/lib/python3.11/site-packages/testfile", s.baseName))
 }
 
 func (s *linuxInstallerTestSuite) uninstall() {
@@ -178,7 +178,7 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
 	if flavor == "datadog-agent" {
 		// The custom file should still be here. All other files, including the extra integration, should be removed
-		assertFileExists(t, vm, "/opt/datadog-agent/embedded/lib/python3.9/site-packages/testfile")
+		assertFileExists(t, vm, "/opt/datadog-agent/embedded/lib/python3.11/site-packages/testfile")
 		files := strings.Split(strings.TrimSuffix(vm.Execute("find /opt/datadog-agent -type f"), "\n"), "\n")
 		assert.Len(t, files, 1, fmt.Sprintf("/opt/datadog-agent present after remove, found %v", files))
 	} else {
