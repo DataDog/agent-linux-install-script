@@ -21,6 +21,7 @@ import (
 	version "github.com/hashicorp/go-version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type osConfig struct {
