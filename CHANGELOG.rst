@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.26.0
 ================
+
+- Add the ability to specify a version number for a tracing library (#107)
+- Add documentation about the configuration options of install script (#135)
 
 1.25.0
 ================
