@@ -9,7 +9,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -109,15 +108,14 @@ func getEC2Options(t *testing.T) []ec2params.Option {
 }
 
 func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) string {
-	path := fmt.Sprintf("/opt/%s/embedded/lib/python*", baseName)
-	fmt.Printf("Glob pattern : %s", path)
-	matches, err := filepath.Glob(path)
-	require.NoError(s.T(), err, fmt.Sprintf("Python embedded libraries not found at : %s", path))
-	require.NotEmpty(s.T(), matches)
+	vm := s.Env().VM
+	cmd := fmt.Sprintf("echo /opt/%s/embedded/lib/python*", baseName)
+	result, err := vm.ExecuteWithError(cmd)
+	require.NoError(s.T(), err, fmt.Sprintf("Python embedded libraries not found: %s", err))
+	require.NotEmpty(s.T(), result)
 	latest := ""
 	var latestVersion *version.Version
-	for _, match := range matches {
-		fmt.Printf("Match : %s", match)
+	for _, match := range strings.Split(result, " ") {
 		pythonVersion := strings.Split(match, "python")[1]
 		currentVers, versError := version.NewVersion(pythonVersion)
 		if latest != "" {
