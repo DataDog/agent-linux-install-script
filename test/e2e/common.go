@@ -115,6 +115,7 @@ func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) s
 	latest := ""
 	var latestVersion *version.Version
 	for _, match := range matches {
+		fmt.Printf("Match : %s", match)
 		pythonVersion := strings.Split(match, "python")[1]
 		currentVers, versError := version.NewVersion(pythonVersion)
 		if latest != "" {
@@ -128,6 +129,7 @@ func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) s
 			latestVersion = currentVers
 		}
 	}
+	require.NotEmpty(s.T(), latest)
 	return fmt.Sprintf("/opt/%s/embedded/lib/python%s", baseName, latest)
 }
 
