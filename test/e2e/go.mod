@@ -5,8 +5,8 @@ go 1.20
 require (
 	github.com/DataDog/datadog-agent/test/new-e2e v0.49.0-rc.7
 	github.com/DataDog/test-infra-definitions v0.0.0-20231130165842-894572ece376
+	github.com/hashicorp/go-version v1.6.0
 	github.com/stretchr/testify v1.8.4
-	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
@@ -136,6 +136,7 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/frand v1.4.2 // indirect
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20211028080628-e2786a622600 // indirect
