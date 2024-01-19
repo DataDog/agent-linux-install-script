@@ -116,7 +116,6 @@ func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) s
 	latest := ""
 	var latestVersion *version.Version
 	for _, match := range strings.Split(result, " ") {
-		fmt.Printf("for loop : %s\n", match)
 		pythonVersion := strings.Split(match, "python")[1]
 		currentVers, versError := version.NewVersion(pythonVersion)
 		if latest != "" {
@@ -131,8 +130,8 @@ func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) s
 		}
 	}
 	require.NotEmpty(s.T(), latest)
-	fmt.Printf("output : %s\n", fmt.Sprintf("/opt/%s/embedded/lib/python%s", baseName, latest))
-	return fmt.Sprintf("/opt/%s/embedded/lib/python%s", baseName, latest)
+	stringOutput := fmt.Sprintf("/opt/%s/embedded/lib/python%s", baseName, latest)
+	return stringOutput
 }
 
 func (s *linuxInstallerTestSuite) assertInstallScript() {
@@ -173,7 +172,9 @@ func (s *linuxInstallerTestSuite) addExtraIntegration() {
 	t.Log("Install an extra integration, and create a custom file")
 	_, err := vm.ExecuteWithError("sudo -u dd-agent -- datadog-agent integration install -t datadog-bind9==0.1.0")
 	assert.NoError(t, err, "integration install failed")
-	_ = vm.Execute(fmt.Sprintf("sudo -u dd-agent -- touch %s/site-packages/testfile", s.getLatestEmbeddedPythonPath(s.baseName)))
+	pythonPath := s.getLatestEmbeddedPythonPath(s.baseName)
+	fmt.Printf("pythonPath : %s", pythonPath)
+	_ = vm.Execute(fmt.Sprintf("sudo -u dd-agent -- touch %s/site-packages/testfile", pythonPath))
 }
 
 func (s *linuxInstallerTestSuite) uninstall() {
