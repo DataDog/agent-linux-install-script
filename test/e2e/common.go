@@ -110,14 +110,13 @@ func getEC2Options(t *testing.T) []ec2params.Option {
 func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) string {
 	vm := s.Env().VM
 	cmd := fmt.Sprintf("echo /opt/%s/embedded/lib/python*", baseName)
-	fmt.Printf("Exec : %s\n", cmd)
 	result, err := vm.ExecuteWithError(cmd)
-	fmt.Printf("Get : %s\n", result)
 	require.NoError(s.T(), err, fmt.Sprintf("Python embedded libraries not found: %s", err))
 	require.NotEmpty(s.T(), result)
 	latest := ""
 	var latestVersion *version.Version
 	for _, match := range strings.Split(result, " ") {
+		fmt.Printf("for loop : %s\n", match)
 		pythonVersion := strings.Split(match, "python")[1]
 		currentVers, versError := version.NewVersion(pythonVersion)
 		if latest != "" {
@@ -132,6 +131,7 @@ func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) s
 		}
 	}
 	require.NotEmpty(s.T(), latest)
+	fmt.Printf("output : %s\n", fmt.Sprintf("/opt/%s/embedded/lib/python%s", baseName, latest))
 	return fmt.Sprintf("/opt/%s/embedded/lib/python%s", baseName, latest)
 }
 
