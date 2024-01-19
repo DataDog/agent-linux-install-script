@@ -129,6 +129,7 @@ func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) s
 			latestVersion = currentVers
 		}
 	}
+	latest = strings.ReplaceAll(latest, "\n", "")
 	require.NotEmpty(s.T(), latest)
 	stringOutput := fmt.Sprintf("/opt/%s/embedded/lib/python%s", baseName, latest)
 	return stringOutput
