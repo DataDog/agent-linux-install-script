@@ -175,9 +175,7 @@ func (s *linuxInstallerTestSuite) addExtraIntegration() {
 	assert.NoError(t, err, "integration install failed")
 	pythonPath := s.getLatestEmbeddedPythonPath(s.baseName)
 	cmd := fmt.Sprintf("sudo -u dd-agent -- touch %s/site-packages/testfile", pythonPath)
-	fmt.Printf("Exec : %s", cmd)
 	_ = vm.Execute(cmd)
-	fmt.Printf("Completed !")
 }
 
 func (s *linuxInstallerTestSuite) uninstall() {
