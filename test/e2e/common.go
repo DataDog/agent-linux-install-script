@@ -173,9 +173,7 @@ func (s *linuxInstallerTestSuite) addExtraIntegration() {
 	t.Log("Install an extra integration, and create a custom file")
 	_, err := vm.ExecuteWithError("sudo -u dd-agent -- datadog-agent integration install -t datadog-bind9==0.1.0")
 	assert.NoError(t, err, "integration install failed")
-	pythonPath := s.getLatestEmbeddedPythonPath(s.baseName)
-	cmd := fmt.Sprintf("sudo -u dd-agent -- touch %s/site-packages/testfile", pythonPath)
-	_ = vm.Execute(cmd)
+	_ = vm.Execute(fmt.Sprintf("sudo -u dd-agent -- touch %s/site-packages/testfile", s.getLatestEmbeddedPythonPath(s.baseName)))
 }
 
 func (s *linuxInstallerTestSuite) uninstall() {
