@@ -108,6 +108,7 @@ func getEC2Options(t *testing.T) []ec2params.Option {
 }
 
 func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) string {
+	s.T().Helper()
 	vm := s.Env().VM
 	cmd := fmt.Sprintf("echo /opt/%s/embedded/lib/python*", baseName)
 	result, err := vm.ExecuteWithError(cmd)
