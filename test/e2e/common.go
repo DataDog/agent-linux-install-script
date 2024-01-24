@@ -14,13 +14,13 @@ import (
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/client"
-	"gopkg.in/yaml.v2"
-
 	componentsos "github.com/DataDog/test-infra-definitions/components/os"
 	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2os"
 	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2params"
+	version "github.com/hashicorp/go-version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type osConfig struct {
@@ -107,6 +107,35 @@ func getEC2Options(t *testing.T) []ec2params.Option {
 	return ec2Options
 }
 
+func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) string {
+	s.T().Helper()
+	vm := s.Env().VM
+	cmd := fmt.Sprintf("echo /opt/%s/embedded/lib/python*", baseName)
+	result, err := vm.ExecuteWithError(cmd)
+	require.NoError(s.T(), err, fmt.Sprintf("Python embedded libraries not found: %s", err))
+	require.NotEmpty(s.T(), result)
+	latest := ""
+	var latestVersion *version.Version
+	for _, match := range strings.Split(result, " ") {
+		pythonVersion := strings.Split(match, "python")[1]
+		currentVers, versError := version.NewVersion(pythonVersion)
+		if latest != "" {
+			require.NoError(s.T(), versError, fmt.Sprintf("Invalid Python Version : %s", pythonVersion))
+			if currentVers.GreaterThan(latestVersion) {
+				latestVersion = currentVers
+				latest = pythonVersion
+			}
+		} else {
+			latest = pythonVersion
+			latestVersion = currentVers
+		}
+	}
+	latest = strings.ReplaceAll(latest, "\n", "")
+	require.NotEmpty(s.T(), latest)
+	stringOutput := fmt.Sprintf("/opt/%s/embedded/lib/python%s", baseName, latest)
+	return stringOutput
+}
+
 func (s *linuxInstallerTestSuite) assertInstallScript() {
 	t := s.T()
 	vm := s.Env().VM
@@ -145,7 +174,7 @@ func (s *linuxInstallerTestSuite) addExtraIntegration() {
 	t.Log("Install an extra integration, and create a custom file")
 	_, err := vm.ExecuteWithError("sudo -u dd-agent -- datadog-agent integration install -t datadog-bind9==0.1.0")
 	assert.NoError(t, err, "integration install failed")
-	_ = vm.Execute(fmt.Sprintf("sudo -u dd-agent -- touch /opt/%s/embedded/lib/python3.11/site-packages/testfile", s.baseName))
+	_ = vm.Execute(fmt.Sprintf("sudo -u dd-agent -- touch %s/site-packages/testfile", s.getLatestEmbeddedPythonPath(s.baseName)))
 }
 
 func (s *linuxInstallerTestSuite) uninstall() {
@@ -178,7 +207,7 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
 	if flavor == "datadog-agent" {
 		// The custom file should still be here. All other files, including the extra integration, should be removed
-		assertFileExists(t, vm, "/opt/datadog-agent/embedded/lib/python3.11/site-packages/testfile")
+		assertFileExists(t, vm, fmt.Sprintf("%s/site-packages/testfile", s.getLatestEmbeddedPythonPath("datadog-agent")))
 		files := strings.Split(strings.TrimSuffix(vm.Execute("find /opt/datadog-agent -type f"), "\n"), "\n")
 		assert.Len(t, files, 1, fmt.Sprintf("/opt/datadog-agent present after remove, found %v", files))
 	} else {
