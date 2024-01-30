@@ -1,4 +1,5 @@
 stages:
+  - x
   - generate
   - test
   - e2e
@@ -23,6 +24,25 @@ default:
     - '[ -z "$MAJOR_VERSION" ] && export MAJOR_VERSION=${DEFAULT_MAJOR_VERSION}'
     - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_YUM_VERSION_PATH="testing/pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}/${MAJOR_VERSION}"'
     - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_APT_REPO_VERSION="pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}-x86_64 ${MAJOR_VERSION}"'
+
+test-cf-invalidate:
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
+  tags: [arch:amd64]
+  stage: x
+  variables:
+    AWS_MAX_ATTEMPTS: 5
+  script:
+    - export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s"
+        $(aws --region "us-east-1" sts assume-role
+          --duration-seconds 900
+          --role-arn "arn:aws:iam::727006795293:role/build-stable-cloudfront-invalidation"
+          --role-session-name "build-stable-cloudfront-invalidate-script"
+          --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]"
+          --output text
+        )
+      )
+    - aws --region "us-east-1" cloudfront create-invalidation --distribution-id "E2VSER0FO39KRV" --paths "/scripts/*"
+
 
 generate-scripts:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
