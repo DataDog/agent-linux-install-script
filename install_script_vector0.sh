@@ -192,7 +192,7 @@ elif [ "$OS" == "Debian" ]; then
     $sudo_cmd chmod a+r $apt_usr_share_keyring
 
     for key in "${APT_GPG_KEYS[@]}"; do
-        $sudo_cmd curl --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}"
+        $sudo_cmd curl -sSL --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}"
         $sudo_cmd cat "/tmp/${key}" | $sudo_cmd gpg --import --batch --no-default-keyring --keyring "$apt_usr_share_keyring"
     done
 
