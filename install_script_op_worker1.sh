@@ -359,6 +359,7 @@ if [ "$OS" == "RedHat" ]; then
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
+    # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
     $sudo_cmd yum -y --disablerepo='*' --enablerepo='observability-pipelines-worker' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}"
 
 elif [ "$OS" == "Debian" ]; then
@@ -378,9 +379,9 @@ elif [ "$OS" == "Debian" ]; then
             # if $sudo_cmd is empty, doing `$sudo_cmd X=Y command` fails with
             # `X=Y: command not found`; therefore we don't prefix the command with
             # $sudo_cmd at all in this case
-            DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
+            DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
         else
-            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
+            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
         fi
 
         if grep "Could not get lock" $DD_APT_INSTALL_ERROR_MSG; then
@@ -445,7 +446,7 @@ If the cause is unclear, please contact Datadog support.
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd apt-get install -y --force-yes "${packages[@]}"
+    $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "${packages[@]}"
 
     ERROR_MESSAGE=""
 else

@@ -166,7 +166,7 @@ elif [ "$OS" == "Debian" ]; then
         apt_exit_code=0
 
         export DEBIAN_FRONTEND=noninteractive
-        $sudo_cmd apt-get install -y apt-transport-https curl gnupg 2>$VEC_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
+        $sudo_cmd apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$VEC_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
 
         if grep "Could not get lock" $VEC_APT_INSTALL_ERROR_MSG; then
             RETRY_TIME=$((i*5))
