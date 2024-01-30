@@ -35,7 +35,7 @@ test-cf-invalidate:
     - export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s"
         $(aws --region "us-east-1" sts assume-role
           --duration-seconds 900
-          --role-arn "arn:aws:iam::727006795293:role/build-stable-cloudfront-invalidation"
+          --role-arn "arn:aws:iam::464622532012:role/build-stable-cloudfront-invalidation"
           --role-session-name "build-stable-cloudfront-invalidate-script"
           --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]"
           --output text
