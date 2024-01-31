@@ -43,7 +43,7 @@ useful and we will do our very best to help you solve your problem.\n"
 }
 
 function report(){
-  if curl -f -s \
+  if curl -f -sSL --retry 5 \
     --data-urlencode "os=${OS}" \
     --data-urlencode "version=${worker_major_version}" \
     --data-urlencode "log=$(cat $logfile)" \
@@ -356,15 +356,16 @@ if [ "$OS" == "RedHat" ]; then
 
     declare -a packages
     packages=("$worker_flavor")
-    
+
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
+    # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
     $sudo_cmd yum -y --disablerepo='*' --enablerepo='observability-pipelines-worker' install $dnf_flag "${packages[@]}" || $sudo_cmd yum -y install $dnf_flag "${packages[@]}"
 
 elif [ "$OS" == "Debian" ]; then
     apt_trusted_d_keyring="/etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg"
     apt_usr_share_keyring="/usr/share/keyrings/datadog-archive-keyring.gpg"
-    
+
     DD_APT_INSTALL_ERROR_MSG=/tmp/ddog_install_error_msg
     MAX_RETRY_NB=10
     for i in $(seq 1 $MAX_RETRY_NB)
@@ -378,9 +379,9 @@ elif [ "$OS" == "Debian" ]; then
             # if $sudo_cmd is empty, doing `$sudo_cmd X=Y command` fails with
             # `X=Y: command not found`; therefore we don't prefix the command with
             # $sudo_cmd at all in this case
-            DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
+            DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
         else
-            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
+            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
         fi
 
         if grep "Could not get lock" $DD_APT_INSTALL_ERROR_MSG; then
@@ -406,7 +407,7 @@ elif [ "$OS" == "Debian" ]; then
     $sudo_cmd chmod a+r $apt_usr_share_keyring
 
     for key in "${APT_GPG_KEYS[@]}"; do
-        $sudo_cmd curl --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}"
+        $sudo_cmd curl -sSL --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}"
         $sudo_cmd cat "/tmp/${key}" | $sudo_cmd gpg --import --batch --no-default-keyring --keyring "$apt_usr_share_keyring"
     done
 
@@ -445,7 +446,7 @@ If the cause is unclear, please contact Datadog support.
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd apt-get install -y --force-yes "${packages[@]}"
+    $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "${packages[@]}"
 
     ERROR_MESSAGE=""
 else
@@ -557,7 +558,7 @@ else
   eval "$restart_cmd"
 
   ERROR_MESSAGE=""
-    
+
   printf "\033[32m  Your ${nice_flavor} is running and functioning properly.\n\033[0m"
 
   printf "\033[32m  It will continue to run in the background.\n\033[0m"

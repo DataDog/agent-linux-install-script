@@ -62,7 +62,7 @@ useful and we will do our very best to help you solve your problem.\n"
 }
 
 function report(){
-  if curl -f -s \
+  if curl -f -sSL --retry 5 \
     --data-urlencode "os=${OS}" \
     --data-urlencode "version=${agent_major_version}" \
     --data-urlencode "log=$(cat $logfile)" \
@@ -189,7 +189,7 @@ function report_telemetry() {
   if ! (cat <<END
        $telemetry_event
 END
-       ) | curl --fail --silent --output /dev/null \
+       ) | curl -f -sSL --retry 5 -o /dev/null \
     "$telemetry_url" \
     --header 'Content-Type: application/json' \
     --header "DD-Api-Key: $apikey" \
@@ -905,6 +905,7 @@ if [ "$OS" == "RedHat" ]; then
     if [ ${#packages[@]} -ne 0 ]; then
       echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
+      # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
       $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd yum -y install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
 
       ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
@@ -935,9 +936,9 @@ elif [ "$OS" == "Debian" ]; then
             # if $sudo_cmd is empty, doing `$sudo_cmd X=Y command` fails with
             # `X=Y: command not found`; therefore we don't prefix the command with
             # $sudo_cmd at all in this case
-            DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
+            DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
         else
-            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
+            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
         fi
 
         if grep "Could not get lock" $DD_APT_INSTALL_ERROR_MSG; then
@@ -964,7 +965,7 @@ elif [ "$OS" == "Debian" ]; then
     $sudo_cmd chmod a+r $apt_usr_share_keyring
 
     for key in "${APT_GPG_KEYS[@]}"; do
-        $sudo_cmd curl --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}"
+        $sudo_cmd curl -sSL --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}"
         $sudo_cmd cat "/tmp/${key}" | $sudo_cmd gpg --import --batch --no-default-keyring --keyring "$apt_usr_share_keyring"
     done
 
@@ -1047,7 +1048,7 @@ If the cause is unclear, please contact Datadog support.
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd apt-get install -y --force-yes "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
+    $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
 
     for pkg in "${packages_to_lock[@]}"
     do
@@ -1088,6 +1089,7 @@ elif [ "$OS" == "SUSE" ]; then
   if ! rpm -q curl > /dev/null; then
     # If zypper fails to refresh a random repo, it installs the package, but then fails
     # anyway. Therefore we let it do its thing and then see if curl was installed or not.
+    # Not yet retry mechanism in zypper, see https://github.com/openSUSE/zypper/issues/420
     if [ -z "$sudo_cmd" ]; then
       ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install curl ||:
     else
@@ -1107,7 +1109,7 @@ elif [ "$OS" == "SUSE" ]; then
   if [ "$SUSE11" == "yes" ]; then
     # SUSE 11 special case
     for key_path in "${RPM_GPG_KEYS[@]}"; do
-      $sudo_cmd curl -o "/tmp/${key_path}" "https://${keys_url}/${key_path}"
+      $sudo_cmd curl -sSL --retry 5 -o "/tmp/${key_path}" "https://${keys_url}/${key_path}"
       $sudo_cmd rpm --import "/tmp/${key_path}"
     done
   else
@@ -1201,7 +1203,7 @@ elif [ "$OS" == "SUSE" ]; then
 
   if [ ${#packages[@]} -ne 0 ]; then
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
-
+    # Not yet retry mechanism in zypper, see https://github.com/openSUSE/zypper/issues/420
     if [ -z "$sudo_cmd" ]; then
       ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
     else
