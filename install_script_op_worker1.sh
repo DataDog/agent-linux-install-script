@@ -159,6 +159,11 @@ if [ -n "$DD_OP_PIPELINE_ID" ]; then
     op_pipeline_id=$DD_OP_PIPELINE_ID
 fi
 
+op_rc_enabled=
+if [ -n "$DD_OP_REMOTE_CONFIGURATION_ENABLED" ]; then
+    op_rc_enabled=$DD_OP_REMOTE_CONFIGURATION_ENABLED
+fi
+
 no_start=
 if [ -n "$DD_INSTALL_ONLY" ]; then
     no_start=true
@@ -216,6 +221,7 @@ worker_flavor="observability-pipelines-worker"
 nice_flavor="Observability Pipelines Worker"
 etcdir="/etc/observability-pipelines-worker"
 bootstrap_file="$etcdir/bootstrap.yaml"
+pipeline_file="$etcdir/pipeline.yaml"
 env_file="/etc/default/observability-pipelines-worker"
 
 worker_major_version=1
@@ -475,6 +481,11 @@ else
     printf "\033[34m  * Assigning DD_SITE.\n\033[0m\n"
     $sudo_cmd sh -c "echo DD_SITE=$site >> $env_file"
   fi
+
+  if [ "$op_rc_enabled" ]; then
+    printf "\033[34m  * Assigning DD_OP_REMOTE_CONFIGURATION_ENABLED.\n\033[0m\n"
+    $sudo_cmd sh -c "echo DD_OP_REMOTE_CONFIGURATION_ENABLED=$op_rc_enabled >> $env_file"
+  fi
 fi
 
 if ! $sudo_cmd grep -q -E '^DD_API_KEY=.+' "$env_file" && \
@@ -487,6 +498,14 @@ if ! $sudo_cmd grep -q -E '^DD_OP_PIPELINE_ID=.+' "$env_file" && \
   ! $sudo_cmd grep -q -E '^pipeline_id: .+' "$bootstrap_file"; then
   printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the DD_OP_PIPELINE_ID variable is missing.\n  Please add one in either $env_file or $bootstrap_file and start the $nice_flavor manually.\n\033[0m\n"
   no_start=true
+fi
+
+if [ ! -e "$pipeline_file" ]; then
+  if ! $sudo_cmd grep -q -E '^DD_OP_REMOTE_CONFIGURATION_ENABLED=true|"true"' "$env_file" && \
+    ! $sudo_cmd grep -A1 -E '^remote_configuration:' "$bootstrap_file" | $sudo_cmd grep -q -E '^\s{2}enabled: true|"true"'; then
+    printf "\033[33mThe $nice_flavor won't start automatically at the end of the script because the pipeline configuration is missing.\n  If you are following our onboarding guide, please return to the Datadog Observability Pipelines UI to download your pipeline's configuration.\n\033[0m\n"
+    no_start=true
+  fi
 fi
 
 $sudo_cmd chown observability-pipelines-worker:observability-pipelines-worker "$bootstrap_file"
