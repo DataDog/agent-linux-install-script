@@ -39,6 +39,7 @@ generate-scripts:
       - install_script_agent7.sh
       - install_script_docker_injection.sh
       - install_script_op_worker1.sh
+      - install_script_op_worker2.sh
       - install_script_vector0.sh
 
 unit_tests:
@@ -197,7 +198,7 @@ test-observability-pipelines-worker:
   stage: test
   dependencies: ["generate-scripts"]
   variables:
-    SCRIPT: ./install_script_op_worker1.sh
+    SCRIPT: ./install_script_op_worker2.sh
   parallel:
     matrix:
       - IMAGE:
@@ -366,6 +367,7 @@ deploy:
       - SCRIPT: install_script_agent7.sh
       - SCRIPT: install_script_docker_injection.sh
       - SCRIPT: install_script_op_worker1.sh
+      - SCRIPT: install_script_op_worker2.sh
       - SCRIPT: install_script_vector0.sh
   script:
     - $S3_CP_CMD ./${SCRIPT} s3://dd-agent/scripts/${SCRIPT} --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
