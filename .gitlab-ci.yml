@@ -198,7 +198,8 @@ test-observability-pipelines-worker:
   stage: test
   dependencies: ["generate-scripts"]
   variables:
-    SCRIPT: ./install_script_op_worker2.sh
+    # TODO once OPW 2.0 has a production release this needs to change to the v2 script
+    SCRIPT: ./install_script_op_worker1.sh
   parallel:
     matrix:
       - IMAGE:
