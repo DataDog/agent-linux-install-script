@@ -300,6 +300,7 @@ e2e:
           - --run TestInstallSecurityAgentSuite
           - --run TestInstallSystemProbeSuite
           - --run TestInstallComplianceAgentSuite
+          - --run TestInstallUpdaterSuite
           - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent)Suite
       - FLAVOR: datadog-agent
         PLATFORM:
