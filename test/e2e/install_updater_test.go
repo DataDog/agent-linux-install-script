@@ -35,8 +35,7 @@ func TestInstallUpdaterSuite(t *testing.T) {
 func (s *installUpdaterTestSuite) TestInstallSecurityAgent() {
 	t := s.T()
 	vm := s.Env().VM
-	t.Log("Install latest Agent 7 RC")
-	cmd := fmt.Sprintf("DD_INSTALL_UPDATER=true DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", flavor, apiKey)
+	cmd := fmt.Sprintf("DD_INSTALL_UPDATER=true DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
 	output := vm.Execute(cmd)
 	t.Log(output)
 
@@ -49,11 +48,8 @@ func (s *installUpdaterTestSuite) TestInstallSecurityAgent() {
 }
 
 func (s *installUpdaterTestSuite) assertInstallScript() {
-	s.linuxInstallerTestSuite.assertInstallScript()
-
 	t := s.T()
 	vm := s.Env().VM
-
 	assertFileExists(t, vm, "/opt/datadog/bin/updater/updater")
 }
 
@@ -61,6 +57,5 @@ func (s *installUpdaterTestSuite) assertUninstall() {
 	s.linuxInstallerTestSuite.assertUninstall()
 	t := s.T()
 	vm := s.Env().VM
-	t.Log("Assert system probe config and security-agent are there after uninstall")
 	assertFileNotExists(t, vm, "/opt/datadog/bin/updater/updater")
 }

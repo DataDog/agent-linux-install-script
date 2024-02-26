@@ -418,8 +418,10 @@ if [ -n "$DD_AGENT_FLAVOR" ]; then
     agent_flavor=$DD_AGENT_FLAVOR #Eg: datadog-iot-agent
 fi
 
+printf "hi"
 install_updater=
 if [ -n "$DD_INSTALL_UPDATER" ]; then
+    printf "install updater added"
     install_updater=true
 fi
 
@@ -1193,7 +1195,9 @@ elif [ "$OS" == "SUSE" ]; then
   else
     packages=("$agent_flavor")
   fi
+  printf "before"
   if [ -n "$install_updater" ]; then
+    printf "updater added"
     packages=("datadog-updater")
   fi
 
