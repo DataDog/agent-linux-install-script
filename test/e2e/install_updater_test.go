@@ -32,7 +32,7 @@ func TestInstallUpdaterSuite(t *testing.T) {
 	})
 }
 
-func (s *installSecurityAgentTestSuite) TestInstallSecurityAgent() {
+func (s *installUpdaterTestSuite) TestInstallSecurityAgent() {
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Install latest Agent 7 RC")
@@ -48,7 +48,7 @@ func (s *installSecurityAgentTestSuite) TestInstallSecurityAgent() {
 	s.purge()
 }
 
-func (s *installSecurityAgentTestSuite) assertInstallScript() {
+func (s *installUpdaterTestSuite) assertInstallScript() {
 	s.linuxInstallerTestSuite.assertInstallScript()
 
 	t := s.T()
@@ -57,7 +57,7 @@ func (s *installSecurityAgentTestSuite) assertInstallScript() {
 	assertFileExists(t, vm, "/opt/datadog/bin/updater/updater")
 }
 
-func (s *installSecurityAgentTestSuite) assertUninstall() {
+func (s *installUpdaterTestSuite) assertUninstall() {
 	s.linuxInstallerTestSuite.assertUninstall()
 	t := s.T()
 	vm := s.Env().VM
