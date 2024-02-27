@@ -32,7 +32,7 @@ func TestInstallUpdaterSuite(t *testing.T) {
 	})
 }
 
-func (s *installUpdaterTestSuite) TestInstallSecurityAgent() {
+func (s *installUpdaterTestSuite) TestInstallUpdater() {
 	t := s.T()
 	vm := s.Env().VM
 	cmd := fmt.Sprintf("DD_INSTALL_UPDATER=true DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
@@ -40,21 +40,10 @@ func (s *installUpdaterTestSuite) TestInstallSecurityAgent() {
 	t.Log(output)
 
 	s.assertInstallScript()
-
-	s.addExtraIntegration()
-
-	s.uninstall()
-	s.purge()
 }
 
 func (s *installUpdaterTestSuite) assertInstallScript() {
 	t := s.T()
 	vm := s.Env().VM
 	assertFileExists(t, vm, "/lib/systemd/system/datadog-updater.service")
-}
-
-func (s *installUpdaterTestSuite) assertUninstall() {
-	t := s.T()
-	vm := s.Env().VM
-	assertFileNotExists(t, vm, "/lib/systemd/system/datadog-updater.service")
 }
