@@ -8,10 +8,10 @@
 
 set -e
 
-install_script_version=1.26.0.post
+install_script_version=1.27.0.post
 logfile="dd-install.log"
 support_email=support@datadoghq.com
-variant=install_script_op_worker1
+variant=install_script_op_worker2
 
 # DATADOG_APT_KEY_CURRENT.public always contains key used to sign current
 # repodata and newly released packages
