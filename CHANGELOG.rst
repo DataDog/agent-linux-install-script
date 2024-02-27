@@ -2,8 +2,13 @@
 Release Notes
 =============
 
-Unreleased
+1.27.0
 ================
+
+- Add install script for OPW v2 (#142)
+- Invalidate install.datadoghq.com distribution on script release (#140)
+- Enforce retries in install_script for curl calls (#141)
+- [E2E] Install script e2e tests are fetching the latest available python version (#139)
 
 1.26.0
 ================
