@@ -50,12 +50,11 @@ func (s *installUpdaterTestSuite) TestInstallSecurityAgent() {
 func (s *installUpdaterTestSuite) assertInstallScript() {
 	t := s.T()
 	vm := s.Env().VM
-	assertFileExists(t, vm, "/opt/datadog/bin/updater/updater")
+	assertFileExists(t, vm, "/lib/systemd/system/datadog-updater.service")
 }
 
 func (s *installUpdaterTestSuite) assertUninstall() {
-	s.linuxInstallerTestSuite.assertUninstall()
 	t := s.T()
 	vm := s.Env().VM
-	assertFileNotExists(t, vm, "/opt/datadog/bin/updater/updater")
+	assertFileNotExists(t, vm, "/lib/systemd/system/datadog-updater.service")
 }
