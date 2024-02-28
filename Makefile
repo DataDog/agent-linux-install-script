@@ -69,6 +69,7 @@ pre_release_%:
 	$(eval NEW_VERSION=$(shell echo "$@" | sed -e 's|pre_release_||'))
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script_op_worker1.sh
+	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script_op_worker2.sh
 	$(MAKE) update_changelog VERSION=${CUR_VERSION}
 	$(IN_PLACE_SED) -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
 
@@ -79,6 +80,7 @@ pre_release_minor:
 	$(eval CUR_VERSION=$(shell echo "${CUR_VERSION}" | sed -e 's|.post||'))
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script_op_worker1.sh
+	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script_op_worker2.sh
 	$(MAKE) update_changelog VERSION=${CUR_VERSION}
 	$(IN_PLACE_SED) -e "s|^Unreleased|${NEW_VERSION}|g" CHANGELOG.rst
 
@@ -96,6 +98,7 @@ post_release:
     endif
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${CUR_VERSION}.post|g" install_script.sh.template
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${CUR_VERSION}.post|g" install_script_op_worker1.sh
+	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${CUR_VERSION}.post|g" install_script_op_worker2.sh
 	echo "4i\n\nUnreleased\n================\n.\nw\nq" | ed -s CHANGELOG.rst
 
 tag:
