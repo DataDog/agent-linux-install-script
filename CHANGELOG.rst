@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.27.1
 ================
+
+- Fix OPW v2 script metadata (#147)
+- Update buildimages tag (#146)
 
 1.27.0
 ================
