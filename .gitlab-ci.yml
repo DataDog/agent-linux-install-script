@@ -99,6 +99,17 @@ test_opensuse13:
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
         MAJOR_VERSION: [6, 7]
 
+# CentOS/RHEL 6 only support Datadog Agent version up 6.51, hence these tests should not be launched on pipelines triggered by datadog-agent pipelines
+test_centos6:
+  extends: .test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  parallel:
+    matrix:
+      - IMAGE: centos:centos6
+        FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
+        MAJOR_VERSION: [6, 7]
+
 test:
   extends: .test
   parallel:
