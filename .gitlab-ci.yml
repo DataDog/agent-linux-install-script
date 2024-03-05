@@ -106,7 +106,7 @@ test_centos6:
     - if: '$CI_PIPELINE_SOURCE == "push"'
   parallel:
     matrix:
-      - IMAGE: centos:6
+      - IMAGE: centos:centos6
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
         MAJOR_VERSION: [6, 7]
 
