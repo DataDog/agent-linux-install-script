@@ -825,6 +825,29 @@ if [ "$OS" == "RedHat" ]; then
         report_telemetry
         exit;
     fi
+    # NOTE: CentOS/RHEL 6 don't have /etc/os-release. /etc/centos-release and /etc/redhat-release
+    # aren't necessarily on the system, so this is not 100 % reliable, but best we can do
+    release_version=$(cat /etc/redhat-release 2>/dev/null | grep -oE '[0-9]+' | head -1)
+    if [ -z "$release_version" ]; then
+        release_version=7
+    fi
+    if { [ "$DISTRIBUTION" == "RedHat" ] || [ "$DISTRIBUTION" == "CentOS" ]; } && [ "$release_version" -lt 7 ]; then
+        if [ -n "$agent_minor_version_without_patch" ]; then
+            if [ "$agent_minor_version_without_patch" -ge "52" ]; then
+                ERROR_MESSAGE="$DISTRIBUTION < 7 only supports $nice_flavor $agent_major_version up to $agent_major_version.51."
+                ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
+                printf "\033[31m$ERROR_MESSAGE\033[0m\n"
+                report_telemetry
+                exit;
+            fi
+        else
+            if ! echo "$agent_flavor" | grep '[0-9]' > /dev/null; then
+                echo -e "  \033[33m$nice_flavor $agent_major_version.51 is the last supported version on $DISTRIBUTION $release_version. Installing $agent_major_version.51 now.\n\033[0m"
+                agent_minor_version=51
+                clean_agent_minor_version=51
+            fi
+        fi
+    fi
     echo -e "\033[34m\n* Installing YUM sources for Datadog\n\033[0m"
 
     UNAME_M=$(uname -m)
