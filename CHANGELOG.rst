@@ -2,6 +2,11 @@
 Release Notes
 =============
 
+1.28.0
+================
+
+- Don't allow installing Agent > 6/7.51 on CentOS 6 (#149)
+
 1.27.1
 ================
 
