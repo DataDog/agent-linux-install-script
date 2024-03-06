@@ -99,11 +99,16 @@ func getEC2Options(t *testing.T) []ec2params.Option {
 	if _, ok := osConfigByPlatform[platform]; !ok {
 		t.Skipf("not supported platform %s", platform)
 	}
+
 	ec2Options := []ec2params.Option{}
 	if osConfigByPlatform[platform].ami != "" {
 		ec2Options = append(ec2Options, ec2params.WithImageName(osConfigByPlatform[platform].ami, componentsos.AMD64Arch, osConfigByPlatform[platform].osType))
 	} else {
 		ec2Options = append(ec2Options, ec2params.WithOS(osConfigByPlatform[platform].osType))
+	}
+
+	if instanceType, ok := os.LookupEnv("E2E_OVERRIDE_INSTANCE_TYPE"); ok {
+		ec2Options = append(ec2Options, ec2params.WithInstanceType(instanceType))
 	}
 	return ec2Options
 }
