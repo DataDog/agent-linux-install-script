@@ -296,6 +296,7 @@ e2e:
   parallel:
     matrix:
       - FLAVOR: datadog-agent
+        E2E_OVERRIDE_INSTANCE_TYPE: "t2.medium"
         PLATFORM:
           - Debian_11
           - Ubuntu_22_04
