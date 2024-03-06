@@ -58,6 +58,7 @@ var (
 	osConfigByPlatform = map[string]osConfig{
 		"Debian_11":         {osType: ec2os.DebianOS},
 		"Ubuntu_22_04":      {osType: ec2os.UbuntuOS},
+		"RedHat_CentOS_6":   {osType: ec2os.CentOS, ami: "ami-0506f01ccb6dddeda"},
 		"RedHat_CentOS_7":   {osType: ec2os.CentOS},
 		"RedHat_8":          {osType: ec2os.RedHatOS, ami: "ami-06640050dc3f556bb"},
 		"Amazon_Linux_2023": {osType: ec2os.AmazonLinuxOS, ami: "ami-0889a44b331db0194"},

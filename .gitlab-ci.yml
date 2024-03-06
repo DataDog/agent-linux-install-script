@@ -299,6 +299,7 @@ e2e:
         PLATFORM:
           - Debian_11
           - Ubuntu_22_04
+          - RedHat_CentOS_6
           - RedHat_CentOS_7
           - RedHat_8
           - Amazon_Linux_2023
