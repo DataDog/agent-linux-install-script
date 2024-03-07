@@ -34,6 +34,10 @@ func (s *installTestSuite) TestInstall() {
 	t := s.T()
 	vm := s.Env().VM
 
+	testDebugOutput, dbgerr := vm.ExecuteWithError("rpm -qf /sbin/init")
+	t.Log("DEBUG LOG: %s", testDebugOutput)
+	t.Log("DBG STDERR: %s", dbgerr)
+
 	// Installation
 	t.Log("Install latest Agent 7 RC")
 	cmd := fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com bash -c \"$(cat scripts/install_script_agent7.sh)\"", flavor, apiKey)
