@@ -34,13 +34,9 @@ func (s *installTestSuite) TestInstall() {
 	t := s.T()
 	vm := s.Env().VM
 
-	testDebugOutput, dbgerr := vm.ExecuteWithError("start")
-	t.Log(testDebugOutput)
-	t.Log(dbgerr)
-
 	// Installation
 	t.Log("Install latest Agent 7 RC")
-	cmd := fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com bash -c \"$(cat scripts/install_script_agent7.sh)\"", flavor, apiKey)
+	cmd := fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", flavor, apiKey)
 	output := vm.Execute(cmd)
 	t.Log(output)
 

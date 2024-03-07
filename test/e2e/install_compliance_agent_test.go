@@ -38,7 +38,7 @@ func (s *installComplianceAgentTestSuite) TestInstallComplianceAgent() {
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Install latest Agent 7 RC")
-	cmd := fmt.Sprintf("DD_COMPLIANCE_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", flavor, apiKey)
+	cmd := fmt.Sprintf("DD_COMPLIANCE_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", flavor, apiKey)
 	output := vm.Execute(cmd)
 	t.Log(output)
 
