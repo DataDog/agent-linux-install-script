@@ -40,7 +40,7 @@ func (s *installFipsTestSuite) TestInstallFips() {
 	t := s.T()
 	vm := s.Env().VM
 	t.Log("Install latest Agent 7 RC")
-	cmd := fmt.Sprintf("DD_FIPS_MODE=true DD_URL=\"fake.url.com\" DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"darth.vador.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"",
+	cmd := fmt.Sprintf("DD_FIPS_MODE=true DD_URL=\"fake.url.com\" DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"darth.vador.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"",
 		flavor,
 		apiKey)
 	output := vm.Execute(cmd)

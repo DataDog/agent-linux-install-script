@@ -58,6 +58,7 @@ var (
 	osConfigByPlatform = map[string]osConfig{
 		"Debian_11":         {osType: ec2os.DebianOS},
 		"Ubuntu_22_04":      {osType: ec2os.UbuntuOS},
+		"RedHat_CentOS_6":   {osType: ec2os.CentOS, ami: "ami-0506f01ccb6dddeda"},
 		"RedHat_CentOS_7":   {osType: ec2os.CentOS},
 		"RedHat_8":          {osType: ec2os.RedHatOS, ami: "ami-06640050dc3f556bb"},
 		"Amazon_Linux_2023": {osType: ec2os.AmazonLinuxOS, ami: "ami-0889a44b331db0194"},
@@ -98,11 +99,16 @@ func getEC2Options(t *testing.T) []ec2params.Option {
 	if _, ok := osConfigByPlatform[platform]; !ok {
 		t.Skipf("not supported platform %s", platform)
 	}
+
 	ec2Options := []ec2params.Option{}
 	if osConfigByPlatform[platform].ami != "" {
 		ec2Options = append(ec2Options, ec2params.WithImageName(osConfigByPlatform[platform].ami, componentsos.AMD64Arch, osConfigByPlatform[platform].osType))
 	} else {
 		ec2Options = append(ec2Options, ec2params.WithOS(osConfigByPlatform[platform].osType))
+	}
+
+	if instanceType, ok := os.LookupEnv("E2E_OVERRIDE_INSTANCE_TYPE"); ok {
+		ec2Options = append(ec2Options, ec2params.WithInstanceType(instanceType))
 	}
 	return ec2Options
 }
@@ -156,9 +162,9 @@ func (s *linuxInstallerTestSuite) assertInstallScript() {
 	if _, err = vm.ExecuteWithError("command -v systemctl"); err == nil {
 		_, err = vm.ExecuteWithError(fmt.Sprintf("systemctl is-active %s", s.baseName))
 		assert.NoError(t, err, fmt.Sprintf("%s not running after Agent install", s.baseName))
-	} else if _, err = vm.ExecuteWithError("command -v initctl"); err == nil {
+	} else if _, err = vm.ExecuteWithError("/sbin/init --version 2>&1 | grep -q upstart;"); err == nil {
 		status := strings.TrimSuffix(vm.Execute(fmt.Sprintf("sudo status %s", s.baseName)), "\n")
-		assert.Contains(t, "running", status, fmt.Sprintf("%s not running after Agent install", s.baseName))
+		assert.Contains(t, status, "running", fmt.Sprintf("%s not running after Agent install", s.baseName))
 	} else {
 		require.FailNow(t, "Unknown service manager")
 	}

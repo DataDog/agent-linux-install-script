@@ -313,6 +313,19 @@ e2e:
           - --run TestInstallComplianceAgentSuite
           - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent)Suite
       - FLAVOR: datadog-agent
+        E2E_OVERRIDE_INSTANCE_TYPE: "t2.medium"
+        PLATFORM:
+          - RedHat_CentOS_6
+        EXTRA_PARAMS:
+          - --run TestInstallSuite
+          - --run TestUpgrade6Suite
+          - --run TestUpgrade7Suite
+          - --run TestInstallMaximalAndRetrySuite
+          - --run TestInstallSecurityAgentSuite
+          - --run TestInstallSystemProbeSuite
+          - --run TestInstallComplianceAgentSuite
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent)Suite
+      - FLAVOR: datadog-agent
         PLATFORM:
           - Debian_11
           - Ubuntu_22_04
