@@ -34,7 +34,7 @@ func (s *installTestSuite) TestInstall() {
 	t := s.T()
 	vm := s.Env().VM
 
-	testDebugOutput, dbgerr := vm.ExecuteWithError("rpm -qf /sbin/init")
+	testDebugOutput, dbgerr := vm.ExecuteWithError("initctl")
 	t.Log(testDebugOutput)
 	t.Log(dbgerr)
 
