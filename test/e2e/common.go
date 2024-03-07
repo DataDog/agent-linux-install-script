@@ -164,7 +164,7 @@ func (s *linuxInstallerTestSuite) assertInstallScript() {
 		assert.NoError(t, err, fmt.Sprintf("%s not running after Agent install", s.baseName))
 	} else if _, err = vm.ExecuteWithError("/sbin/init --version 2>&1 | grep -q upstart;"); err == nil {
 		status := strings.TrimSuffix(vm.Execute(fmt.Sprintf("sudo status %s", s.baseName)), "\n")
-		assert.Contains(t, "running", status, fmt.Sprintf("%s not running after Agent install", s.baseName))
+		assert.Contains(t, status, "running", fmt.Sprintf("%s not running after Agent install", s.baseName))
 	} else {
 		require.FailNow(t, "Unknown service manager")
 	}
