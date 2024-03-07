@@ -5,7 +5,7 @@ Release Notes
 Unreleased
 ================
 
-1.28.0
+1.28.0 [YANKED]
 ================
 
 - Don't allow installing Agent > 6/7.51 on CentOS 6 (#149)

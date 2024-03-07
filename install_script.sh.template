@@ -894,7 +894,7 @@ if [ "$OS" == "RedHat" ]; then
     if [ -n "$agent_minor_version" ]; then
         # Example: datadog-agent-7.20.2-1
         pkg_pattern="$agent_major_version\.${agent_minor_version%.}(\.[[:digit:]]+){0,1}(-[[:digit:]])?"
-        agent_version_custom="$(yum -y --disablerepo=* --enablerepo=datadog list --showduplicates datadog-agent | sort -r | grep -E "$pkg_pattern" -om1)" || true
+        agent_version_custom="$($sudo_cmd yum -y --disablerepo=* --enablerepo=datadog list --showduplicates datadog-agent | sort -r | grep -E "$pkg_pattern" -om1)" || true
         verify_agent_version "-"
     fi
 
