@@ -35,8 +35,8 @@ func (s *installTestSuite) TestInstall() {
 	vm := s.Env().VM
 
 	testDebugOutput, dbgerr := vm.ExecuteWithError("rpm -qf /sbin/init")
-	t.Log("DEBUG LOG: %s", testDebugOutput)
-	t.Log("DBG STDERR: %s", dbgerr)
+	t.Log(testDebugOutput)
+	t.Log(dbgerr)
 
 	// Installation
 	t.Log("Install latest Agent 7 RC")
