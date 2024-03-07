@@ -34,7 +34,7 @@ func (s *installTestSuite) TestInstall() {
 	t := s.T()
 	vm := s.Env().VM
 
-	testDebugOutput, dbgerr := vm.ExecuteWithError("initctl")
+	testDebugOutput, dbgerr := vm.ExecuteWithError("start")
 	t.Log(testDebugOutput)
 	t.Log(dbgerr)
 
