@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.28.1
 ================
+
+- Fix install script permissions error when installing on CentOS 6 (#153)
 
 1.28.0 [YANKED]
 ================
