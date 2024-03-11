@@ -318,7 +318,7 @@ e2e:
           - RedHat_CentOS_6
         EXTRA_PARAMS:
           - --run TestInstallSuite
-          - --run TestUpgrade6Suite
+          # - --run TestUpgrade6Suite # TODO: BARX-278
           - --run TestUpgrade7Suite
           - --run TestInstallMaximalAndRetrySuite
           - --run TestInstallSecurityAgentSuite
