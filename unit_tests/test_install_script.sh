@@ -7,6 +7,7 @@ yaml_config="$(dirname "$dir_path")/.yamllint.yaml"
 config_file="/etc/datadog-agent/datadog.yaml"
 security_agent_config_file="/etc/datadog-agent/security-agent.yaml"
 system_probe_config_file="/etc/datadog-agent/system-probe.yaml"
+environment_file="/tmp/fake-environment"
 
 ### ensure_config_file_exists
 testEnsureExists() {
@@ -247,6 +248,28 @@ testFullConfig(){
   assertEquals 0 $?
   sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $system_probe_config_file | grep -v "#" | grep -q "enabled: true"
   assertEquals 1 $?
+}
+
+### Manage client libraries security config
+testNoCreation() {
+  rm $environment_file
+  touch $environment_file
+  manage_client_libraries_security_config "sudo" $environment_file "" "" ""
+  grep -q "DD_APPSEC_ENABLED" $environment_file
+  assertEquals 1 $?
+  grep -q "DD_IAST_ENABLED" $environment_file
+  assertEquals 1 $?
+  grep -q "DD_APPSEC_SCA_ENABLED" $environment_file
+  assertEquals 1 $?
+  manage_client_libraries_security_config "sudo" $environment_file true "" ""
+  grep -q "DD_APPSEC_ENABLED=true" $environment_file
+  assertEquals 0 $?
+  manage_client_libraries_security_config "sudo" $environment_file "" true ""
+  grep -q "DD_IAST_ENABLED=true" $environment_file
+  assertEquals 0 $?
+  manage_client_libraries_security_config "sudo" $environment_file "" "" false
+  grep -q "DD_APPSEC_SCA_ENABLED=false" $environment_file
+  assertEquals 0 $?
 }
 
 # shellcheck source=/dev/null
