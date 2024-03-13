@@ -98,7 +98,7 @@ func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...s
 	if extraParamLength == 0 {
 		t.Log(fmt.Sprintf("Install latest Agent %d", agentVersion))
 	} else {
-		scriptEnvVariable = scriptEnvVariable + strings.Join(extraParam[:extraParamLength-1], " ")
+		scriptEnvVariable = scriptEnvVariable + " " + strings.Join(extraParam[:extraParamLength-1], " ")
 		t.Log(extraParam[extraParamLength-1])
 	}
 	cmd := fmt.Sprintf("%s bash -c \"$(cat %s)\"", scriptEnvVariable, installationScriptPath)
