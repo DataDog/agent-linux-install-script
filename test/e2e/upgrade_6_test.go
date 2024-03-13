@@ -34,18 +34,9 @@ func TestUpgrade6Suite(t *testing.T) {
 }
 
 func (s *upgrade6TestSuite) TestUpgrade6() {
-	t := s.T()
-	vm := s.Env().VM
-
 	// Installation
-	t.Log("Install latest Agent 6")
-	cmd := fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=6 DD_API_KEY=%s bash -c \"$(cat scripts/install_script_agent6.sh)\"", flavor, apiKey)
-	output := vm.Execute(cmd)
-	t.Log(output)
-	t.Log("Install latest Agent 7 RC")
-	cmd = fmt.Sprintf("DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", flavor, apiKey)
-	output = vm.Execute(cmd)
-	t.Log(output)
+	s.InstallAgent(6)
+	s.InstallAgent(7)
 
 	s.assertInstallScript()
 

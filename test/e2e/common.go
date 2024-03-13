@@ -81,6 +81,33 @@ type linuxInstallerTestSuite struct {
 	configFile string
 }
 
+func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...string) string {
+	t := s.T()
+	vm := s.Env().VM
+
+	installationScriptPath := "scripts/install_agent.sh"
+	scriptEnvVariable := fmt.Sprintf("DD_API_KEY=%s", apiKey)
+	if agentVersion != 5 {
+		scriptEnvVariable = scriptEnvVariable + fmt.Sprintf(" DD_AGENT_MAJOR_VERSION=%d DD_AGENT_FLAVOR=%s", agentVersion, flavor)
+		installationScriptPath = "scripts/install_script_agent7.sh"
+		if agentVersion == 6 {
+			installationScriptPath = "scripts/install_script_agent6.sh"
+		}
+	}
+	extraParamLength := len(extraParam)
+	if extraParamLength == 0 {
+		t.Log(fmt.Sprintf("Install latest Agent %d", agentVersion))
+	} else {
+		scriptEnvVariable = scriptEnvVariable + strings.Join(extraParam[:extraParamLength-1], " ")
+		t.Log(extraParam[extraParamLength-1])
+	}
+	cmd := fmt.Sprintf("%s bash -c \"$(cat %s)\"", scriptEnvVariable, installationScriptPath)
+	output := vm.Execute(cmd)
+	t.Log(output)
+
+	return output
+}
+
 // SetupSuite is called at suite initialisation, once before all tests
 func (s *linuxInstallerTestSuite) SetupSuite() {
 	s.Suite.SetupSuite()

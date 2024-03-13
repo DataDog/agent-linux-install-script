@@ -35,12 +35,7 @@ func TestInstallSecurityAgentSuite(t *testing.T) {
 }
 
 func (s *installSecurityAgentTestSuite) TestInstallSecurityAgent() {
-	t := s.T()
-	vm := s.Env().VM
-	t.Log("Install latest Agent 7 RC")
-	cmd := fmt.Sprintf("DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", flavor, apiKey)
-	output := vm.Execute(cmd)
-	t.Log(output)
+	s.InstallAgent(7, "DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_SITE=\"datadoghq.com\"", "Install latest Agent 7 ")
 
 	s.assertInstallScript()
 

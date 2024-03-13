@@ -33,12 +33,7 @@ func TestInstallUpdaterSuite(t *testing.T) {
 }
 
 func (s *installUpdaterTestSuite) TestInstallUpdater() {
-	t := s.T()
-	vm := s.Env().VM
-	cmd := fmt.Sprintf("DD_INSTALL_UPDATER=true DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
-	output := vm.Execute(cmd)
-	t.Log(output)
-
+	s.InstallAgent(7, "DD_INSTALL_UPDATER=true", "DD_SITE=\"datadoghq.com\"", "Install Agent 7 Updater")
 	s.assertInstallScript()
 }
 
