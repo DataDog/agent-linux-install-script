@@ -1407,14 +1407,14 @@ function manage_client_libraries_security_config(){
   local asm_enable="$3"
   local iast_enable="$4"
   local sca_enable="$5"
-  if [ -v "$asm_enable" ] then
-    $sudo_cmd sed -i -n -e '/^DD_APPSEC_ENABLED=/!p' -e '$aDD_APPSEC_ENABLED='"$asm_enable"'' "$etc_environment"
+  if [ -v "$asm_enable" ]; then
+    $sudo_cmd sed -i -n -e '/^DD_APPSEC_ENABLED=/!p' -e "\$aDD_APPSEC_ENABLED=$asm_enable" "$etc_environment"
   fi
   if [ -v "$iast_enable" ]; then
-    $sudo_cmd sed -i -n -e '/^DD_IAST_ENABLED=/!p' -e '$aDD_IAST_ENABLED='"$iast_enable"'' "$etc_environment"
+    $sudo_cmd sed -i -n -e '/^DD_IAST_ENABLED=/!p' -e "\$aDD_IAST_ENABLED=$iast_enable" "$etc_environment"
   fi
   if [ -v "$sca_enable" ]; then
-    $sudo_cmd sed -i -n -e '/^DD_APPSEC_SCA_ENABLED=/!p' -e '$aDD_APPSEC_SCA_ENABLED='"$sca_enable"'' "$etc_environment"
+    $sudo_cmd sed -i -n -e '/^DD_APPSEC_SCA_ENABLED=/!p' -e "\$aDD_APPSEC_SCA_ENABLED=$sca_enable" "$etc_environment"
   fi
 }
 # "Main" configuration update
