@@ -251,9 +251,9 @@ testFullConfig(){
 }
 
 ### Manage client libraries security config
-testNoCreation() {
+testManageClientLibrariesSecurityConfig() {
   rm $environment_file
-  touch $environment_file
+  echo 'PATH="/usr/local/sbin"' > $environment_file
   manage_client_libraries_security_config "sudo" $environment_file "" "" ""
   grep -q "DD_APPSEC_ENABLED" $environment_file
   assertEquals 1 $?
