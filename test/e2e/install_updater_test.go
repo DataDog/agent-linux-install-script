@@ -11,6 +11,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
+	"github.com/stretchr/testify/assert"
 )
 
 type installUpdaterTestSuite struct {
@@ -42,8 +43,57 @@ func (s *installUpdaterTestSuite) TestInstallUpdater() {
 	s.assertInstallScript()
 }
 
+func (s *installUpdaterTestSuite) TestInstallUpdaterReplaceAgent7() {
+	t := s.T()
+	vm := s.Env().VM
+
+	t.Log("Install latest Agent 7")
+	hostnameSetDuringFirstInstall := "test-hostname-set-during-first-install"
+	cmd := fmt.Sprintf("DD_HOSTNAME=%s DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s bash -c \"$(cat scripts/install_script_agent7.sh)\"", hostnameSetDuringFirstInstall, flavor, apiKey)
+	output := vm.Execute(cmd)
+	t.Log(output)
+
+	t.Log("Install updater")
+	cmd = fmt.Sprintf("DD_INSTALL_UPDATER=true DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
+	output = vm.Execute(cmd)
+	t.Log(output)
+
+	s.assertInstallScript()
+	s.assertPackageInstalled("datadog-updater", true)
+	s.assertPackageInstalled("datadog-agent", false)
+	s.assertAgentHostname(hostnameSetDuringFirstInstall)
+}
+
 func (s *installUpdaterTestSuite) assertInstallScript() {
 	t := s.T()
 	vm := s.Env().VM
 	assertFileExists(t, vm, "/lib/systemd/system/datadog-updater.service")
+}
+
+func (s *installUpdaterTestSuite) assertPackageInstalled(pkg string, assertInstalled bool) {
+	t := s.T()
+	vm := s.Env().VM
+	var installed bool
+	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
+		if _, err := vm.ExecuteWithError(fmt.Sprintf("sudo dpkg-query -l \"%s\" >/dev/null 2>&1", pkg)); err == nil {
+			installed = true
+		}
+	} else if _, err = vm.ExecuteWithError("command -v yum"); err == nil {
+		if _, err := vm.ExecuteWithError(fmt.Sprintf("rpm -q \"%s\" >/dev/null 2>&1", pkg)); err == nil {
+			installed = true
+		}
+	} else {
+		t.Fatalf("unsupported package manager")
+	}
+	if assertInstalled != installed {
+		t.Fatalf("expected package %s to be %t, got: %t", pkg, assertInstalled, installed)
+	}
+}
+
+func (s *installUpdaterTestSuite) assertAgentHostname(hostname string) {
+	t := s.T()
+	vm := s.Env().VM
+	assertFileExists(t, vm, "/etc/datadog-agent/datadog.yaml")
+	config := unmarshalConfigFile(t, vm, "/etc/datadog-agent/datadog.yaml")
+	assert.Equal(t, hostname, config["hostname"])
 }

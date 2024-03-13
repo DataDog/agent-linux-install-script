@@ -1046,6 +1046,7 @@ If the cause is unclear, please contact Datadog support.
     fi
 
     declare -a packages
+    declare -a packages_to_remove
     if [ -n "$no_agent" ]; then
       packages=("datadog-signing-keys")
     else
@@ -1053,6 +1054,7 @@ If the cause is unclear, please contact Datadog support.
     fi
     if [ -n "$install_updater" ]; then
       packages=("datadog-updater" "datadog-signing-keys")
+      packages_to_remove=("datadog-agent")
     fi
 
     if [ -n "$fips_mode" ]; then
@@ -1075,6 +1077,11 @@ If the cause is unclear, please contact Datadog support.
           $sudo_cmd dpkg --set-selections <<< "${cur_lib} install" >/dev/null 2>&1
         fi
       done
+    fi
+
+    if [ ${#packages_to_remove[@]} -ne 0 ]; then
+      echo -e "  \033[33mRemoving package(s): ${packages_to_remove[*]}\n\033[0m"
+      $sudo_cmd apt-get remove -o Acquire::Retries="5" -y --force-yes "${packages_to_remove[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
     fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
