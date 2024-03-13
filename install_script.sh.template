@@ -1081,7 +1081,12 @@ If the cause is unclear, please contact Datadog support.
 
     if [ ${#packages_to_remove[@]} -ne 0 ]; then
       echo -e "  \033[33mRemoving package(s): ${packages_to_remove[*]}\n\033[0m"
-      $sudo_cmd apt-get remove -o Acquire::Retries="5" -y --force-yes "${packages_to_remove[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
+      for pkg in "${packages_to_remove[@]}"
+      do
+        if $sudo_cmd dpkg-query -l "$pkg" >/dev/null 2>&1; then
+          $sudo_cmd apt-get remove -o Acquire::Retries="5" -y --force-yes "${pkg}" 2> >(tee /tmp/ddog_install_error_msg >&2)
+        fi
+      done
     fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
