@@ -18,6 +18,10 @@ type installUpdaterTestSuite struct {
 	linuxInstallerTestSuite
 }
 
+type installUpdaterReplaceAgent7TestSuite struct {
+	linuxInstallerTestSuite
+}
+
 func TestInstallUpdaterSuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("updater test supports only datadog-agent flavor")
@@ -25,6 +29,15 @@ func TestInstallUpdaterSuite(t *testing.T) {
 	stackName := fmt.Sprintf("install-updater-%s-%s", flavor, platform)
 	t.Run(stackName, func(t *testing.T) {
 		testSuite := &installUpdaterTestSuite{}
+		e2e.Run(t,
+			testSuite,
+			e2e.EC2VMStackDef(getEC2Options(t)...),
+			params.WithStackName(stackName),
+		)
+	})
+	stackName = fmt.Sprintf("install-updater-replace-agent7-%s-%s", flavor, platform)
+	t.Run(stackName, func(t *testing.T) {
+		testSuite := &installUpdaterReplaceAgent7TestSuite{}
 		e2e.Run(t,
 			testSuite,
 			e2e.EC2VMStackDef(getEC2Options(t)...),
@@ -40,10 +53,10 @@ func (s *installUpdaterTestSuite) TestInstallUpdater() {
 	output := vm.Execute(cmd)
 	t.Log(output)
 
-	s.assertInstallScript()
+	s.assertUpdaterInstallScript()
 }
 
-func (s *installUpdaterTestSuite) TestInstallUpdaterReplaceAgent7() {
+func (s *installUpdaterReplaceAgent7TestSuite) TestInstallUpdaterReplaceAgent7() {
 	t := s.T()
 	vm := s.Env().VM
 
@@ -58,19 +71,19 @@ func (s *installUpdaterTestSuite) TestInstallUpdaterReplaceAgent7() {
 	output = vm.Execute(cmd)
 	t.Log(output)
 
-	s.assertInstallScript()
+	s.assertUpdaterInstallScript()
 	s.assertPackageInstalled("datadog-updater", true)
 	s.assertPackageInstalled("datadog-agent", false)
 	s.assertAgentHostname(hostnameSetDuringFirstInstall)
 }
 
-func (s *installUpdaterTestSuite) assertInstallScript() {
+func (s *linuxInstallerTestSuite) assertUpdaterInstallScript() {
 	t := s.T()
 	vm := s.Env().VM
 	assertFileExists(t, vm, "/lib/systemd/system/datadog-updater.service")
 }
 
-func (s *installUpdaterTestSuite) assertPackageInstalled(pkg string, assertInstalled bool) {
+func (s *linuxInstallerTestSuite) assertPackageInstalled(pkg string, assertInstalled bool) {
 	t := s.T()
 	vm := s.Env().VM
 	var installed bool
@@ -90,7 +103,7 @@ func (s *installUpdaterTestSuite) assertPackageInstalled(pkg string, assertInsta
 	}
 }
 
-func (s *installUpdaterTestSuite) assertAgentHostname(hostname string) {
+func (s *linuxInstallerTestSuite) assertAgentHostname(hostname string) {
 	t := s.T()
 	vm := s.Env().VM
 	assertFileExists(t, vm, "/etc/datadog-agent/datadog.yaml")
