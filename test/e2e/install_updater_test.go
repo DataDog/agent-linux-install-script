@@ -8,6 +8,7 @@ package e2e
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
@@ -37,6 +38,7 @@ func (s *installUpdaterTestSuite) TestInstallUpdater() {
 	vm := s.Env().VM
 	cmd := fmt.Sprintf("DD_INSTALL_UPDATER=true DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
 	output := vm.Execute(cmd)
+	time.Sleep(30 * time.Minute)
 	t.Log(output)
 
 	s.assertInstallScript()
