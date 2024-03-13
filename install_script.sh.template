@@ -328,26 +328,6 @@ function getMapData() {
     printf '%s' "$DATA"
 }
 
-# Create a configuration file with proper ownership and permission if it doesn't already exist
-function ensure_config_file_exists() {
-    local sudo_cmd="$1"
-    local config_file="$2"
-    local owner="$3"
-
-    if [ -e "$config_file" ]; then
-        printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
-        return 1
-    else
-        $sudo_cmd cp "$config_file.example" "$config_file"
-        cp_res=$?
-        $sudo_cmd chown "$owner:dd-agent" "$config_file"
-        chown_res=$?
-        $sudo_cmd chmod 640 "$config_file"
-        chmod_res=$?
-        return $((cp_res + chown_res + chmod_res))
-    fi
-}
-
 echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
 
 ##
@@ -471,6 +451,48 @@ fi
 if [ -n "$TESTING_REPORT_URL" ]; then
   report_failure_url=$TESTING_REPORT_URL
   telemetry_url=$TESTING_REPORT_URL
+fi
+
+function update_api_key() {
+  local sudo_cmd="$1"
+  local apikey="$2"
+  local config_file="$3"
+  if [ -n "$apikey" ]; then
+    printf "\033[34m\n* Adding your API key to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's/api_key:.*/api_key: $apikey/' $config_file"
+  else
+    # If the import script failed for any reason, we might end here also in case
+    # of upgrade, let's not start the agent or it would fail because the api key
+    # is missing
+    if ! $sudo_cmd grep -q -E '^api_key: .+' "$config_file"; then
+      printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the Api key is missing, please add one in datadog.yaml and start the $nice_flavor manually.\n\033[0m\n"
+      no_start=true
+    fi
+  fi
+}
+
+# Create a configuration file with proper ownership and permission if it doesn't already exist
+function ensure_config_file_exists() {
+    local sudo_cmd="$1"
+    local config_file="$2"
+    local owner="$3"
+
+    if [ -e "$config_file" ]; then
+        printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
+        return 1
+    else
+        $sudo_cmd cp "$config_file.example" "$config_file"
+        cp_res=$?
+        $sudo_cmd chown "$owner:dd-agent" "$config_file"
+        chown_res=$?
+        $sudo_cmd chmod 640 "$config_file"
+        chmod_res=$?
+        return $((cp_res + chown_res + chmod_res))
+    fi
+}
+
+if ensure_config_file_exists "$sudo_cmd" "$config_file" "dd-agent"; then
+  update_api_key "$sudo_cmd" "$apikey" "$config_file"
 fi
 
 ##
@@ -1290,23 +1312,6 @@ fi
 # SET THE CONFIGURATION
 ##
 # Unit method
-function update_api_key() {
-  local sudo_cmd="$1"
-  local apikey="$2"
-  local config_file="$3"
-  if [ -n "$apikey" ]; then
-    printf "\033[34m\n* Adding your API key to the $nice_flavor configuration: $config_file\n\033[0m\n"
-    $sudo_cmd sh -c "sed -i 's/api_key:.*/api_key: $apikey/' $config_file"
-  else
-    # If the import script failed for any reason, we might end here also in case
-    # of upgrade, let's not start the agent or it would fail because the api key
-    # is missing
-    if ! $sudo_cmd grep -q -E '^api_key: .+' "$config_file"; then
-      printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the Api key is missing, please add one in datadog.yaml and start the $nice_flavor manually.\n\033[0m\n"
-      no_start=true
-    fi
-  fi
-}
 function update_site() {
   local sudo_cmd="$1"
   local site="$2"
