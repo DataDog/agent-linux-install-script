@@ -67,6 +67,7 @@ install_script_docker_injection.sh: install_script.sh.template
 
 pre_release_%:
 	$(eval NEW_VERSION=$(shell echo "$@" | sed -e 's|pre_release_||'))
+	$(eval CUR_VERSION=$(shell echo "${CUR_VERSION}" | sed -e 's|.post||'))
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script_op_worker1.sh
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script_op_worker2.sh
@@ -76,7 +77,7 @@ pre_release_%:
 pre_release_minor:
 	$(eval CUR_MINOR=$(shell echo "${CUR_VERSION}" | tr "." "\n" | awk 'NR==2'))
 	$(eval NEXT_MINOR=$(shell echo ${CUR_MINOR}+1 | bc))
-	$(eval NEW_VERSION=$(shell echo "${CUR_VERSION}" | awk -v repl="${NEXT_MINOR}" 'BEGIN {FS=OFS="."} {$$2=repl; print}' | sed -e 's|.post||'))
+	$(eval NEW_VERSION=$(shell echo "${CUR_VERSION}" | awk -v repl="${NEXT_MINOR}" 'BEGIN {FS=OFS="."} {$$2=repl; $$3=0; print}' | sed -e 's|.post||'))
 	$(eval CUR_VERSION=$(shell echo "${CUR_VERSION}" | sed -e 's|.post||'))
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script.sh.template
 	$(IN_PLACE_SED) -e "s|install_script_version=.*|install_script_version=${NEW_VERSION}|g" install_script_op_worker1.sh
