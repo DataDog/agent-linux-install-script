@@ -88,7 +88,7 @@ func (s *linuxInstallerTestSuite) assertPackageInstalled(pkg string, assertInsta
 	vm := s.Env().VM
 	var installed bool
 	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
-		if _, err := vm.ExecuteWithError(fmt.Sprintf("sudo dpkg-query -l \"%s\" >/dev/null 2>&1", pkg)); err == nil {
+		if _, err := vm.ExecuteWithError(fmt.Sprintf("dpkg-query -l \"%s\" >/dev/null 2>&1", pkg)); err == nil {
 			installed = true
 		}
 	} else if _, err = vm.ExecuteWithError("command -v yum"); err == nil {
