@@ -37,7 +37,7 @@ func TestInstallFipsSuite(t *testing.T) {
 }
 
 func (s *installFipsTestSuite) TestInstallFips() {
-	output := s.InstallAgent(7, "DD_FIPS_MODE=true DD_URL=\"fake.url.com\" DD_SITE=\"darth.vador.com\"", "Install latest Agent 7")
+	output := s.InstallAgent(7, "DD_FIPS_MODE=true DD_URL=\"fake.url.com\" DD_SITE=\"darth.vader.com\"", "Install latest Agent 7")
 
 	s.assertInstallFips(output)
 	s.addExtraIntegration()
