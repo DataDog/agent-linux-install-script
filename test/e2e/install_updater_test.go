@@ -21,7 +21,7 @@ func TestInstallUpdaterSuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("updater test supports only datadog-agent flavor")
 	}
-	stackName := fmt.Sprintf("install-updater-%s-%s", flavor, platform)
+	stackName := fmt.Sprintf("install-updater-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
 	t.Run(stackName, func(t *testing.T) {
 		testSuite := &installUpdaterTestSuite{}
 		e2e.Run(t,

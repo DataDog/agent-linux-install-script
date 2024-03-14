@@ -18,7 +18,7 @@ type upgrade7TestSuite struct {
 }
 
 func TestUpgrade7Suite(t *testing.T) {
-	stackName := fmt.Sprintf("upgrade7-%s-%s", flavor, platform)
+	stackName := fmt.Sprintf("upgrade7-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
 	t.Run(stackName, func(t *testing.T) {
 		t.Logf("We will upgrade 7 %s with install_script on %s", flavor, platform)
 		testSuite := &upgrade7TestSuite{}

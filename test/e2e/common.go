@@ -75,6 +75,14 @@ func init() {
 	flag.StringVar(&platform, "platform", defaultPlatform, fmt.Sprintf("Defines the target platform, default %s", defaultPlatform))
 }
 
+func getenv(key, fallback string) string {
+	value := os.Getenv(key)
+	if len(value) == 0 && len(fallback) != 0 {
+		return fallback
+	}
+	return value
+}
+
 type linuxInstallerTestSuite struct {
 	e2e.Suite[e2e.VMEnv]
 	baseName   string

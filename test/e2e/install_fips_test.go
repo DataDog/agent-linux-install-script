@@ -24,7 +24,7 @@ func TestInstallFipsSuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("fips test supports only datadog-agent flavor")
 	}
-	stackName := fmt.Sprintf("install-fips-%s-%s", flavor, platform)
+	stackName := fmt.Sprintf("install-fips-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
 	t.Run(stackName, func(t *testing.T) {
 		t.Logf("We will install with fips %s with install script on %s", flavor, platform)
 		testSuite := &installFipsTestSuite{}

@@ -21,7 +21,7 @@ func TestUpgrade6Suite(t *testing.T) {
 	if flavor != "datadog-agent" {
 		t.Skipf("%s not supported on Agent 6", flavor)
 	}
-	stackName := fmt.Sprintf("upgrade6-%s-%s", flavor, platform)
+	stackName := fmt.Sprintf("upgrade6-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
 	t.Run(stackName, func(t *testing.T) {
 		t.Logf("We will upgrade 6 %s with install_script on %s", flavor, platform)
 		testSuite := &upgrade6TestSuite{}

@@ -22,7 +22,7 @@ func TestInstallSystemProbeSuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("system-probe test supports only datadog-agent flavor")
 	}
-	stackName := fmt.Sprintf("install-system-probe-%s-%s", flavor, platform)
+	stackName := fmt.Sprintf("install-system-probe-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
 	t.Run(stackName, func(t *testing.T) {
 		t.Logf("We will install with system-probe %s with install script on %s", flavor, platform)
 		testSuite := &installSystemProbeTestSuite{}

@@ -39,7 +39,7 @@ func TestInstallMaximalAndRetrySuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("maximal and retry test supports only datadog-agent flavor")
 	}
-	stackName := fmt.Sprintf("install-maximal-%s-%s", flavor, platform)
+	stackName := fmt.Sprintf("install-maximal-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
 	t.Run(stackName, func(t *testing.T) {
 		t.Logf("We will install with maximal options and retry %s with install_script on %s", flavor, platform)
 		testSuite := &installMaximalAndRetryTestSuite{}
