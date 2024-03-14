@@ -22,7 +22,7 @@ func TestInstallComplianceAgentSuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("compliance agent test supports only datadog-agent flavor")
 	}
-	stackName := fmt.Sprintf("install-compliance-agent-%s-%s", flavor, platform)
+	stackName := fmt.Sprintf("install-compliance-agent-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
 	t.Run(stackName, func(t *testing.T) {
 		t.Logf("We will install with compliance agent %s with install script on %s", flavor, platform)
 		testSuite := &installComplianceAgentTestSuite{}
@@ -35,12 +35,7 @@ func TestInstallComplianceAgentSuite(t *testing.T) {
 }
 
 func (s *installComplianceAgentTestSuite) TestInstallComplianceAgent() {
-	t := s.T()
-	vm := s.Env().VM
-	t.Log("Install latest Agent 7 RC")
-	cmd := fmt.Sprintf("DD_COMPLIANCE_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", flavor, apiKey)
-	output := vm.Execute(cmd)
-	t.Log(output)
+	s.InstallAgent(7, "DD_COMPLIANCE_CONFIG_ENABLED=true DD_SITE=\"datadoghq.com\"", "Install latest Agent 7")
 
 	s.assertInstallScript()
 

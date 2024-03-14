@@ -39,7 +39,7 @@ func TestInstallMaximalAndRetrySuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("maximal and retry test supports only datadog-agent flavor")
 	}
-	stackName := fmt.Sprintf("install-maximal-%s-%s", flavor, platform)
+	stackName := fmt.Sprintf("install-maximal-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
 	t.Run(stackName, func(t *testing.T) {
 		t.Logf("We will install with maximal options and retry %s with install_script on %s", flavor, platform)
 		testSuite := &installMaximalAndRetryTestSuite{}
@@ -52,26 +52,13 @@ func TestInstallMaximalAndRetrySuite(t *testing.T) {
 }
 
 func (s *installMaximalAndRetryTestSuite) TestInstallMaximalAndReplayScript() {
-	t := s.T()
-	vm := s.Env().VM
-	var output string
-	t.Log("install agent 7 with maximal environment variables")
-	cmd := fmt.Sprintf("DD_HOST_TAGS=\"foo:bar,baz:toto\" DD_ENV=kiki DD_HOSTNAME=totoro DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_API_KEY=%s DD_SITE=\"mysite.com\" DD_URL=myintake.com bash -c \"$(cat scripts/install_script_agent7.sh)\"",
-		flavor,
-		apiKey)
-	output = vm.Execute(cmd)
-	t.Log(output)
+	output := s.InstallAgent(7, "DD_HOST_TAGS=\"foo:bar,baz:toto\" DD_ENV=kiki DD_HOSTNAME=totoro DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_SITE=\"mysite.com\" DD_URL=myintake.com", "install agent 7 with maximal environment variables")
 
 	s.assertInstallMaximal(output)
 
 	s.addExtraIntegration()
 
-	t.Log("install Agent 7 RC again with new environment variables")
-	cmd = fmt.Sprintf("DD_HOST_TAGS=\"john:doe,john:lennon\" DD_ENV=totoro DD_HOSTNAME=kiki DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_AGENT_FLAVOR=%s DD_API_KEY=%s DD_SITE=darthmaul.com DD_URL=otherintake.com bash -c \"$(cat scripts/install_script_agent7.sh)\"",
-		flavor,
-		apiKey)
-	output = vm.Execute(cmd)
-	t.Log(output)
+	output = s.InstallAgent(7, "DD_HOST_TAGS=\"john:doe,john:lennon\" DD_ENV=totoro DD_HOSTNAME=kiki DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_SITE=darthmaul.com DD_URL=otherintake.com", "install Agent 7 RC again with new environment variables")
 
 	s.assertRetryInstall(output)
 

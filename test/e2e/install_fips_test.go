@@ -24,7 +24,7 @@ func TestInstallFipsSuite(t *testing.T) {
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("fips test supports only datadog-agent flavor")
 	}
-	stackName := fmt.Sprintf("install-fips-%s-%s", flavor, platform)
+	stackName := fmt.Sprintf("install-fips-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
 	t.Run(stackName, func(t *testing.T) {
 		t.Logf("We will install with fips %s with install script on %s", flavor, platform)
 		testSuite := &installFipsTestSuite{}
@@ -37,14 +37,7 @@ func TestInstallFipsSuite(t *testing.T) {
 }
 
 func (s *installFipsTestSuite) TestInstallFips() {
-	t := s.T()
-	vm := s.Env().VM
-	t.Log("Install latest Agent 7 RC")
-	cmd := fmt.Sprintf("DD_FIPS_MODE=true DD_URL=\"fake.url.com\" DD_AGENT_FLAVOR=%s DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"darth.vador.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"",
-		flavor,
-		apiKey)
-	output := vm.Execute(cmd)
-	t.Log(output)
+	output := s.InstallAgent(7, "DD_FIPS_MODE=true DD_URL=\"fake.url.com\" DD_SITE=\"darth.vader.com\"", "Install latest Agent 7")
 
 	s.assertInstallFips(output)
 	s.addExtraIntegration()
