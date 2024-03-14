@@ -651,6 +651,7 @@ fi
 config_file_fips=$etcdirfips/datadog-fips-proxy.cfg
 system_probe_config_file=$etcdir/system-probe.yaml
 security_agent_config_file=$etcdir/security-agent.yaml
+environment_file=$etcdir/environment
 
 agent_major_version=AGENT_MAJOR_VERSION_PLACEHOLDER
 # shellcheck disable=SC2050
@@ -1393,6 +1394,22 @@ function manage_security_and_system_probe_config(){
     fi
   fi
 }
+function manage_client_libraries_security_config(){
+  local sudo_cmd="$1"
+  local etc_environment="$2"
+  local asm_enable="$3"
+  local iast_enable="$4"
+  local sca_enable="$5"
+  if [ -n "$asm_enable" ]; then
+    $sudo_cmd sed -i -n -e '/^DD_APPSEC_ENABLED=/!p' -e "\$aDD_APPSEC_ENABLED=$asm_enable" "$etc_environment"
+  fi
+  if [ -n "$iast_enable" ]; then
+    $sudo_cmd sed -i -n -e '/^DD_IAST_ENABLED=/!p' -e "\$aDD_IAST_ENABLED=$iast_enable" "$etc_environment"
+  fi
+  if [ -n "$sca_enable" ]; then
+    $sudo_cmd sed -i -n -e '/^DD_APPSEC_SCA_ENABLED=/!p' -e "\$aDD_APPSEC_SCA_ENABLED=$sca_enable" "$etc_environment"
+  fi
+}
 # "Main" configuration update
 if [ -e "$config_file" ] && [ -z "$upgrade" ]; then
   printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
@@ -1411,6 +1428,8 @@ elif [ ! "$no_agent" ]; then
   fi
   manage_security_and_system_probe_config "$sudo_cmd" "$security_agent_config_file" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
 fi
+
+manage_client_libraries_security_config "$sudo_cmd" "$environment_file" "$DD_APPSEC_ENABLED" "$DD_IAST_ENABLED" "$DD_APPSEC_SCA_ENABLED"
 
 if [ ! "$no_agent" ]; then
   $sudo_cmd chown dd-agent:dd-agent "$config_file"
