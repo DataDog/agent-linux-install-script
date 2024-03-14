@@ -1471,7 +1471,7 @@ install_time=$(date +%s)
 # reuse the original install ID and time.
 if [ -f "$etcdir/install.json" ]; then
   # Parse the JSON file using substring extraction to avoid a dependency on any JSON parser
-  install_info=$(cat "$etcdir/install.json" 2>/dev/null)
+  install_info=$($sudo_cmd cat "$etcdir/install.json" 2>/dev/null)
   if [ ${#install_info} -eq 118 ]; then
     if [ "${install_info:2:10}" == "install_id" ] && [ "${install_info:53:38}" == "\"install_type\":\"$install_type\"" ] && [ "${install_info:93:12}" == "install_time" ]; then
       install_id=${install_info:15:36}
