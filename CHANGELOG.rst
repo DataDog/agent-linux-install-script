@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.28.2
 ================
+
+- Use sudo for any operations with install.json (#162)
 
 1.28.1
 ================
