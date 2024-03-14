@@ -151,6 +151,7 @@ func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) s
 	var latestVersion *version.Version
 	for _, match := range strings.Split(result, " ") {
 		pythonVersion := strings.Split(match, "python")[1]
+		pythonVersion = strings.ReplaceAll(pythonVersion, "\n", "")
 		currentVers, versError := version.NewVersion(pythonVersion)
 		if latest != "" {
 			require.NoError(s.T(), versError, fmt.Sprintf("Invalid Python Version : %s", pythonVersion))
