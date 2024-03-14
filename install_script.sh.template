@@ -76,6 +76,83 @@ function report(){
   fi
 }
 
+function update_api_key() {
+  local sudo_cmd="$1"
+  local apikey="$2"
+  local config_file="$3"
+  if [ -n "$apikey" ]; then
+    printf "\033[34m\n* Adding your API key to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's/api_key:.*/api_key: $apikey/' $config_file"
+  else
+    # If the import script failed for any reason, we might end here also in case
+    # of upgrade, let's not start the agent or it would fail because the api key
+    # is missing
+    if ! $sudo_cmd grep -q -E '^api_key: .+' "$config_file"; then
+      printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the Api key is missing, please add one in datadog.yaml and start the $nice_flavor manually.\n\033[0m\n"
+      no_start=true
+    fi
+  fi
+}
+function update_site() {
+  local sudo_cmd="$1"
+  local site="$2"
+  local config_file="$3"
+  if [ -n "$site" ]; then
+    printf "\033[34m\n* Setting SITE in the $nice_flavor configuration: $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's/^# site:.*$/site: $site/' $config_file"
+  fi
+}
+function update_url() {
+  local sudo_cmd="$1"
+  local url="$2"
+  local config_file="$3"
+  if [ -n "$url" ]; then
+    printf "\033[34m\n* Setting DD_URL in the $nice_flavor configuration: $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's|^# dd_url:.*$|dd_url: $url|' $config_file"
+  fi
+}
+function update_fips() {
+  local sudo_cmd="$1"
+  local config_file="$2"
+  printf "\033[34m\n* Setting $nice_flavor configuration to use FIPS proxy: $config_file\n\033[0m\n"
+  $sudo_cmd cp "$config_file" "${config_file}.orig"
+  $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+# Configuration for the agent to use datadog-fips-proxy to communicate with Datadog via FIPS-compliant channel.
+
+fips:
+    enabled: true
+    port_range_start: 9803
+    https: false
+EOF
+}
+function update_hostname(){
+  local sudo_cmd="$1"
+  local hostname="$2"
+  local config_file="$3"
+  if [ -n "$hostname" ]; then
+    printf "\033[34m\n* Adding your HOSTNAME to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's/^# hostname:.*$/hostname: $hostname/' $config_file"
+  fi
+}
+function update_hosttags(){
+  local sudo_cmd="$1"
+  local host_tags="$2"
+  local config_file="$3"
+  if [ -n "$host_tags" ]; then
+      printf "\033[34m\n* Adding your HOST TAGS to the $nice_flavor configuration: $config_file\n\033[0m\n"
+      formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/', '/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
+      $sudo_cmd sh -c "sed -i \"s/^# tags:.*$/tags: ""$formatted_host_tags""/\" $config_file"
+  fi
+}
+function update_env(){
+  local sudo_cmd="$1"
+  local dd_env="$2"
+  local config_file="$3"
+  if [ -n "$dd_env" ]; then
+    printf "\033[34m\n* Adding your DD_ENV to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i 's/^# env:.*/env: $dd_env/' $config_file"
+  fi
+}
 function report_telemetry() {
   local install_id="$1"
   local install_type="$2"
@@ -421,6 +498,17 @@ fi
 install_updater=
 if [ -n "$DD_INSTALL_UPDATER" ]; then
     install_updater=true
+    config_file="/etc/datadog-agent/datadog.yaml"
+    if [ -e $config_file ]; then
+        $sudo_cmd mkdir -p /etc/datadog-agent
+        $sudo_cmd touch /etc/datadog-agent/datadog.yaml
+        update_api_key "$sudo_cmd" "$apikey" "$config_file"
+        update_hostname "$sudo_cmd" "$hostname" "$config_file"
+        update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
+        update_env "$sudo_cmd" "$dd_env" "$config_file"
+        update_site "$sudo_cmd" "$site" "$config_file"
+        update_url "$sudo_cmd" "$DD_URL" "$config_file"
+    fi
 fi
 
 
@@ -1290,83 +1378,6 @@ fi
 # SET THE CONFIGURATION
 ##
 # Unit method
-function update_api_key() {
-  local sudo_cmd="$1"
-  local apikey="$2"
-  local config_file="$3"
-  if [ -n "$apikey" ]; then
-    printf "\033[34m\n* Adding your API key to the $nice_flavor configuration: $config_file\n\033[0m\n"
-    $sudo_cmd sh -c "sed -i 's/api_key:.*/api_key: $apikey/' $config_file"
-  else
-    # If the import script failed for any reason, we might end here also in case
-    # of upgrade, let's not start the agent or it would fail because the api key
-    # is missing
-    if ! $sudo_cmd grep -q -E '^api_key: .+' "$config_file"; then
-      printf "\033[31mThe $nice_flavor won't start automatically at the end of the script because the Api key is missing, please add one in datadog.yaml and start the $nice_flavor manually.\n\033[0m\n"
-      no_start=true
-    fi
-  fi
-}
-function update_site() {
-  local sudo_cmd="$1"
-  local site="$2"
-  local config_file="$3"
-  if [ -n "$site" ]; then
-    printf "\033[34m\n* Setting SITE in the $nice_flavor configuration: $config_file\n\033[0m\n"
-    $sudo_cmd sh -c "sed -i 's/^# site:.*$/site: $site/' $config_file"
-  fi
-}
-function update_url() {
-  local sudo_cmd="$1"
-  local url="$2"
-  local config_file="$3"
-  if [ -n "$url" ]; then
-    printf "\033[34m\n* Setting DD_URL in the $nice_flavor configuration: $config_file\n\033[0m\n"
-    $sudo_cmd sh -c "sed -i 's|^# dd_url:.*$|dd_url: $url|' $config_file"
-  fi
-}
-function update_fips() {
-  local sudo_cmd="$1"
-  local config_file="$2"
-  printf "\033[34m\n* Setting $nice_flavor configuration to use FIPS proxy: $config_file\n\033[0m\n"
-  $sudo_cmd cp "$config_file" "${config_file}.orig"
-  $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
-# Configuration for the agent to use datadog-fips-proxy to communicate with Datadog via FIPS-compliant channel.
-
-fips:
-    enabled: true
-    port_range_start: 9803
-    https: false
-EOF
-}
-function update_hostname(){
-  local sudo_cmd="$1"
-  local hostname="$2"
-  local config_file="$3"
-  if [ -n "$hostname" ]; then
-    printf "\033[34m\n* Adding your HOSTNAME to the $nice_flavor configuration: $config_file\n\033[0m\n"
-    $sudo_cmd sh -c "sed -i 's/^# hostname:.*$/hostname: $hostname/' $config_file"
-  fi
-}
-function update_hosttags(){
-  local sudo_cmd="$1"
-  local host_tags="$2"
-  local config_file="$3"
-  if [ -n "$host_tags" ]; then
-      printf "\033[34m\n* Adding your HOST TAGS to the $nice_flavor configuration: $config_file\n\033[0m\n"
-      formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/', '/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
-      $sudo_cmd sh -c "sed -i \"s/^# tags:.*$/tags: ""$formatted_host_tags""/\" $config_file"
-  fi
-}
-function update_env(){
-  local sudo_cmd="$1"
-  local dd_env="$2"
-  local config_file="$3"
-  if [ -n "$dd_env" ]; then
-    printf "\033[34m\n* Adding your DD_ENV to the $nice_flavor configuration: $config_file\n\033[0m\n"
-    $sudo_cmd sh -c "sed -i 's/^# env:.*/env: $dd_env/' $config_file"
-  fi
-}
 function update_security_and_or_compliance(){
   local sudo_cmd="$1"
   local local_config_file="$2"
