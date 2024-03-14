@@ -33,7 +33,7 @@ func TestInstallUpdaterSuite(t *testing.T) {
 }
 
 func (s *installUpdaterTestSuite) TestInstallUpdater() {
-	s.InstallAgent(7, "DD_INSTALL_UPDATER=true", "DD_SITE=\"datadoghq.com\"", "Install Agent 7 Updater")
+	s.InstallAgent(7, "DD_INSTALL_UPDATER=true", "DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta", "Install Agent 7 Updater")
 	s.assertInstallScript()
 }
 
