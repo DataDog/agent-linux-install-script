@@ -1141,6 +1141,7 @@ If the cause is unclear, please contact Datadog support.
     fi
     if [ -n "$install_updater" ]; then
       packages=("datadog-updater" "datadog-signing-keys")
+      services=()
     fi
 
     if [ -n "$fips_mode" ]; then
