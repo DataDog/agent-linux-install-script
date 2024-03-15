@@ -1059,13 +1059,13 @@ If the cause is unclear, please contact Datadog support.
         $sudo_cmd mkdir -p /etc/datadog-agent
         $sudo_cmd touch $config_file
         $sudo_cmd chmod 644 $config_file
-        echo "api_key: $apikey" > $config_file
-        echo "site: $site" >> $config_file
-	echo "hostname: $hostname" >> $config_file
+        $sudo_cmd sh -c "echo 'api_key: $apikey' > $config_file"
+        $sudo_cmd sh -c "echo 'site: $site' >> $config_file"
+        $sudo_cmd sh -c "echo 'hostname: $hostname' >> $config_file"
         formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/', '/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
-	echo "tags: $formatted_host_tags" >> $config_file
-	echo "env: $env" >> $config_file
-	echo "dd_url: $url" >> $config_file
+        $sudo_cmd sh -c "echo 'tags: $formatted_host_tags' >> $config_file"
+        $sudo_cmd sh -c "echo 'env: $env' >> $config_file"
+        $sudo_cmd sh -c "echo 'dd_url: $url' >> $config_file"
       fi
     fi
 
