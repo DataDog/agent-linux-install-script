@@ -418,29 +418,9 @@ if [ -n "$DD_AGENT_FLAVOR" ]; then
     agent_flavor=$DD_AGENT_FLAVOR #Eg: datadog-iot-agent
 fi
 
-# Root user detection
-if [ "$UID" == "0" ]; then
-    sudo_cmd=''
-else
-    sudo_cmd='sudo'
-fi
-
 install_updater=
 if [ -n "$DD_INSTALL_UPDATER" ]; then
     install_updater=true
-    config_file="/etc/datadog-agent/datadog.yaml"
-    if [ ! -e $config_file ]; then
-        $sudo_cmd mkdir -p /etc/datadog-agent
-        $sudo_cmd touch $config_file
-        $sudo_cmd chmod 644 $config_file
-        echo "api_key: $apikey" > $config_file
-        echo "site: $site" >> $config_file
-	echo "hostname: $hostname" >> $config_file
-        formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/', '/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
-	echo "tags: $formatted_host_tags" >> $config_file
-	echo "env: $env" >> $config_file
-	echo "dd_url: $url" >> $config_file
-    fi
 fi
 
 
@@ -1073,6 +1053,19 @@ If the cause is unclear, please contact Datadog support.
     if [ -n "$install_updater" ]; then
       packages=("datadog-updater" "datadog-signing-keys")
       services=()
+      config_file="/etc/datadog-agent/datadog.yaml"
+      if [ ! -e $config_file ]; then
+        $sudo_cmd mkdir -p /etc/datadog-agent
+        $sudo_cmd touch $config_file
+        $sudo_cmd chmod 644 $config_file
+        echo "api_key: $apikey" > $config_file
+        echo "site: $site" >> $config_file
+	echo "hostname: $hostname" >> $config_file
+        formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/', '/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
+	echo "tags: $formatted_host_tags" >> $config_file
+	echo "env: $env" >> $config_file
+	echo "dd_url: $url" >> $config_file
+      fi
     fi
 
     if [ -n "$fips_mode" ]; then
