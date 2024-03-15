@@ -432,7 +432,7 @@ if [ -n "$DD_INSTALL_UPDATER" ]; then
     if [ ! -e $config_file ]; then
         $sudo_cmd mkdir -p /etc/datadog-agent
         $sudo_cmd touch $config_file
-        $sudo_cmd chmod 666 $config_file # very bad practice, but unlocks internal trials
+        $sudo_cmd chmod 644 $config_file
         echo "api_key: $apikey" > $config_file
         echo "site: $site" >> $config_file
 	echo "hostname: $hostname" >> $config_file
