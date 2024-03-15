@@ -909,6 +909,7 @@ if [ "$OS" == "RedHat" ]; then
     else
       packages=("$agent_flavor")
     fi
+
     if [ -n "$fips_mode" ]; then
       packages+=("datadog-fips-proxy")
     fi
