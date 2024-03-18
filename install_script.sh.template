@@ -1052,6 +1052,9 @@ If the cause is unclear, please contact Datadog support.
       packages=("$agent_flavor" "datadog-signing-keys")
     fi
     if [ -n "$install_updater" ]; then
+      # this feature is experimental
+      # and will generate a datadog.yaml config file if it doesn't exist
+      # ignoring further configuration logic in this script
       packages=("datadog-updater" "datadog-signing-keys")
       services=()
       config_file="/etc/datadog-agent/datadog.yaml"
