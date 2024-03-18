@@ -1067,7 +1067,7 @@ If the cause is unclear, please contact Datadog support.
         $sudo_cmd sh -c "echo 'hostname: $hostname' >> $config_file"
         formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/', '/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
         $sudo_cmd sh -c "echo 'tags: $formatted_host_tags' >> $config_file"
-        $sudo_cmd sh -c "echo 'env: $env' >> $config_file"
+        $sudo_cmd sh -c "echo 'env: $dd_env' >> $config_file"
         $sudo_cmd sh -c "echo 'dd_url: $url' >> $config_file"
       fi
     fi
