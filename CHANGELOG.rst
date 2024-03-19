@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.29.0
 ================
+
+- Add option to install updater (#160)
 
 1.28.2
 ================
