@@ -309,7 +309,13 @@ e2e:
           - --run TestInstallSecurityAgentSuite
           - --run TestInstallSystemProbeSuite
           - --run TestInstallComplianceAgentSuite
-          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent)Suite
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent|InstallUpdater)Suite
+      - FLAVOR: datadog-agent
+        PLATFORM:
+          - Debian_11
+          - Ubuntu_22_04
+        EXTRA_PARAMS:
+          - --run TestInstallUpdaterSuite
       - FLAVOR: datadog-agent
         E2E_OVERRIDE_INSTANCE_TYPE: "t2.medium"
         PLATFORM:
@@ -322,7 +328,7 @@ e2e:
           - --run TestInstallSecurityAgentSuite
           - --run TestInstallSystemProbeSuite
           - --run TestInstallComplianceAgentSuite
-          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent)Suite
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent|InstallUpdater)Suite
       - FLAVOR: datadog-agent
         PLATFORM:
           - Debian_11
