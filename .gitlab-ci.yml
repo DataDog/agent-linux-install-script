@@ -62,6 +62,8 @@ unit_tests:
     SCRIPT: "install_script_agent${MAJOR_VERSION}.sh"
   script:
     - ./test/localtest.sh
+  # retry the job in case of failure, we might have network issues downloading the image
+  retry: 2
 
 test_pinned_version:
   extends: .test
