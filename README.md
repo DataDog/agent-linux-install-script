@@ -40,10 +40,10 @@ The install script allows installation of different flavors of the Agent binarie
 
 
 ## Install script configuration options
-The install script also comes with its own configuration options for testing purpose.
+The install script also comes with its own configuration options.
 
 >[!WARNING]
-> These options are intended for Datadog internal use only.
+>Options prefixed with `TESTING_` are intended for Datadog internal use only.
 
 | Variable | Description|
 |-|-|
