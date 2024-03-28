@@ -305,7 +305,7 @@ function get_relevant_gpg_keys() {
     shift
     local gpgKeys=("$@")
     # The last GPG key is only used on agent 7.35.X and lower
-    if [ "minorVersion" -gt 35 ] || [ -z "$minorVersion" ]; then
+    if [ -z "$minorVersion" ] || [ "$minorVersion" -gt 35 ]; then
         gpgKeys=("${gpgKeys[@]/$gpgKeys[3]}")
     fi
     echo "${gpgKeys[@]}"
