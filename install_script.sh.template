@@ -300,12 +300,20 @@ function remove_rpm_gpg_keys() {
     done
 }
 
+function versionlte() {
+    [  "$1" = "$(echo -e "$1\n$2" | sort -V | head -n1)" ]
+}
+
+function versionlt() {
+    [ "$1" = "$2" ] && return 1 || versionlte $1 $2
+}
+
 function get_relevant_rpm_gpg_keys() {
     local minorVersion="$1"
     shift
     local gpgKeys=("$@")
     # The last GPG key is only used on agent 7.35.X and lower
-    if [ -z "$minorVersion" ] || [ "$minorVersion" -gt 35 ]; then
+    if [ -z "$minorVersion" ] || versionlt 35 "$minorVersion"; then
         unset 'gpgKeys[${#gpgKeys[@]}-1]'
     fi
     echo "${gpgKeys[@]}"
@@ -316,7 +324,7 @@ function get_relevant_apt_gpg_keys() {
     shift
     local gpgKeys=("$@")
     # The last GPG key is only used on agent 7.35.X and lower
-    if [ -z "$minorVersion" ] || [ "$minorVersion" -gt 35 ]; then
+    if [ -z "$minorVersion" ] || versionlt 35 "$minorVersion"; then
         unset 'gpgKeys[${#gpgKeys[@]}-1]'
     fi
     echo "${gpgKeys[@]}"
