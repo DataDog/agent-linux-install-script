@@ -305,7 +305,7 @@ function versionlte() {
 }
 
 function versionlt() {
-    [ "$1" = "$2" ] && return 1 || versionlte $1 $2
+    ([ "$1" = "$2" ] && return 1) || versionlte "$1" "$2"
 }
 
 function get_relevant_rpm_gpg_keys() {
