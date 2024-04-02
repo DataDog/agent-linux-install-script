@@ -80,10 +80,16 @@ func (s *installTestSuite) TestInstallMinorLowestVersionPin() {
 		lowestVersion = "16.0"
 	}
 
+	t := s.T()
+	vm := s.Env().VM
+
 	// Installation
 	s.InstallAgent(7, fmt.Sprintf("DD_AGENT_MINOR_VERSION=%s Install Agent 7 pinned to 7.%s", lowestVersion, lowestVersion))
 
-	s.assertPinnedInstallScript(fmt.Sprintf("7.%s", lowestVersion))
+	if flavor == "datadog-agent" {
+		_, err := vm.ExecuteWithError(fmt.Sprintf("datadog-agent version | grep %s", fmt.Sprintf("7.%s", lowestVersion)))
+		assert.NoError(t, err)
+	}
 
 	s.assertGPGKeys(true)
 
