@@ -87,8 +87,6 @@ func (s *installTestSuite) TestInstallMinorLowestVersionPin() {
 
 	s.assertGPGKeys(true)
 
-	s.addExtraIntegration()
-
 	s.uninstall()
 
 	s.assertUninstall()
