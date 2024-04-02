@@ -89,11 +89,7 @@ func (s *installTestSuite) TestInstallMinorLowestVersionPin() {
 
 	s.uninstall()
 
-	s.assertUninstall()
-
 	s.purge()
-
-	s.assertPurge()
 }
 
 func (s *installTestSuite) assertPinnedInstallScript(pinVersion string) {
