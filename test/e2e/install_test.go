@@ -87,7 +87,7 @@ func (s *installTestSuite) TestInstallMinorLowestVersionPin() {
 	s.InstallAgent(7, fmt.Sprintf("DD_AGENT_MINOR_VERSION=%s Install Agent 7 pinned to 7.%s", lowestVersion, lowestVersion))
 
 	if flavor == "datadog-agent" {
-		_, err := vm.ExecuteWithError(fmt.Sprintf("datadog-agent version | grep %s", fmt.Sprintf("7.%s", lowestVersion)))
+		_, err := vm.ExecuteWithError(fmt.Sprintf("datadog-agent status | grep %s", fmt.Sprintf("7.%s", lowestVersion)))
 		assert.NoError(t, err)
 	}
 
@@ -110,7 +110,7 @@ func (s *installTestSuite) assertPinnedInstallScript(pinVersion string) {
 	assertFileNotExists(t, vm, fipsConfigFilepath)
 
 	if flavor == "datadog-agent" {
-		_, err := vm.ExecuteWithError(fmt.Sprintf("datadog-agent status | grep %s", pinVersion))
+		_, err := vm.ExecuteWithError(fmt.Sprintf("datadog-agent version | grep %s", pinVersion))
 		assert.NoError(t, err)
 	}
 
