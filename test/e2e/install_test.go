@@ -110,7 +110,7 @@ func (s *installTestSuite) assertPinnedInstallScript(pinVersion string) {
 	assertFileNotExists(t, vm, fipsConfigFilepath)
 
 	if flavor == "datadog-agent" {
-		_, err := vm.ExecuteWithError(fmt.Sprintf("datadog-agent version | grep %s", pinVersion))
+		_, err := vm.ExecuteWithError(fmt.Sprintf("datadog-agent status | grep %s", pinVersion))
 		assert.NoError(t, err)
 	}
 
