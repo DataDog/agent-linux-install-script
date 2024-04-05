@@ -47,6 +47,8 @@ func (s *installTestSuite) TestInstall() {
 
 	s.assertUninstall()
 
+	s.purgeGPGKeys()
+
 	s.purge()
 
 	s.assertPurge()
@@ -65,6 +67,8 @@ func (s *installTestSuite) TestInstallMinorVersionPin() {
 	s.uninstall()
 
 	s.assertUninstall()
+
+	s.purgeGPGKeys()
 
 	s.purge()
 
@@ -94,6 +98,8 @@ func (s *installTestSuite) TestInstallMinorLowestVersionPin() {
 	s.assertGPGKeys(true)
 
 	s.uninstall()
+
+	s.purgeGPGKeys()
 
 	s.purge()
 }
@@ -146,5 +152,18 @@ func (s *installTestSuite) assertGPGKeys(allKeysNeeded bool) {
 		assert.Equal(t, allKeysNeeded, strings.Contains(output, "e09422b3"))
 		assert.True(t, strings.Contains(output, "fd4bf915"))
 		assert.True(t, strings.Contains(output, "b01082d3"))
+	}
+}
+
+func (s *installTestSuite) purgeGPGKeys() {
+	t := s.T()
+	vm := s.Env().VM
+
+	if osConfigByPlatform[platform].osType == ec2os.DebianOS || osConfigByPlatform[platform].osType == ec2os.UbuntuOS {
+		_, err := vm.ExecuteWithError("sudo rm /usr/share/keyrings/datadog-archive-keyring.gpg")
+		assert.NoError(t, err)
+	} else {
+		_, err := vm.ExecuteWithError("for gpgkey in $(rpm -qa gpg-pubkey*); then rpm -e $gpgkey; fi")
+		assert.NoError(t, err)
 	}
 }
