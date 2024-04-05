@@ -87,15 +87,19 @@ func (s *installTestSuite) TestInstallMinorLowestVersionPin() {
 	t := s.T()
 	vm := s.Env().VM
 
+	if flavor != "datadog-agent" {
+		t.Skip("TestInstallMinorLowestVersionPin is only tested on datadog-agent")
+	}
+
 	// Installation
 	s.InstallAgent(7, fmt.Sprintf("DD_AGENT_MINOR_VERSION=%s", lowestVersion), fmt.Sprintf("Install Agent 7 pinned to 7.%s", lowestVersion))
+
+	s.assertGPGKeys(true)
 
 	if flavor == "datadog-agent" {
 		_, err := vm.ExecuteWithError(fmt.Sprintf("sudo datadog-agent status | grep %s", fmt.Sprintf("7.%s", lowestVersion)))
 		assert.NoError(t, err)
 	}
-
-	s.assertGPGKeys(true)
 
 	s.uninstall()
 
