@@ -132,11 +132,11 @@ func (s *installTestSuite) assertGPGKeys(allKeysNeeded bool) {
 	t := s.T()
 	vm := s.Env().VM
 
-	if osConfigByPlatform[platform].osType == ec2os.DebianOS {
-		output, err := vm.ExecuteWithError("apt-key list 2>/dev/null | grep -oE [0-9A-Z\\ ]{9}$")
+	if osConfigByPlatform[platform].osType == ec2os.DebianOS || osConfigByPlatform[platform].osType == ec2os.UbuntuOS {
+		output, err := vm.ExecuteWithError("apt-key --keyring /usr/share/keyrings/datadog-archive-keyring.gpg list 2>/dev/null | grep -oE [0-9A-Z\\ ]{9}$")
 		t.Log(output)
 		assert.NoError(t, err)
-		assert.Equal(t, allKeysNeeded, strings.Contains(output, "382E 94DE"))
+		assert.True(t, strings.Contains(output, "382E 94DE"))
 		assert.True(t, strings.Contains(output, "F14F 620E"))
 		assert.True(t, strings.Contains(output, "C096 2C7D"))
 	} else {
