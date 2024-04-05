@@ -159,11 +159,15 @@ func (s *installTestSuite) purgeGPGKeys() {
 	t := s.T()
 	vm := s.Env().VM
 
+	t.Log("Purge GPG Keys")
+
 	if osConfigByPlatform[platform].osType == ec2os.DebianOS || osConfigByPlatform[platform].osType == ec2os.UbuntuOS {
 		_, err := vm.ExecuteWithError("sudo rm /usr/share/keyrings/datadog-archive-keyring.gpg")
 		assert.NoError(t, err)
+		_, err = vm.ExecuteWithError("sudo rm /etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg")
+		assert.NoError(t, err)
 	} else {
-		_, err := vm.ExecuteWithError("for gpgkey in $(rpm -qa gpg-pubkey*); do rpm -e $gpgkey; done")
+		_, err := vm.ExecuteWithError("for gpgkey in $(rpm -qa gpg-pubkey*); do sudo rpm -e $gpgkey; done")
 		assert.NoError(t, err)
 	}
 }
