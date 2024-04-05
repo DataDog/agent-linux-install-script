@@ -163,7 +163,7 @@ func (s *installTestSuite) purgeGPGKeys() {
 		_, err := vm.ExecuteWithError("sudo rm /usr/share/keyrings/datadog-archive-keyring.gpg")
 		assert.NoError(t, err)
 	} else {
-		_, err := vm.ExecuteWithError("for gpgkey in $(rpm -qa gpg-pubkey*); then rpm -e $gpgkey; fi")
+		_, err := vm.ExecuteWithError("for gpgkey in $(rpm -qa gpg-pubkey*); do rpm -e $gpgkey; done")
 		assert.NoError(t, err)
 	}
 }
