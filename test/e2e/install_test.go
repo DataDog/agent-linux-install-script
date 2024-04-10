@@ -7,7 +7,9 @@ package e2e
 
 import (
 	"fmt"
+	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2os"
 	"github.com/stretchr/testify/assert"
+	"strings"
 	"testing"
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
@@ -37,11 +39,15 @@ func (s *installTestSuite) TestInstall() {
 
 	s.assertInstallScript()
 
+	s.assertGPGKeys(false)
+
 	s.addExtraIntegration()
 
 	s.uninstall()
 
 	s.assertUninstall()
+
+	s.purgeGPGKeys()
 
 	s.purge()
 
@@ -54,15 +60,52 @@ func (s *installTestSuite) TestInstallMinorVersionPin() {
 
 	s.assertPinnedInstallScript("7.42.0")
 
+	s.assertGPGKeys(false)
+
 	s.addExtraIntegration()
 
 	s.uninstall()
 
 	s.assertUninstall()
 
+	s.purgeGPGKeys()
+
 	s.purge()
 
 	s.assertPurge()
+}
+
+func (s *installTestSuite) TestInstallMinorLowestVersionPin() {
+	var lowestVersion string
+	osPlatform := osConfigByPlatform[platform]
+	if osPlatform.osType == ec2os.DebianOS {
+		lowestVersion = "26.0"
+	} else {
+		lowestVersion = "16.0"
+	}
+
+	t := s.T()
+	vm := s.Env().VM
+
+	if flavor != "datadog-agent" {
+		t.Skip("TestInstallMinorLowestVersionPin is only tested on datadog-agent")
+	}
+
+	// Installation
+	s.InstallAgent(7, fmt.Sprintf("DD_AGENT_MINOR_VERSION=%s", lowestVersion), fmt.Sprintf("Install Agent 7 pinned to 7.%s", lowestVersion))
+
+	s.assertGPGKeys(true)
+
+	if flavor == "datadog-agent" {
+		_, err := vm.ExecuteWithError(fmt.Sprintf("sudo datadog-agent status | grep %s", fmt.Sprintf("7.%s", lowestVersion)))
+		assert.NoError(t, err)
+	}
+
+	s.uninstall()
+
+	s.purgeGPGKeys()
+
+	s.purge()
 }
 
 func (s *installTestSuite) assertPinnedInstallScript(pinVersion string) {
@@ -93,4 +136,40 @@ func (s *installTestSuite) assertInstallScript() {
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assertFileNotExists(t, vm, fipsConfigFilepath)
+}
+
+func (s *installTestSuite) assertGPGKeys(allKeysNeeded bool) {
+	t := s.T()
+	vm := s.Env().VM
+
+	if osConfigByPlatform[platform].osType == ec2os.DebianOS || osConfigByPlatform[platform].osType == ec2os.UbuntuOS {
+		output, err := vm.ExecuteWithError("apt-key --keyring /usr/share/keyrings/datadog-archive-keyring.gpg list 2>/dev/null | grep -oE [0-9A-Z\\ ]{9}$")
+		t.Log(output)
+		assert.NoError(t, err)
+		// assert.Equal(t, allKeysNeeded, strings.Contains(output, "382E 94DE")) TODO: datadog-signing-keys for now is installing expired key on package install
+		assert.True(t, strings.Contains(output, "F14F 620E"))
+		assert.True(t, strings.Contains(output, "C096 2C7D"))
+	} else {
+		output, err := vm.ExecuteWithError("rpm -qa gpg-pubkey*")
+		t.Log(output)
+		assert.NoError(t, err)
+		assert.Equal(t, allKeysNeeded, strings.Contains(output, "e09422b3"))
+		assert.True(t, strings.Contains(output, "fd4bf915"))
+		assert.True(t, strings.Contains(output, "b01082d3"))
+	}
+}
+
+func (s *installTestSuite) purgeGPGKeys() {
+	t := s.T()
+	vm := s.Env().VM
+
+	t.Log("Purge GPG Keys")
+
+	if osConfigByPlatform[platform].osType == ec2os.DebianOS || osConfigByPlatform[platform].osType == ec2os.UbuntuOS {
+		_, _ = vm.ExecuteWithError("sudo rm /usr/share/keyrings/datadog-archive-keyring.gpg || true")
+		_, _ = vm.ExecuteWithError("sudo rm /etc/apt/trusted.gpg.d/datadog-archive-keyring.gpg || true")
+	} else {
+		_, err := vm.ExecuteWithError("for gpgkey in $(rpm -qa gpg-pubkey*); do sudo rpm -e $gpgkey; done")
+		assert.NoError(t, err)
+	}
 }
