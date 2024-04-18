@@ -59,7 +59,7 @@ func (s *installUpdaterTestSuite) assertInstallerInstalled() {
 	assertFileExists(t, vm, "/opt/datadog-installer/bin/installer/installer")
 
 	t.Log("Assert installer is not in enabled in systemd")
-	_, err = vm.ExecuteWithError(fmt.Sprintf("systemctl is-active datadog-installer"))
+	_, err := vm.ExecuteWithError(fmt.Sprintf("systemctl is-active datadog-installer"))
 	assert.Error(t, err)
 	assertFileNotExists(t, vm, "/lib/systemd/system/datadog-installer.service")
 }
