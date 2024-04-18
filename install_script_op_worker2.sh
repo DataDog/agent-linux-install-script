@@ -151,12 +151,12 @@ fi
 
 apikey=
 if [ -n "$DD_API_KEY" ]; then
-    apikey=$DD_API_KEY
+    apikey="$DD_API_KEY"
 fi
 
 op_pipeline_id=
 if [ -n "$DD_OP_PIPELINE_ID" ]; then
-    op_pipeline_id=$DD_OP_PIPELINE_ID
+    op_pipeline_id="$DD_OP_PIPELINE_ID"
 fi
 
 no_start=
@@ -167,59 +167,59 @@ fi
 # sources
 source_splunk_hec_address=
 if [ -n "$DD_OP_SOURCE_SPLUNK_HEC_ADDRESS" ]; then
-    source_splunk_hec_address=$DD_OP_SOURCE_SPLUNK_HEC_ADDRESS
+    source_splunk_hec_address="$DD_OP_SOURCE_SPLUNK_HEC_ADDRESS"
 fi
 
 source_splunk_tcp_address=
 if [ -n "$DD_OP_SOURCE_SPLUNK_TCP_ADDRESS" ]; then
-    source_splunk_tcp_address=$DD_OP_SOURCE_SPLUNK_TCP_ADDRESS
+    source_splunk_tcp_address="$DD_OP_SOURCE_SPLUNK_TCP_ADDRESS"
 fi
 
 source_datadog_agent_address=
 if [ -n "$DD_OP_SOURCE_DATADOG_AGENT_ADDRESS" ]; then
-    source_datadog_agent_address=$DD_OP_SOURCE_DATADOG_AGENT_ADDRESS
+    source_datadog_agent_address="$DD_OP_SOURCE_DATADOG_AGENT_ADDRESS"
 fi
 
 source_sumo_logic_address=
 if [ -n "$DD_OP_SOURCE_SUMO_LOGIC_ADDRESS" ]; then
-    source_sumo_logic_address=$DD_OP_SOURCE_SUMO_LOGIC_ADDRESS
+    source_sumo_logic_address="$DD_OP_SOURCE_SUMO_LOGIC_ADDRESS"
 fi
 
 # source key passes
 source_splunk_tcp_key_pass=
 if [ -n "$DD_OP_SOURCE_SPLUNK_TCP_KEY_PASS" ]; then
-    source_splunk_tcp_key_pass=$DD_OP_SOURCE_SPLUNK_TCP_KEY_PASS
+    source_splunk_tcp_key_pass="$DD_OP_SOURCE_SPLUNK_TCP_KEY_PASS"
 fi
 
 source_splunk_hec_key_pass=
 if [ -n "$DD_OP_SOURCE_SPLUNK_HEC_KEY_PASS" ]; then
-    source_splunk_hec_key_pass=$DD_OP_SOURCE_SPLUNK_HEC_KEY_PASS
+    source_splunk_hec_key_pass="$DD_OP_SOURCE_SPLUNK_HEC_KEY_PASS"
 fi
 
 # destinations
 dest_splunk_hec_endpoint=
 if [ -n "$DD_OP_DESTINATION_SPLUNK_HEC_ENDPOINT_URL" ]; then
-    dest_splunk_hec_endpoint=$DD_OP_DESTINATION_SPLUNK_HEC_ENDPOINT_URL
+    dest_splunk_hec_endpoint="$DD_OP_DESTINATION_SPLUNK_HEC_ENDPOINT_URL"
 fi
 
 dest_splunk_hec_token=
 if [ -n "$DD_OP_DESTINATION_SPLUNK_HEC_TOKEN" ]; then
-    dest_splunk_hec_token=$DD_OP_DESTINATION_SPLUNK_HEC_TOKEN
+    dest_splunk_hec_token="$DD_OP_DESTINATION_SPLUNK_HEC_TOKEN"
 fi
 
 dest_sumo_logic_endpoint=
 if [ -n "$DD_OP_DESTINATION_SUMO_LOGIC_HTTP_COLLECTOR_URL" ]; then
-    dest_sumo_logic_endpoint=$DD_OP_DESTINATION_SUMO_LOGIC_HTTP_COLLECTOR_URL
+    dest_sumo_logic_endpoint="$DD_OP_DESTINATION_SUMO_LOGIC_HTTP_COLLECTOR_URL"
 fi
 
 dest_datadog_archives_aws_key_id=
 if [ -n "$DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_ACCESS_KEY_ID" ]; then
-    dest_datadog_archives_aws_key_id=$DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_ACCESS_KEY_ID
+    dest_datadog_archives_aws_key_id="$DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_ACCESS_KEY_ID"
 fi
 
 dest_datadog_archives_aws_secret=
 if [ -n "$DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_SECRET_ACCESS_KEY" ]; then
-    dest_datadog_archives_aws_secret=$DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_SECRET_ACCESS_KEY
+    dest_datadog_archives_aws_secret="$DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_SECRET_ACCESS_KEY"
 fi
 
 if [ -n "$DD_REPO_URL" ]; then
