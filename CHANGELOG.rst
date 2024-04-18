@@ -2,8 +2,12 @@
 Release Notes
 =============
 
-Unreleased
+1.30.0
 ================
+
+- Add missing env vars to OP 2.0 script (#177)
+- (fleet) install the installer on Debian when APM is enabled (#175)
+- Add --no-refresh to zypper invocations (#176)
 
 1.29.0
 ================
