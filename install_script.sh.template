@@ -378,6 +378,211 @@ function ensure_config_file_exists() {
     fi
 }
 
+function json_escape() {
+    local string="$1"
+    # Escape characters that are special to JSON
+    string="${string//\\/\\\\}"  # Escape backslash
+    string="${string//\"/\\\"}"  # Escape double quote
+    string="${string//$'\t'/\\t}"  # Escape tab
+    string="${string//$'\n'/\\n}"  # Escape newline
+    string="${string//$'\r'/\\r}"  # Escape carriage return
+    string="${string//$'\b'/\\b}"  # Escape backspace
+    string="${string//$'\f'/\\f}"  # Escape form feed
+    echo "$string"
+}
+
+function report_installer_telemetry() {
+    local trace_id="$1"
+    local os="$2"
+    local distribution="$3"
+    local start_time="$4"
+    local exit_code="$5"
+    local install_stdout="$6"
+    local install_stderr="$7"
+
+    install_stdout=$(json_escape "$install_stdout")
+    install_stderr=$(json_escape "$install_stderr")
+
+    local time_now_seconds
+    local time_now
+    local time_since_start
+    local json_logs
+    local telemetry_trace
+    local telemetry_logs
+
+    if [ "$DD_INSTRUMENTATION_TELEMETRY_ENABLED" == "false" ] || \
+      [ "$site" == "ddog-gov.com" ] || \
+      [ -z "${apikey}" ] || \
+      [ -z "$telemetry_url" ]; then
+      return
+    fi
+
+    time_now_seconds=$(date +%s)
+    time_now=$(date +%s%N)
+    time_since_start=$((time_now - start_time))
+
+    telemetry_trace=$(cat <<-END
+    {
+        "api_version": "v2",
+        "request_type": "traces",
+        "tracer_time": ${time_now_seconds},
+        "runtime_id": "${trace_id}",
+        "seq_id": 1,
+        "origin": "linux-install-script",
+        "host": {
+            "hostname": "$(json_escape "$(uname -n)")",
+            "os": "$(json_escape "${os}")",
+            "distribution": "$(json_escape "${distribution}")",
+            "architecture": "$(json_escape "$(uname -m)")",
+            "kernel_version": "$(json_escape "$(uname -v)")",
+            "kernel_name": "$(json_escape "$(uname -s)")",
+            "kernel_release": "$(json_escape "$(uname -r)")"
+        },
+        "application": {
+            "service_name": "datadog-linux-install-script",
+            "service_version": "${install_script_version}",
+            "language_name": "UNKNOWN",
+            "language_version": "n/a",
+            "tracer_version": "n/a"
+        },
+        "payload": {
+            "traces": [[
+                {
+                    "service": "datadog-linux-install-script",
+                    "name": "install_installer",
+                    "resource": "install_installer",
+                    "trace_id": ${trace_id},
+                    "span_id": ${trace_id},
+                    "parent_id": 0,
+                    "start": ${start_time},
+                    "duration": ${time_since_start},
+                    "error": ${exit_code},
+                    "meta": {
+                        "language": "shell",
+                        "exit_code": ${exit_code},
+                        "error.message": "${install_stderr}",
+                        "version": "${install_script_version}"
+                    },
+                    "metrics": {
+                        "_trace_root": 1,
+                        "_top_level": 1,
+                        "_dd.top_level": 1,
+                        "_sampling_priority_v1": 2
+                    }
+                }
+            ]]
+        }
+    }
+END
+)
+
+    json_logs="[{\"message\": \"$install_stdout\", \"level\": \"DEBUG\", \"trace_id\": \"${trace_id}\", \"span_id\": \"${trace_id}\"}, {\"message\": \"$install_stderr\", \"level\": \"ERROR\", \"trace_id\": \"${trace_id}\", \"span_id\": \"${trace_id}\"}]"
+
+    telemetry_logs=$(cat <<-END
+    {
+        "api_version": "v2",
+        "request_type": "logs",
+        "tracer_time": ${time_now_seconds},
+        "runtime_id": "${trace_id}",
+        "seq_id": 2,
+        "origin": "linux-install-script",
+        "host": {
+            "hostname": "$(json_escape "$(uname -n)")",
+            "os": "$(json_escape "${os}")",
+            "distribution": "$(json_escape "${distribution}")",
+            "architecture": "$(json_escape "$(uname -m)")",
+            "kernel_version": "$(json_escape "$(uname -v)")",
+            "kernel_name": "$(json_escape "$(uname -s)")",
+            "kernel_release": "$(json_escape "$(uname -r)")"
+        },
+        "application": {
+            "service_name": "datadog-linux-install-script",
+            "service_version": "${install_script_version}",
+            "language_name": "UNKNOWN",
+            "language_version": "n/a",
+            "tracer_version": "n/a"
+        },
+        "payload": {
+            "logs": ${json_logs}
+        }
+    }
+END
+)
+
+    if ! echo "$telemetry_logs" | curl -f -sSL --retry 5 -o /dev/null \
+        "$telemetry_url" \
+        --header 'Content-Type: application/json' \
+        --header "DD-Api-Key: $apikey" \
+        --data @-
+    then
+        echo "Unable to send logs telemetry\n"
+    fi
+
+    if ! echo "$telemetry_trace" | curl -f -sSL --retry 5 -o /dev/null \
+    "$telemetry_url" \
+    --header 'Content-Type: application/json' \
+    --header "DD-Api-Key: $apikey" \
+    --data @-
+    then
+        echo "Unable to send trace telemetry\n"
+    fi
+}
+
+function configure_installer() {
+    local sudo_cmd="$1"
+    local trace_id="$2"
+    local apm_instrumentation_enabled="$3"
+
+    $sudo_cmd mkdir -p /etc/datadog-agent
+    $sudo_cmd bash -c "cat <<EOT > /etc/datadog-agent/datadog-installer.ini
+[features]
+apm_instrumentation=$apm_instrumentation_enabled
+
+[telemetry]
+trace_id=$trace_id
+parent_id=$trace_id
+priority=2
+EOT"
+}
+
+function _install_installer() {
+    local sudo_cmd="$1"
+    local os="$2"
+    local distribution="$3"
+    local apm_instrumentation_enabled="$4"
+
+    if [ "$os" == "Debian" ] && [ "$distribution" == "Debian" ] && [ -n "$apm_instrumentation_enabled" ]; then
+        echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
+        configure_installer "$sudo_cmd" "$trace_id" "$apm_instrumentation_enabled"
+        $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "datadog-installer"
+    fi
+}
+
+# Install the Datadog installer package
+function install_installer() {
+    local sudo_cmd="$1"
+    local os="$2"
+    local distribution="$3"
+    local apm_instrumentation_enabled="$4"
+
+    local trace_id
+    local start_time
+    local install_stdout
+    local install_stderr
+    local exit_status
+
+    trace_id=$(od -An -N8 -tu8 < /dev/urandom | tr -d ' ')
+    start_time=$(date +%s%N)
+
+    (_install_installer "$sudo_cmd" "$os" "$distribution" "$apm_instrumentation_enabled" > /tmp/datadog-installer-stdout.log 2> /tmp/datadog-installer-stderr.log) || exit_status=$?
+    exit_status=${exit_status:-0}
+
+    install_stdout=$(cat /tmp/datadog-installer-stdout.log)
+    install_stderr=$(cat /tmp/datadog-installer-stderr.log)
+    (report_installer_telemetry "$trace_id" "$os" "$distribution" "$start_time" "$exit_status" "$install_stdout" "$install_stderr") || true
+    return $exit_status
+}
+
 echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
 
 ##
@@ -448,11 +653,10 @@ if [ -n "$DD_AGENT_FLAVOR" ]; then
     agent_flavor=$DD_AGENT_FLAVOR #Eg: datadog-iot-agent
 fi
 
-install_updater=
-if [ -n "$DD_INSTALL_UPDATER" ]; then
-    install_updater=true
+datadog_installer=
+if [ -n "$DD_INSTALLER" ]; then
+    datadog_installer=true
 fi
-
 
 ##
 # INSTALL SCRIPT CONFIGURATION OPTIONS
@@ -1081,26 +1285,6 @@ If the cause is unclear, please contact Datadog support.
     else
       packages=("$agent_flavor" "datadog-signing-keys")
     fi
-    if [ -n "$install_updater" ]; then
-      # this feature is experimental
-      # and will generate a datadog.yaml config file if it doesn't exist
-      # ignoring further configuration logic in this script
-      packages=("datadog-updater" "datadog-signing-keys")
-      services=()
-      config_file="/etc/datadog-agent/datadog.yaml"
-      if [ ! -e $config_file ]; then
-        $sudo_cmd mkdir -p /etc/datadog-agent
-        $sudo_cmd touch $config_file
-        $sudo_cmd chmod 644 $config_file
-        $sudo_cmd sh -c "echo 'api_key: $apikey' > $config_file"
-        $sudo_cmd sh -c "echo 'site: $site' >> $config_file"
-        $sudo_cmd sh -c "echo 'hostname: $hostname' >> $config_file"
-        formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/', '/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
-        $sudo_cmd sh -c "echo 'tags: $formatted_host_tags' >> $config_file"
-        $sudo_cmd sh -c "echo 'env: $dd_env' >> $config_file"
-        $sudo_cmd sh -c "echo 'dd_url: $url' >> $config_file"
-      fi
-    fi
 
     if [ -n "$fips_mode" ]; then
      packages+=("datadog-fips-proxy")
@@ -1622,6 +1806,10 @@ for current_service in "${services[@]}"; do
   eval "$restart_cmd"
 
   ERROR_MESSAGE=""
+
+  if [ -n "$datadog_installer" ]; then
+    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_APM_INSTRUMENTATION_ENABLED" || true
+  fi
 
   # Metrics are submitted, echo some instructions and exit
   printf "\033[32m  Your ${nice_current_flavor} is running and functioning properly.\n\033[0m"

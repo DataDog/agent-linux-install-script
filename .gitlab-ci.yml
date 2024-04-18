@@ -315,7 +315,6 @@ e2e:
       - FLAVOR: datadog-agent
         PLATFORM:
           - Debian_11
-          - Ubuntu_22_04
         EXTRA_PARAMS:
           - --run TestInstallUpdaterSuite
       - FLAVOR: datadog-agent
