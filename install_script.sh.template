@@ -460,7 +460,8 @@ function report_installer_telemetry() {
                     "meta": {
                         "language": "shell",
                         "exit_code": ${exit_code},
-                        "error.message": "${install_stderr}"
+                        "error.message": "${install_stderr}",
+                        "version": "${install_script_version}"
                     },
                     "metrics": {
                         "_trace_root": 1,
