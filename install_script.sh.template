@@ -479,7 +479,7 @@ END
 END
 )
 
-    if ! echo "$telemetry_logs" | curl -f -sSL --retry 5 -o /dev/null \
+    if ! echo "$telemetry_logs" | curl --max-time 10 -f -sSL --retry 5 -o /dev/null \
         "$telemetry_url" \
         --header 'Content-Type: application/json' \
         --header "DD-Api-Key: $apikey" \
@@ -488,7 +488,7 @@ END
         echo "Unable to send logs telemetry\n"
     fi
 
-    if ! echo "$telemetry_trace" | curl -f -sSL --retry 5 -o /dev/null \
+    if ! echo "$telemetry_trace" | curl --max-time 10 -f -sSL --retry 5 -o /dev/null \
     "$telemetry_url" \
     --header 'Content-Type: application/json' \
     --header "DD-Api-Key: $apikey" \
