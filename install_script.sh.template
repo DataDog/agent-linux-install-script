@@ -518,7 +518,7 @@ function _install_installer() {
     else
         return 0
     fi
-    $sudo_cmd DD_API_KEY="$apikey" DD_SITE="$site" DATADOG_TRACE_ID="$trace_id" DATADOG_PARENT_ID="$trace_id" datadog-boostrap bootstrap
+    $sudo_cmd DD_API_KEY="$apikey" DD_SITE="$site" DD_REMOTE_UPDATES="$remote_updates" DATADOG_TRACE_ID="$trace_id" DATADOG_PARENT_ID="$trace_id" datadog-boostrap bootstrap
     return $?
 }
 
@@ -620,6 +620,11 @@ fi
 datadog_installer=
 if [ -n "$DD_INSTALLER" ]; then
     datadog_installer=true
+fi
+
+remote_updates=
+if [ -n "$DD_REMOTE_UPDATES" ]; then
+    remote_updates=$DD_REMOTE_UPDATES
 fi
 
 ##
