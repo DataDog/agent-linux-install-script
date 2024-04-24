@@ -498,34 +498,28 @@ END
     fi
 }
 
-function configure_installer() {
-    local sudo_cmd="$1"
-    local trace_id="$2"
-    local apm_instrumentation_enabled="$3"
-
-    $sudo_cmd mkdir -p /etc/datadog-agent
-    $sudo_cmd bash -c "cat <<EOT > /etc/datadog-agent/datadog-installer.ini
-[features]
-apm_instrumentation=$apm_instrumentation_enabled
-
-[telemetry]
-trace_id=$trace_id
-parent_id=$trace_id
-priority=2
-EOT"
-}
-
 function _install_installer() {
     local sudo_cmd="$1"
     local os="$2"
     local distribution="$3"
     local apm_instrumentation_enabled="$4"
 
-    if [ "$os" == "Debian" ] && [ "$distribution" == "Debian" ] && [ -n "$apm_instrumentation_enabled" ]; then
-        echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
-        configure_installer "$sudo_cmd" "$trace_id" "$apm_instrumentation_enabled"
-        $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "datadog-installer"
+    # The installer is currently only being rolled out to APM instrumentation users
+    if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ]; then
+        return 0
     fi
+
+    if [ "$os" == "Debian" ]; then
+        echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
+        $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "datadog-installer" || return $?
+    elif [ "$os" == "RedHat" ]; then
+        echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
+        $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "datadog-installer" || $sudo_cmd yum -y install $dnf_flag "datadog-installer" || return $?
+    else
+        return 0
+    fi
+    $sudo_cmd DD_API_KEY="$apikey" DD_SITE="$site" DATADOG_TRACE_ID="$trace_id" DATADOG_PARENT_ID="$trace_id" datadog-boostrap bootstrap
+    return $?
 }
 
 # Install the Datadog installer package
