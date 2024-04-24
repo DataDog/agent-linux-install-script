@@ -514,7 +514,7 @@ function _install_installer() {
         $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "datadog-installer" || return $?
     elif [ "$os" == "RedHat" ]; then
         echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
-        $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "datadog-installer" || $sudo_cmd yum -y install $dnf_flag "datadog-installer" || return $?
+        $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install "datadog-installer" || $sudo_cmd yum -y install "datadog-installer" || return $?
     else
         return 0
     fi
