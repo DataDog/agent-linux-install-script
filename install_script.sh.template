@@ -319,17 +319,6 @@ function get_relevant_rpm_gpg_keys() {
     echo "${gpgKeys[@]}"
 }
 
-function get_relevant_apt_gpg_keys() {
-    local minorVersion="$1"
-    shift
-    local gpgKeys=("$@")
-    # The last GPG key is only used on agent 7.35.X and lower
-    if [ -z "$minorVersion" ] || versionlt 35 "$minorVersion"; then
-        unset 'gpgKeys[${#gpgKeys[@]}-1]'
-    fi
-    echo "${gpgKeys[@]}"
-}
-
 # Emulate hashmap with simple switch case
 function getMapData() {
 
@@ -1226,7 +1215,7 @@ elif [ "$OS" == "Debian" ]; then
     # can read our keyring
     $sudo_cmd chmod a+r $apt_usr_share_keyring
 
-    for key in $(get_relevant_apt_gpg_keys "$agent_minor_version" "${APT_GPG_KEYS[@]}"); do
+    for key in "${APT_GPG_KEYS[@]}"; do
         $sudo_cmd curl -sSL --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}"
         $sudo_cmd cat "/tmp/${key}" | $sudo_cmd gpg --import --batch --no-default-keyring --keyring "$apt_usr_share_keyring"
     done

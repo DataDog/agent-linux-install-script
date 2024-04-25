@@ -146,7 +146,7 @@ func (s *installTestSuite) assertGPGKeys(allKeysNeeded bool) {
 		output, err := vm.ExecuteWithError("apt-key --keyring /usr/share/keyrings/datadog-archive-keyring.gpg list 2>/dev/null | grep -oE [0-9A-Z\\ ]{9}$")
 		t.Log(output)
 		assert.NoError(t, err)
-		// assert.Equal(t, allKeysNeeded, strings.Contains(output, "382E 94DE")) TODO: datadog-signing-keys for now is installing expired key on package install
+		assert.True(t, strings.Contains(output, "382E 94DE"))
 		assert.True(t, strings.Contains(output, "F14F 620E"))
 		assert.True(t, strings.Contains(output, "C096 2C7D"))
 	} else {
