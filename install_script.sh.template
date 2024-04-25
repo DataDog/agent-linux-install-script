@@ -502,7 +502,8 @@ function _install_installer() {
     local sudo_cmd="$1"
     local os="$2"
     local distribution="$3"
-    local apm_instrumentation_enabled="$4"
+    local datadog_installer="$4"
+    local apm_instrumentation_enabled="$5"
 
     # The installer is currently only being rolled out to APM instrumentation users
     if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ]; then
@@ -518,7 +519,7 @@ function _install_installer() {
     else
         return 0
     fi
-    $sudo_cmd DD_API_KEY="$apikey" DD_SITE="$site" DD_REMOTE_UPDATES="$remote_updates" DATADOG_TRACE_ID="$trace_id" DATADOG_PARENT_ID="$trace_id" datadog-boostrap bootstrap
+    $sudo_cmd sh -c "DD_API_KEY="$apikey" DD_SITE="$site" DD_REMOTE_UPDATES="$remote_updates" DATADOG_TRACE_ID="$trace_id" DATADOG_PARENT_ID="$trace_id" /usr/bin/datadog-bootstrap bootstrap"
     return $?
 }
 
@@ -527,7 +528,8 @@ function install_installer() {
     local sudo_cmd="$1"
     local os="$2"
     local distribution="$3"
-    local apm_instrumentation_enabled="$4"
+    local datadog_installer="$4"
+    local apm_instrumentation_enabled="$5"
 
     local trace_id
     local start_time
@@ -538,7 +540,7 @@ function install_installer() {
     trace_id=$(od -An -N8 -tu8 < /dev/urandom | tr -d ' ')
     start_time=$(date +%s%N)
 
-    (_install_installer "$sudo_cmd" "$os" "$distribution" "$apm_instrumentation_enabled" > /tmp/datadog-installer-stdout.log 2> /tmp/datadog-installer-stderr.log) || exit_status=$?
+    (_install_installer "$sudo_cmd" "$os" "$distribution" "$datadog_installer" "$apm_instrumentation_enabled" > /tmp/datadog-installer-stdout.log 2> /tmp/datadog-installer-stderr.log) || exit_status=$?
     exit_status=${exit_status:-0}
 
     install_stdout=$(cat /tmp/datadog-installer-stdout.log)
@@ -1661,6 +1663,11 @@ if [ -n "$docker_injection_enabled" ]; then
   $sudo_cmd dd-container-install --no-agent-restart
 fi
 
+# Install the installer
+if [ -n "$datadog_installer" ]; then
+  install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
+fi
+
 # Creating or overriding the install information
 function generate_install_id() {
   # Try generating a UUID based on /proc/sys/kernel/random/uuid
@@ -1775,10 +1782,6 @@ for current_service in "${services[@]}"; do
   eval "$restart_cmd"
 
   ERROR_MESSAGE=""
-
-  if [ -n "$datadog_installer" ]; then
-    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_APM_INSTRUMENTATION_ENABLED" || true
-  fi
 
   # Metrics are submitted, echo some instructions and exit
   printf "\033[32m  Your ${nice_current_flavor} is running and functioning properly.\n\033[0m"
