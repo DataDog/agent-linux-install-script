@@ -505,11 +505,6 @@ function _install_installer() {
     local datadog_installer="$4"
     local apm_instrumentation_enabled="$5"
 
-    # The installer is currently only being rolled out to APM instrumentation users
-    if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ]; then
-        return 0
-    fi
-
     if [ "$os" == "Debian" ]; then
         echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
         $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "datadog-installer" || return $?
@@ -536,6 +531,11 @@ function install_installer() {
     local install_stdout
     local install_stderr
     local exit_status
+
+    # The installer is currently only being rolled out to APM instrumentation users
+    if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ]; then
+        return 0
+    fi
 
     trace_id=$(od -An -N8 -tu8 < /dev/urandom | tr -d ' ')
     start_time=$(date +%s%N)
@@ -1568,6 +1568,19 @@ function update_env(){
     $sudo_cmd sh -c "sed -i 's/^# env:.*/env: $dd_env/' $config_file"
   fi
 }
+function update_remote_updates(){
+  local sudo_cmd="$1"
+  local remote_updates="$2"
+  local config_file="$3"
+  if [ -n "$remote_updates" ]; then
+    printf "\033[34m\n* Adding your DD_REMOTE_UPDATES to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    if ! $sudo_cmd grep -q "^remote_updates:" "$config_file"; then
+        $sudo_cmd sh -c "echo 'remote_updates: $remote_updates' >> $config_file"
+    else
+        $sudo_cmd sh -c "sed -i 's/^remote_updates:.*/remote_updates: $remote_updates/' $config_file"
+    fi
+  fi
+}
 function update_security_and_or_compliance(){
   local sudo_cmd="$1"
   local local_config_file="$2"
@@ -1632,6 +1645,17 @@ elif [ ! "$no_agent" ]; then
     update_hostname "$sudo_cmd" "$hostname" "$config_file"
     update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
     update_env "$sudo_cmd" "$dd_env" "$config_file"
+    if [ -n "$remote_updates" ]; then
+      if [ -n "$fips_mode" ]; then
+        printf "\033[31mRemote updates are not supported in FIPS mode.\033[0m\n"
+      elif [ "$site" == "ddog-gov.com" ]; then
+        printf "\033[31mRemote updates are not supported with the Datadog Gov site.\033[0m\n"
+      elif [ -z "$datadog_installer" ]; then
+        printf "\033[31mRemote updates are not supported without the datadog installer.\033[0m\n"
+      else
+        update_remote_updates "$sudo_cmd" "$remote_updates" "$config_file"
+      fi
+    fi
   fi
   manage_security_and_system_probe_config "$sudo_cmd" "$security_agent_config_file" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
 fi
@@ -1661,11 +1685,6 @@ fi
 
 if [ -n "$docker_injection_enabled" ]; then
   $sudo_cmd dd-container-install --no-agent-restart
-fi
-
-# Install the installer
-if [ -n "$datadog_installer" ]; then
-  install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
 fi
 
 # Creating or overriding the install information
@@ -1804,5 +1823,10 @@ for current_service in "${services[@]}"; do
       sudo usermod -a -G docker dd-agent\033[0m\n\n"
   fi
 done
+
+# Install the installer
+if [ -n "$datadog_installer" ]; then
+  install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
+fi
 
 report_telemetry "$install_id" "$install_type" "$install_time"
