@@ -7,7 +7,6 @@ Release Notes
 
 - (fleet) scope to debian (#188)
 - (fleet) enable installer on us3 for APM single step beta customers (#186)
-- feat(release): install script release 1.31.0 (#184)
 
 1.31.0
 ================
