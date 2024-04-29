@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.31.2
 ================
+
+- (fleet) rollout to us5 (#190)
 
 1.31.1
 ================
