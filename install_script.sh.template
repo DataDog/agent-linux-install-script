@@ -502,8 +502,6 @@ function _install_installer() {
     local sudo_cmd="$1"
     local os="$2"
     local distribution="$3"
-    local datadog_installer="$4"
-    local apm_instrumentation_enabled="$5"
 
     if [ "$os" == "Debian" ]; then
         echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
@@ -540,7 +538,7 @@ function install_installer() {
     trace_id=$(od -An -N8 -tu8 < /dev/urandom | tr -d ' ')
     start_time=$(date +%s%N)
 
-    (_install_installer "$sudo_cmd" "$os" "$distribution" "$datadog_installer" "$apm_instrumentation_enabled" > /tmp/datadog-installer-stdout.log 2> /tmp/datadog-installer-stderr.log) || exit_status=$?
+    (_install_installer "$sudo_cmd" "$os" "$distribution" > /tmp/datadog-installer-stdout.log 2> /tmp/datadog-installer-stderr.log) || exit_status=$?
     exit_status=${exit_status:-0}
 
     install_stdout=$(cat /tmp/datadog-installer-stdout.log)
