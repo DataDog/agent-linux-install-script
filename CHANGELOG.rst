@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.31.1
 ================
+
+- (fleet) scope to debian (#188)
+- (fleet) enable installer on us3 for APM single step beta customers (#186)
 
 1.31.0
 ================
