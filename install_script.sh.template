@@ -498,34 +498,22 @@ END
     fi
 }
 
-function configure_installer() {
-    local sudo_cmd="$1"
-    local trace_id="$2"
-    local apm_instrumentation_enabled="$3"
-
-    $sudo_cmd mkdir -p /etc/datadog-agent
-    $sudo_cmd bash -c "cat <<EOT > /etc/datadog-agent/datadog-installer.ini
-[features]
-apm_instrumentation=$apm_instrumentation_enabled
-
-[telemetry]
-trace_id=$trace_id
-parent_id=$trace_id
-priority=2
-EOT"
-}
-
 function _install_installer() {
     local sudo_cmd="$1"
     local os="$2"
     local distribution="$3"
-    local apm_instrumentation_enabled="$4"
 
-    if [ "$os" == "Debian" ] && [ "$distribution" == "Debian" ] && [ -n "$apm_instrumentation_enabled" ]; then
+    if [ "$os" == "Debian" ]; then
         echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
-        configure_installer "$sudo_cmd" "$trace_id" "$apm_instrumentation_enabled"
-        $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "datadog-installer"
+        $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "datadog-installer" || return $?
+    elif [ "$os" == "RedHat" ]; then
+        echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
+        $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install "datadog-installer" || $sudo_cmd yum -y install "datadog-installer" || return $?
+    else
+        return 0
     fi
+    $sudo_cmd sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DD_REMOTE_UPDATES=\"${remote_updates}\" DATADOG_TRACE_ID=\"${trace_id}\" DATADOG_PARENT_ID=\"${trace_id}\" /usr/bin/datadog-bootstrap bootstrap"
+    return $?
 }
 
 # Install the Datadog installer package
@@ -533,7 +521,8 @@ function install_installer() {
     local sudo_cmd="$1"
     local os="$2"
     local distribution="$3"
-    local apm_instrumentation_enabled="$4"
+    local datadog_installer="$4"
+    local apm_instrumentation_enabled="$5"
 
     local trace_id
     local start_time
@@ -541,10 +530,15 @@ function install_installer() {
     local install_stderr
     local exit_status
 
+    # The installer is currently only being rolled out to APM instrumentation users
+    if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ]; then
+        return 0
+    fi
+
     trace_id=$(od -An -N8 -tu8 < /dev/urandom | tr -d ' ')
     start_time=$(date +%s%N)
 
-    (_install_installer "$sudo_cmd" "$os" "$distribution" "$apm_instrumentation_enabled" > /tmp/datadog-installer-stdout.log 2> /tmp/datadog-installer-stderr.log) || exit_status=$?
+    (_install_installer "$sudo_cmd" "$os" "$distribution" > /tmp/datadog-installer-stdout.log 2> /tmp/datadog-installer-stderr.log) || exit_status=$?
     exit_status=${exit_status:-0}
 
     install_stdout=$(cat /tmp/datadog-installer-stdout.log)
@@ -626,6 +620,11 @@ fi
 datadog_installer=
 if [ -n "$DD_INSTALLER" ]; then
     datadog_installer=true
+fi
+
+remote_updates=
+if [ -n "$DD_REMOTE_UPDATES" ]; then
+    remote_updates=$DD_REMOTE_UPDATES
 fi
 
 ##
@@ -1567,6 +1566,34 @@ function update_env(){
     $sudo_cmd sh -c "sed -i 's/^# env:.*/env: $dd_env/' $config_file"
   fi
 }
+function update_remote_updates(){
+  local sudo_cmd="$1"
+  local datadog_installer="$2"
+  local remote_updates="$3"
+  local fips_mode="$4"
+  local site="$5"
+  local config_file="$6"
+
+  if [ -z "$remote_updates" ]; then
+    return 0
+  elif [ -n "$fips_mode" ]; then
+    printf "\033[31mRemote updates are not supported in FIPS mode.\033[0m\n"
+    return 0
+  elif [ "$site" == "ddog-gov.com" ]; then
+    printf "\033[31mRemote updates are not supported with the Datadog Gov site.\033[0m\n"
+    return 0
+  elif [ -z "$datadog_installer" ]; then
+    printf "\033[31mRemote updates are not supported without the datadog installer.\033[0m\n"
+    return 0
+  fi
+
+  printf "\033[34m\n* Adding your DD_REMOTE_UPDATES to the $nice_flavor configuration: $config_file\n\033[0m\n"
+  if ! $sudo_cmd grep -q "^remote_updates:" "$config_file"; then
+      $sudo_cmd sh -c "echo 'remote_updates: $remote_updates' >> $config_file"
+  else
+      $sudo_cmd sh -c "sed -i 's/^remote_updates:.*/remote_updates: $remote_updates/' $config_file"
+  fi
+}
 function update_security_and_or_compliance(){
   local sudo_cmd="$1"
   local local_config_file="$2"
@@ -1631,6 +1658,7 @@ elif [ ! "$no_agent" ]; then
     update_hostname "$sudo_cmd" "$hostname" "$config_file"
     update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
     update_env "$sudo_cmd" "$dd_env" "$config_file"
+    update_remote_updates "$sudo_cmd" "$datadog_installer" "$remote_updates" "$fips_mode" "$site" "$config_file"
   fi
   manage_security_and_system_probe_config "$sudo_cmd" "$security_agent_config_file" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
 fi
@@ -1777,10 +1805,6 @@ for current_service in "${services[@]}"; do
 
   ERROR_MESSAGE=""
 
-  if [ -n "$datadog_installer" ]; then
-    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_APM_INSTRUMENTATION_ENABLED" || true
-  fi
-
   # Metrics are submitted, echo some instructions and exit
   printf "\033[32m  Your ${nice_current_flavor} is running and functioning properly.\n\033[0m"
 
@@ -1802,5 +1826,10 @@ for current_service in "${services[@]}"; do
       sudo usermod -a -G docker dd-agent\033[0m\n\n"
   fi
 done
+
+# Install the installer
+if [ -n "$datadog_installer" ]; then
+  install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
+fi
 
 report_telemetry "$install_id" "$install_type" "$install_time"
