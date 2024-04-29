@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.31.0
 ================
+
+- (fleet) improve the installer install script (#182)
+- (fleet) Add a 20s timeout on telemetry uploads (#181)
 
 1.30.0
 ================
