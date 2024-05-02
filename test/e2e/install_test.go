@@ -49,8 +49,6 @@ func (s *installTestSuite) TestInstall() {
 }
 
 func (s *installTestSuite) TestInstallMinorVersionPin() {
-	vm := s.Env().VM
-
 	// Installation
 	s.InstallAgent(7, "DD_AGENT_MINOR_VERSION=42.0", "Install Agent 7 pinned to 7.42.0")
 
