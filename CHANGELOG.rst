@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.31.4
 ================
+
+- (fleet) finish rollout of the installer (#198)
 
 1.31.3
 ================
