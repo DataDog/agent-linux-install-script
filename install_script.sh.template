@@ -1833,8 +1833,6 @@ for current_service in "${services[@]}"; do
 done
 
 # Install the installer
-if [ -n "$datadog_installer" ] || [ "$site" == "us3.datadoghq.com" ] || [ "$site" == "us5.datadoghq.com" ] || [ "$site" == "ap1.datadoghq.com" ] || [ "$site" == "datadoghq.eu" ]; then
-  install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
-fi
+install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
 
 report_telemetry "$install_id" "$install_type" "$install_time"
