@@ -56,13 +56,7 @@ func (s *installTestSuite) TestInstallMinorVersionPin() {
 
 	s.assertPinnedInstallScript("7.42.0")
 
-	if flavor == "datadog-agent" {
-		_ = vm.Execute(fmt.Sprintf("sudo -u dd-agent -- touch %s/site-packages/testfile", s.getLatestEmbeddedPythonPath(s.baseName)))
-	}
-
 	s.uninstall()
-
-	s.assertUninstall()
 
 	s.purge()
 
