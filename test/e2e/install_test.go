@@ -49,13 +49,14 @@ func (s *installTestSuite) TestInstall() {
 }
 
 func (s *installTestSuite) TestInstallMinorVersionPin() {
+	vm := s.Env().VM
+
 	// Installation
 	s.InstallAgent(7, "DD_AGENT_MINOR_VERSION=42.0", "Install Agent 7 pinned to 7.42.0")
 
 	s.assertPinnedInstallScript("7.42.0")
 
-	// Disabled : integrations expired since First May 2024 for 7.42.0
-	//s.addExtraIntegration()
+	_ = vm.Execute(fmt.Sprintf("sudo -u dd-agent -- touch %s/site-packages/testfile", s.getLatestEmbeddedPythonPath(s.baseName)))
 
 	s.uninstall()
 
