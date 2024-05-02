@@ -54,7 +54,8 @@ func (s *installTestSuite) TestInstallMinorVersionPin() {
 
 	s.assertPinnedInstallScript("7.42.0")
 
-	s.addExtraIntegration()
+	// Disabled : integrations expired since First May 2024 for 7.42.0
+	//s.addExtraIntegration()
 
 	s.uninstall()
 
