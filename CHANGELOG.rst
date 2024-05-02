@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.31.3
 ================
+
+- (fleet) installer rollout to ap1 & eu1 (#194)
 
 1.31.2
 ================
