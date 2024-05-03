@@ -54,7 +54,11 @@ func (s *installTestSuite) TestInstallMinorVersionPin() {
 
 	s.assertPinnedInstallScript("7.42.0")
 
+	s.addExpiredExtraIntegration()
+
 	s.uninstall()
+
+	s.assertUninstall()
 
 	s.purge()
 
