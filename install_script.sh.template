@@ -530,13 +530,23 @@ function install_installer() {
     local install_stderr
     local exit_status
 
-    # The installer is currently only being rolled out to debian
-    if [ "$os" != "Debian" ] && [ -z "$datadog_installer" ]; then
-        return 0
+    # Installer RedHat gradual rollout
+    if [ -z "$datadog_installer" ] && [ "$os" == "RedHat" ]; then
+        if [ "$site" == "datadoghq.com" ]; then
+            return 0
+        fi
+        if [ "$site" == "datadoghq.eu" ]; then
+            return 0
+        fi
     fi
 
     # The installer is currently only being rolled out to APM instrumentation users
     if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ]; then
+        return 0
+    fi
+
+    # The installer is only supported on Debian and RedHat based distributions for now
+    if [ "$os" != "Debian" ] && [ "$os" != "RedHat" ]; then
         return 0
     fi
 
