@@ -530,16 +530,6 @@ function install_installer() {
     local install_stderr
     local exit_status
 
-    # Installer RedHat gradual rollout
-    if [ -z "$datadog_installer" ] && [ "$os" == "RedHat" ]; then
-        if [ "$site" == "datadoghq.com" ]; then
-            return 0
-        fi
-        if [ "$site" == "datadoghq.eu" ]; then
-            return 0
-        fi
-    fi
-
     # The installer is currently only being rolled out to APM instrumentation users
     if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ]; then
         return 0
