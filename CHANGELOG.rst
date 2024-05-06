@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.31.6
 ================
+
+- Update install_script.sh.template (#204)
 
 1.31.5
 ================
