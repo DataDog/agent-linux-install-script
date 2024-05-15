@@ -555,7 +555,7 @@ function install_installer() {
     return $exit_status
 }
 
-is_installed_by_installer() {
+function is_installed_by_installer() {
     if command -v datadog-installer >/dev/null 2>&1; then
         datadog-installer is-installed "$1"
         local status=$?
@@ -571,7 +571,7 @@ is_installed_by_installer() {
     fi
 }
 
-filter_packages_installed_by_installer() {
+function filter_packages_installed_by_installer() {
     local pkg_array_name=$1
     local -a not_installed_packages=()  # Temporary array for not installed packages
 
