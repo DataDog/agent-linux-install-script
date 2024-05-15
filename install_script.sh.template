@@ -1748,7 +1748,7 @@ if [ -n "$system_probe_ensure_config" ]; then
 fi
 
 # run apm injection scripts
-if ! is_installed_by_installer "datadog-apm-inject"; then
+if ! is_installed_by_installer "$sudo_cmd" "datadog-apm-inject"; then
   if [ -n "$host_injection_enabled" ]; then
     $sudo_cmd dd-host-install --no-agent-restart ${no_config_change}
   fi
