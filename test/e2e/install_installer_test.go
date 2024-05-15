@@ -50,6 +50,26 @@ func (s *installUpdaterTestSuite) TestInstallUpdater() {
 	s.assertInstallScript()
 }
 
+// mock installer, it will return 0 for datadog-apm-inject and datadog-apm-library-python
+const isInstalledScript = `#!/bin/bash
+[[ "$1" == "is-installed" ]] && { [[ "$2" == "datadog-apm-inject" || "$2" == "datadog-apm-library-python" ]] && exit 0 || exit 1; } || { echo "Unsupported command"; exit 2; }`
+
+
+func (s *installUpdaterTestSuite) TestPackagesInstalledByInstallerAreNotInstalledByPackageManager() {
+	t := s.T()
+	vm := s.Env().VM
+	vm.Execute("echo '" + isInstalledScript + "' | sudo tee /usr/bin/datadog-installer && sudo chmod +x /usr/bin/datadog-installer")
+	cmd := fmt.Sprintf("DD_APM_INSTRUMENTATION_ENABLED=host DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
+	output := vm.Execute(cmd)
+	t.Log(output)
+
+	s.assertInstallScript()
+	s.assertPackageInstalledByPackageManager("datadog-agent")
+	s.assertPackageInstalledByPackageManager("datadog-apm-library-ruby")
+	s.assertPackageNotInstalledByPackageManager("datadog-apm-inject")
+	s.assertPackageNotInstalledByPackageManager("datadog-apm-library-python")
+}
+
 func (s *installUpdaterTestSuite) assertInstallerInstalled() {
 	t := s.T()
 	vm := s.Env().VM
@@ -89,4 +109,34 @@ func (s *installUpdaterTestSuite) assertUninstallInstaller() {
 	t.Log("Assert installer is uninstalled")
 	assertFileNotExists(t, vm, "/opt/datadog-packages/datadog-installer/stable/bin/installer/installer")
 	assertFileNotExists(t, vm, "/opt/datadog-installer/bin/installer/installer")
+}
+
+func (s *installUpdaterTestSuite) assertPackageInstalledByPackageManager(pkg string) {
+	t := s.T()
+	vm := s.Env().VM
+
+	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
+		vm.Execute("dpkg -l " + pkg + " | grep '^ii'")
+	} else if _, err = vm.ExecuteWithError("command -v yum"); err == nil {
+		vm.Execute("yum list installed " + pkg)
+	} else if _, err = vm.ExecuteWithError("command -v zypper"); err == nil {
+		vm.Execute("zypper se -i " + pkg)
+	} else {
+		require.FailNow(t, "Unknown package manager")
+	}
+}
+
+func (s *installUpdaterTestSuite) assertPackageNotInstalledByPackageManager(pkg string) {
+	t := s.T()
+	vm := s.Env().VM
+
+	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
+		vm.Execute("! dpkg -l " + pkg + " | grep -q '^ii'")
+	} else if _, err = vm.ExecuteWithError("command -v yum"); err == nil {
+		vm.Execute("! yum list installed " + pkg + " | grep -q " + pkg)
+	} else if _, err = vm.ExecuteWithError("command -v zypper"); err == nil {
+		vm.Execute("! zypper se -i " + pkg + " | grep -q " + pkg)
+	} else {
+		require.FailNow(t, "Unknown package manager")
+	}
 }
