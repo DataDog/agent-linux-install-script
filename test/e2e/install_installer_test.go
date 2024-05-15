@@ -40,6 +40,7 @@ func (s *installUpdaterTestSuite) TestInstallUpdater() {
 	cmd := fmt.Sprintf("DD_INSTALLER=true DD_APM_INSTRUMENTATION_ENABLED=host DD_APM_INSTRUMENTATION_LANGUAGES=\" \" DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
 	output := vm.Execute(cmd)
 	t.Log(output)
+	defer s.purge()
 
 	s.assertInstallScript()
 	s.assertInstallerInstalled()
@@ -58,16 +59,36 @@ const isInstalledScript = `#!/bin/bash
 func (s *installUpdaterTestSuite) TestPackagesInstalledByInstallerAreNotInstalledByPackageManager() {
 	t := s.T()
 	vm := s.Env().VM
-	vm.Execute("echo '" + isInstalledScript + "' > /tmp/datadog-installer && sudo mv /tmp/datadog-installer /usr/bin/datadog-installer && sudo chmod +x /usr/bin/datadog-installer")
-	cmd := fmt.Sprintf("DD_APM_INSTRUMENTATION_ENABLED=host DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
+	vm.Execute("echo '" + isInstalledScript + "' > /datadog-installer && chmod +x /datadog-installer")
+	cmd := fmt.Sprintf("PATH=/:$PATH DD_INSTALLER=true DD_APM_INSTRUMENTATION_ENABLED=host DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
 	output := vm.Execute(cmd)
 	t.Log(output)
+	defer s.purge()
 
 	s.assertInstallScript()
 	s.assertPackageInstalledByPackageManager("datadog-agent")
 	s.assertPackageInstalledByPackageManager("datadog-apm-library-ruby")
 	s.assertPackageNotInstalledByPackageManager("datadog-apm-inject")
 	s.assertPackageNotInstalledByPackageManager("datadog-apm-library-python")
+}
+
+func (s *installUpdaterTestSuite) purge() {
+	t := s.T()
+	vm := s.Env().VM
+	t.Helper()
+	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
+		t.Log("Uninstall with apt")
+		// remove all datadog packages
+		vm.Execute("sudo apt remove -y --purge 'datadog-*'")
+	} else if _, err = vm.ExecuteWithError("command -v yum"); err == nil {
+		t.Log("Uninstall with yum")
+		vm.Execute(fmt.Sprintf("sudo yum remove -y 'datadog-*'"))
+	} else if _, err = vm.ExecuteWithError("command -v zypper"); err == nil {
+		t.Log("Uninstall with zypper")
+		vm.Execute(fmt.Sprintf("sudo zypper remove -y 'datadog-*'"))
+	} else {
+		require.FailNow(t, "Unknown package manager")
+	}
 }
 
 func (s *installUpdaterTestSuite) assertInstallerInstalled() {
