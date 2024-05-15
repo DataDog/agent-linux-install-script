@@ -556,8 +556,9 @@ function install_installer() {
 }
 
 function is_installed_by_installer() {
+    local sudo_cmd="$1"
     if command -v datadog-installer >/dev/null 2>&1; then
-        datadog-installer is-installed "$1"
+        $sudo_cmd datadog-installer is-installed "$2"
         local status=$?
         if [ $status -eq 0 ]; then
             return 0
@@ -572,11 +573,12 @@ function is_installed_by_installer() {
 }
 
 function filter_packages_installed_by_installer() {
-    local pkg_array_name=$1
+    local sudo_cmd="$1"
+    local pkg_array_name=$2
     local -a not_installed_packages=()  # Temporary array for not installed packages
 
     for package in $(eval echo "\${${pkg_array_name}[@]}"); do
-        if ! is_installed_by_installer "$package"; then
+        if ! is_installed_by_installer "$sudo_cmd" "$package"; then
             not_installed_packages+=("$package")
         else
             echo -e "\033[34m\n* Skipping installation of $package as it is already installed by the installer\n\033[0m"
@@ -1177,7 +1179,7 @@ if [ "$OS" == "RedHat" ]; then
 
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
-      filter_packages_installed_by_installer "packages"
+      filter_packages_installed_by_installer "$sudo_cmd" packages
       echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
@@ -1321,7 +1323,7 @@ If the cause is unclear, please contact Datadog support.
       done
     fi
 
-    filter_packages_installed_by_installer "packages"
+    filter_packages_installed_by_installer "$sudo_cmd" packages
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
     $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
@@ -1477,7 +1479,7 @@ elif [ "$OS" == "SUSE" ]; then
   fi
 
   if [ ${#packages[@]} -ne 0 ]; then
-    filter_packages_installed_by_installer "packages"
+    filter_packages_installed_by_installer "$sudo_cmd" packages
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
     # Not yet retry mechanism in zypper, see https://github.com/openSUSE/zypper/issues/420
     if [ -z "$sudo_cmd" ]; then
