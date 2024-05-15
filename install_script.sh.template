@@ -369,6 +369,8 @@ function report_installer_telemetry() {
     local exit_code="$5"
     local install_stdout="$6"
     local install_stderr="$7"
+    local packages_to_install="$8"
+    local pacakges_to_install_after_installer="$9"
 
     install_stdout=$(json_escape "$install_stdout")
     install_stderr=$(json_escape "$install_stderr")
@@ -431,7 +433,9 @@ function report_installer_telemetry() {
                         "language": "shell",
                         "exit_code": ${exit_code},
                         "error.message": "${install_stderr}",
-                        "version": "${install_script_version}"
+                        "version": "${install_script_version}",
+                        "packages_to_install": "$(json_escape "${packages_to_install}")",
+                        "packages_to_install_after_installer": "$(json_escape "${pacakges_to_install_after_installer}")"
                     },
                     "metrics": {
                         "_trace_root": 1,
@@ -519,42 +523,6 @@ function _install_installer() {
     return $?
 }
 
-# Install the Datadog installer package
-function install_installer() {
-    local sudo_cmd="$1"
-    local os="$2"
-    local distribution="$3"
-    local datadog_installer="$4"
-    local apm_instrumentation_enabled="$5"
-
-    local trace_id
-    local start_time
-    local install_stdout
-    local install_stderr
-    local exit_status
-
-    # The installer is currently only being rolled out to APM instrumentation users
-    if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ]; then
-        return 0
-    fi
-
-    # The installer is only supported on Debian and RedHat based distributions for now
-    if [ "$os" != "Debian" ] && [ "$os" != "RedHat" ]; then
-        return 0
-    fi
-
-    trace_id=$(od -An -N8 -tu8 < /dev/urandom | tr -d ' ')
-    start_time=$(date +%s%N)
-
-    (_install_installer "$sudo_cmd" "$os" "$distribution" > /tmp/datadog-installer-stdout.log 2> /tmp/datadog-installer-stderr.log) || exit_status=$?
-    exit_status=${exit_status:-0}
-
-    install_stdout=$(cat /tmp/datadog-installer-stdout.log)
-    install_stderr=$(cat /tmp/datadog-installer-stderr.log)
-    (report_installer_telemetry "$trace_id" "$os" "$distribution" "$start_time" "$exit_status" "$install_stdout" "$install_stderr") || true
-    return $exit_status
-}
-
 function is_installed_by_installer() {
     local sudo_cmd="$1"
     if command -v datadog-installer >/dev/null 2>&1; then
@@ -587,6 +555,50 @@ function filter_packages_installed_by_installer() {
 
     # Copy the filtered array back to the original array
     eval "$pkg_array_name=(\"\${not_installed_packages[@]}\")"
+}
+
+# Install the Datadog installer package
+function install_installer() {
+    local sudo_cmd="$1"
+    local os="$2"
+    local distribution="$3"
+    local datadog_installer="$4"
+    local apm_instrumentation_enabled="$5"
+    local pkg_array_name="$6"
+
+    local trace_id
+    local start_time
+    local install_stdout
+    local install_stderr
+    local exit_status
+
+    # The installer is currently only being rolled out to APM instrumentation users
+    if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ]; then
+        return 0
+    fi
+
+    # The installer is only supported on Debian and RedHat based distributions for now
+    if [ "$os" != "Debian" ] && [ "$os" != "RedHat" ]; then
+        return 0
+    fi
+
+    trace_id=$(od -An -N8 -tu8 < /dev/urandom | tr -d ' ')
+    start_time=$(date +%s%N)
+
+    (_install_installer "$sudo_cmd" "$os" "$distribution" > /tmp/datadog-installer-stdout.log 2> /tmp/datadog-installer-stderr.log) || exit_status=$?
+    exit_status=${exit_status:-0}
+
+    local packages_to_install
+    local pacakges_to_install_after_installer
+
+    packages_to_install=("${!pkg_array_name}")
+    filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
+    packages_to_install_after_installer=("${!pkg_array_name}")
+
+    install_stdout=$(cat /tmp/datadog-installer-stdout.log)
+    install_stderr=$(cat /tmp/datadog-installer-stderr.log)
+    (report_installer_telemetry "$trace_id" "$os" "$distribution" "$start_time" "$exit_status" "$install_stdout" "$install_stderr") || true
+    return $exit_status
 }
 
 echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
@@ -1175,11 +1187,11 @@ if [ "$OS" == "RedHat" ]; then
     fi
 
     # Install the installer
-    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
+    # Note: this function will remove installed packages from the "packages" array
+    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
 
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
-      filter_packages_installed_by_installer "$sudo_cmd" packages
       echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
@@ -1324,9 +1336,9 @@ If the cause is unclear, please contact Datadog support.
     fi
 
     # Install the installer
-    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
+    # Note: this function will remove installed packages from the "packages" array
+    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
 
-    filter_packages_installed_by_installer "$sudo_cmd" packages
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
     $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
@@ -1481,11 +1493,11 @@ elif [ "$OS" == "SUSE" ]; then
     exit 1;
   fi
 
-  # Install the installer
-  install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
+    # Install the installer
+    # Note: this function will remove installed packages from the "packages" array
+    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
 
   if [ ${#packages[@]} -ne 0 ]; then
-    filter_packages_installed_by_installer "$sudo_cmd" packages
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
     # Not yet retry mechanism in zypper, see https://github.com/openSUSE/zypper/issues/420
     if [ -z "$sudo_cmd" ]; then
