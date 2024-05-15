@@ -37,7 +37,7 @@ func TestInstallUpdaterSuite(t *testing.T) {
 func (s *installUpdaterTestSuite) TestInstallUpdater() {
 	t := s.T()
 	vm := s.Env().VM
-	cmd := fmt.Sprintf("DD_INSTALLER=true DD_APM_INSTRUMENTATION_ENABLED=host DD_APM_INSTRUMENTATION_LANGUAGES=\" \" DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
+	cmd := fmt.Sprintf("DD_INSTALLER=true DD_APM_INSTRUMENTATION_ENABLED=host DD_APM_INSTRUMENTATION_LANGUAGES=\" \" DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
 	output := vm.Execute(cmd)
 	t.Log(output)
 	defer s.purge()
@@ -59,8 +59,8 @@ const isInstalledScript = `#!/bin/bash
 func (s *installUpdaterTestSuite) TestPackagesInstalledByInstallerAreNotInstalledByPackageManager() {
 	t := s.T()
 	vm := s.Env().VM
-	vm.Execute("echo '" + isInstalledScript + "' | sudo tee /datadog-installer && sudo chmod +x /datadog-installer")
-	cmd := fmt.Sprintf("PATH=/:$PATH DD_INSTALLER=true DD_APM_INSTRUMENTATION_ENABLED=host DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
+	vm.Execute("echo '" + isInstalledScript + "' | sudo tee /usr/local/bin/datadog-installer && sudo chmod +x /usr/local/bin/datadog-installer")
+	cmd := fmt.Sprintf("DD_INSTALLER=true DD_APM_INSTRUMENTATION_ENABLED=host DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
 	output := vm.Execute(cmd)
 	t.Log(output)
 	defer s.purge()
