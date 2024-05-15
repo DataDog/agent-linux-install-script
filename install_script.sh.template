@@ -1063,9 +1063,6 @@ else
     sudo_cmd='sudo'
 fi
 
-# Install the installer
-install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
-
 ##
 # INSTALL THE NECESSARY PACKAGE SOURCES
 ##
@@ -1176,6 +1173,9 @@ if [ "$OS" == "RedHat" ]; then
         fi
       done
     fi
+
+    # Install the installer
+    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
 
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
@@ -1322,6 +1322,9 @@ If the cause is unclear, please contact Datadog support.
         fi
       done
     fi
+
+    # Install the installer
+    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
 
     filter_packages_installed_by_installer "$sudo_cmd" packages
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
@@ -1477,6 +1480,9 @@ elif [ "$OS" == "SUSE" ]; then
     report_telemetry
     exit 1;
   fi
+
+  # Install the installer
+  install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
 
   if [ ${#packages[@]} -ne 0 ]; then
     filter_packages_installed_by_installer "$sudo_cmd" packages
