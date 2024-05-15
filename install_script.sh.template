@@ -557,15 +557,14 @@ function install_installer() {
 
 is_installed_by_installer() {
     if command -v datadog-installer >/dev/null 2>&1; then
-        # If 'installer' is available, use it to check if the package is installed
         datadog-installer is-installed "$1"
         local status=$?
         if [ $status -eq 0 ]; then
-            return 0  # Package is installed
-        elif [ $status -eq 10 ]; then
-            return 1  # Package is not installed
+            return 0
+        elif [ $status -eq 10 ]; then # 10 means the package is not installed
+            return 1
         else
-            return $status  # Some other error occurred
+            return $status
         fi
     else
         return 1
@@ -576,7 +575,7 @@ filter_packages_installed_by_installer() {
     local pkg_array_name=$1
     local -a not_installed_packages=()  # Temporary array for not installed packages
 
-    for package in "${!pkg_array_name}"; do
+    for package in $(eval echo "\${${pkg_array_name}[@]}"); do
         if ! is_installed_by_installer "$package"; then
             not_installed_packages+=("$package")
         else
