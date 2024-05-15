@@ -555,6 +555,39 @@ function install_installer() {
     return $exit_status
 }
 
+is_installed_by_installer() {
+    if command -v datadog-installer >/dev/null 2>&1; then
+        # If 'installer' is available, use it to check if the package is installed
+        installer is-installed "$1"
+        local status=$?
+        if [ $status -eq 0 ]; then
+            return 0  # Package is installed
+        elif [ $status -eq 10 ]; then
+            return 1  # Package is not installed
+        else
+            return $status  # Some other error occurred
+        fi
+    else
+        return 1
+    fi
+}
+
+filter_packages_installed_by_installer() {
+    local -n arr=$1  # Using nameref to refer to the array passed by name
+    local not_installed_packages=()
+
+    for package in "${arr[@]}"; do
+        if ! is_installed_by_installer "$package"; then
+            not_installed_packages+=("$package")
+        else
+            echo -e "\033[34m\n* Skipping installation of $package as it is already installed by the installer\n\033[0m"
+        fi
+    done
+
+    # Copy the filtered array back to the original array
+    arr=("${not_installed_packages[@]}")
+}
+
 echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
 
 ##
@@ -1029,6 +1062,9 @@ else
     sudo_cmd='sudo'
 fi
 
+# Install the installer
+install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
+
 ##
 # INSTALL THE NECESSARY PACKAGE SOURCES
 ##
@@ -1143,6 +1179,7 @@ if [ "$OS" == "RedHat" ]; then
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
       echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+      filter_packages_installed_by_installer packages
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
       $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd yum -y install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
@@ -1286,6 +1323,7 @@ If the cause is unclear, please contact Datadog support.
     fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+    filter_packages_installed_by_installer packages
 
     $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
 
@@ -1441,6 +1479,7 @@ elif [ "$OS" == "SUSE" ]; then
 
   if [ ${#packages[@]} -ne 0 ]; then
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+    filter_packages_installed_by_installer packages
     # Not yet retry mechanism in zypper, see https://github.com/openSUSE/zypper/issues/420
     if [ -z "$sudo_cmd" ]; then
       ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive --no-refresh install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
@@ -1690,12 +1729,14 @@ if [ -n "$system_probe_ensure_config" ]; then
 fi
 
 # run apm injection scripts
-if [ -n "$host_injection_enabled" ]; then
-  $sudo_cmd dd-host-install --no-agent-restart ${no_config_change}
-fi
+if ! is_installed_by_installer "datadog-apm-inject"; then
+  if [ -n "$host_injection_enabled" ]; then
+    $sudo_cmd dd-host-install --no-agent-restart ${no_config_change}
+  fi
 
-if [ -n "$docker_injection_enabled" ]; then
-  $sudo_cmd dd-container-install --no-agent-restart
+  if [ -n "$docker_injection_enabled" ]; then
+    $sudo_cmd dd-container-install --no-agent-restart
+  fi
 fi
 
 # Creating or overriding the install information
@@ -1834,8 +1875,5 @@ for current_service in "${services[@]}"; do
       sudo usermod -a -G docker dd-agent\033[0m\n\n"
   fi
 done
-
-# Install the installer
-install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
 
 report_telemetry "$install_id" "$install_type" "$install_time"
