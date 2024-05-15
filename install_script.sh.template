@@ -573,10 +573,10 @@ is_installed_by_installer() {
 }
 
 filter_packages_installed_by_installer() {
-    local -n arr=$1  # Using nameref to refer to the array passed by name
-    local not_installed_packages=()
+    local pkg_array_name=$1
+    local -a not_installed_packages=()  # Temporary array for not installed packages
 
-    for package in "${arr[@]}"; do
+    for package in "${!pkg_array_name}"; do
         if ! is_installed_by_installer "$package"; then
             not_installed_packages+=("$package")
         else
@@ -585,7 +585,7 @@ filter_packages_installed_by_installer() {
     done
 
     # Copy the filtered array back to the original array
-    arr=("${not_installed_packages[@]}")
+    eval "$pkg_array_name=(\"\${not_installed_packages[@]}\")"
 }
 
 echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
@@ -1179,7 +1179,7 @@ if [ "$OS" == "RedHat" ]; then
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
       echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
-      filter_packages_installed_by_installer packages
+      filter_packages_installed_by_installer "packages"
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
       $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd yum -y install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
@@ -1323,7 +1323,7 @@ If the cause is unclear, please contact Datadog support.
     fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
-    filter_packages_installed_by_installer packages
+    filter_packages_installed_by_installer "packages"
 
     $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
 
@@ -1479,7 +1479,7 @@ elif [ "$OS" == "SUSE" ]; then
 
   if [ ${#packages[@]} -ne 0 ]; then
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
-    filter_packages_installed_by_installer packages
+    filter_packages_installed_by_installer "packages"
     # Not yet retry mechanism in zypper, see https://github.com/openSUSE/zypper/issues/420
     if [ -z "$sudo_cmd" ]; then
       ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive --no-refresh install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
