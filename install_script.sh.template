@@ -558,7 +558,7 @@ function install_installer() {
 is_installed_by_installer() {
     if command -v datadog-installer >/dev/null 2>&1; then
         # If 'installer' is available, use it to check if the package is installed
-        installer is-installed "$1"
+        datadog-installer is-installed "$1"
         local status=$?
         if [ $status -eq 0 ]; then
             return 0  # Package is installed
