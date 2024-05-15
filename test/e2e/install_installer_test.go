@@ -58,7 +58,7 @@ const isInstalledScript = `#!/bin/bash
 func (s *installUpdaterTestSuite) TestPackagesInstalledByInstallerAreNotInstalledByPackageManager() {
 	t := s.T()
 	vm := s.Env().VM
-	vm.Execute("echo '" + isInstalledScript + "' | sudo -E tee /usr/bin/datadog-installer && sudo chmod +x /usr/bin/datadog-installer")
+	vm.Execute("echo '" + isInstalledScript + "' > /tmp/datadog-installer && sudo mv /tmp/datadog-installer /usr/bin/datadog-installer && sudo chmod +x /usr/bin/datadog-installer")
 	cmd := fmt.Sprintf("DD_APM_INSTRUMENTATION_ENABLED=host DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=%s DD_SITE=\"datadoghq.com\" DD_REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
 	output := vm.Execute(cmd)
 	t.Log(output)
