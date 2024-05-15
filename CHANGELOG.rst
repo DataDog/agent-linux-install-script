@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.31.7
 ================
+
+- (fleet) propagate env in installer bootstrap (#206)
 
 1.31.6
 ================
