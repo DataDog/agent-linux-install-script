@@ -60,8 +60,10 @@ func (s *installUpdaterTestSuite) TestPackagesInstalledByInstallerAreNotInstalle
 	vm := s.Env().VM
 	vm.Execute("echo 'export PATH=/usr/local/bin:$PATH' | sudo tee -a /etc/profile")
 	vm.Execute("echo '" + isInstalledScript + "' | sudo tee /usr/local/bin/datadog-installer && sudo chmod +x /usr/local/bin/datadog-installer")
+	t.Log(vm.Execute("which datadog-installer"))
 	cmd := fmt.Sprintf("DD_INSTALLER=true DD_APM_INSTRUMENTATION_ENABLED=host DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
 	output := vm.Execute(cmd)
+	t.Log(vm.Execute("which datadog-installer"))
 	t.Log(output)
 	defer s.purge()
 
