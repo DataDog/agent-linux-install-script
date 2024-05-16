@@ -370,7 +370,7 @@ function report_installer_telemetry() {
     local install_stdout="$6"
     local install_stderr="$7"
     local packages_to_install="$8"
-    local pacakges_to_install_after_installer="$9"
+    local packages_to_install_after_installer="$9"
 
     install_stdout=$(json_escape "$install_stdout")
     install_stderr=$(json_escape "$install_stderr")
@@ -435,7 +435,7 @@ function report_installer_telemetry() {
                         "error.message": "${install_stderr}",
                         "version": "${install_script_version}",
                         "packages_to_install": "$(json_escape "${packages_to_install}")",
-                        "packages_to_install_after_installer": "$(json_escape "${pacakges_to_install_after_installer}")"
+                        "packages_to_install_after_installer": "$(json_escape "${packages_to_install_after_installer}")"
                     },
                     "metrics": {
                         "_trace_root": 1,
@@ -589,7 +589,7 @@ function install_installer() {
     exit_status=${exit_status:-0}
 
     local packages_to_install
-    local pacakges_to_install_after_installer
+    local packages_to_install_after_installer
 
     packages_to_install=("${!pkg_array_name}")
     filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
