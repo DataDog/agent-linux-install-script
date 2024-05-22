@@ -1057,6 +1057,13 @@ if [ "$OS" == "RedHat" ]; then
                 exit;
             fi
         else
+            if [ ${#apm_libraries[@]} -gt 0 ]; then
+              ERROR_MESSAGE="APM injection is not supported on $DISTRIBUTION  < 7"
+              ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
+              echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
+              report_telemetry
+              exit 1;
+            fi
             if ! echo "$agent_flavor" | grep '[0-9]' > /dev/null; then
                 echo -e "  \033[33m$nice_flavor $agent_major_version.51 is the last supported version on $DISTRIBUTION $release_version. Installing $agent_major_version.51 now.\n\033[0m"
                 agent_minor_version=51
