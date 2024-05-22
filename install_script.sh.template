@@ -369,6 +369,8 @@ function report_installer_telemetry() {
     local exit_code="$5"
     local install_stdout="$6"
     local install_stderr="$7"
+    local packages_to_install="$8"
+    local packages_to_install_after_installer="$9"
 
     install_stdout=$(json_escape "$install_stdout")
     install_stderr=$(json_escape "$install_stderr")
@@ -431,7 +433,9 @@ function report_installer_telemetry() {
                         "language": "shell",
                         "exit_code": ${exit_code},
                         "error.message": "${install_stderr}",
-                        "version": "${install_script_version}"
+                        "version": "${install_script_version}",
+                        "packages_to_install": "$(json_escape "${packages_to_install}")",
+                        "packages_to_install_after_installer": "$(json_escape "${packages_to_install_after_installer}")"
                     },
                     "metrics": {
                         "_trace_root": 1,
@@ -519,6 +523,40 @@ function _install_installer() {
     return $?
 }
 
+function is_installed_by_installer() {
+    local sudo_cmd="$1"
+    if command -v datadog-installer >/dev/null 2>&1; then
+        $sudo_cmd datadog-installer is-installed "$2"
+        local status=$?
+        if [ $status -eq 0 ]; then
+            return 0
+        elif [ $status -eq 10 ]; then # 10 means the package is not installed
+            return 1
+        else
+            return $status
+        fi
+    else
+        return 1
+    fi
+}
+
+function filter_packages_installed_by_installer() {
+    local sudo_cmd="$1"
+    local pkg_array_name=$2
+    local -a not_installed_packages=()  # Temporary array for not installed packages
+
+    for package in $(eval echo "\${${pkg_array_name}[@]}"); do
+        if ! is_installed_by_installer "$sudo_cmd" "$package"; then
+            not_installed_packages+=("$package")
+        else
+            echo -e "\033[34m\n* Skipping installation of $package as it is already installed by the installer\n\033[0m"
+        fi
+    done
+
+    # Copy the filtered array back to the original array
+    eval "$pkg_array_name=(\"\${not_installed_packages[@]}\")"
+}
+
 # Install the Datadog installer package
 function install_installer() {
     local sudo_cmd="$1"
@@ -526,6 +564,7 @@ function install_installer() {
     local distribution="$3"
     local datadog_installer="$4"
     local apm_instrumentation_enabled="$5"
+    local pkg_array_name="$6"
 
     local trace_id
     local start_time
@@ -549,9 +588,16 @@ function install_installer() {
     (_install_installer "$sudo_cmd" "$os" "$distribution" > /tmp/datadog-installer-stdout.log 2> /tmp/datadog-installer-stderr.log) || exit_status=$?
     exit_status=${exit_status:-0}
 
+    local packages_to_install
+    local packages_to_install_after_installer
+
+    packages_to_install=("${!pkg_array_name}")
+    filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
+    packages_to_install_after_installer=("${!pkg_array_name}")
+
     install_stdout=$(cat /tmp/datadog-installer-stdout.log)
     install_stderr=$(cat /tmp/datadog-installer-stderr.log)
-    (report_installer_telemetry "$trace_id" "$os" "$distribution" "$start_time" "$exit_status" "$install_stdout" "$install_stderr") || true
+    (report_installer_telemetry "$trace_id" "$os" "$distribution" "$start_time" "$exit_status" "$install_stdout" "$install_stderr" "${packages_to_install[*]}" "${packages_to_install_after_installer[*]}") || true
     return $exit_status
 }
 
@@ -1140,6 +1186,10 @@ if [ "$OS" == "RedHat" ]; then
       done
     fi
 
+    # Install the installer
+    # Note: this function will remove installed packages from the "packages" array
+    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
       echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
@@ -1284,6 +1334,10 @@ If the cause is unclear, please contact Datadog support.
         fi
       done
     fi
+
+    # Install the installer
+    # Note: this function will remove installed packages from the "packages" array
+    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
@@ -1438,6 +1492,10 @@ elif [ "$OS" == "SUSE" ]; then
     report_telemetry
     exit 1;
   fi
+
+    # Install the installer
+    # Note: this function will remove installed packages from the "packages" array
+    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
 
   if [ ${#packages[@]} -ne 0 ]; then
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
@@ -1690,12 +1748,14 @@ if [ -n "$system_probe_ensure_config" ]; then
 fi
 
 # run apm injection scripts
-if [ -n "$host_injection_enabled" ]; then
-  $sudo_cmd dd-host-install --no-agent-restart ${no_config_change}
-fi
+if ! is_installed_by_installer "$sudo_cmd" "datadog-apm-inject"; then
+  if [ -n "$host_injection_enabled" ]; then
+    $sudo_cmd dd-host-install --no-agent-restart ${no_config_change}
+  fi
 
-if [ -n "$docker_injection_enabled" ]; then
-  $sudo_cmd dd-container-install --no-agent-restart
+  if [ -n "$docker_injection_enabled" ]; then
+    $sudo_cmd dd-container-install --no-agent-restart
+  fi
 fi
 
 # Creating or overriding the install information
@@ -1834,8 +1894,5 @@ for current_service in "${services[@]}"; do
       sudo usermod -a -G docker dd-agent\033[0m\n\n"
   fi
 done
-
-# Install the installer
-install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" || true
 
 report_telemetry "$install_id" "$install_type" "$install_time"
