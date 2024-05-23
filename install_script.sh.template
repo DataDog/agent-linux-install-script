@@ -915,6 +915,10 @@ if [ -n "$fips_mode" ]; then
   services+=("datadog-fips-proxy")
 fi
 
+if [ -n "$remote_updates" ]; then
+  services+=("datadog-installer")
+fi
+
 if [ -z "$etcdir" ]; then
     etcdir="/etc/datadog-agent"
 fi
