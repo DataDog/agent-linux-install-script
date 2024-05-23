@@ -598,6 +598,11 @@ function install_installer() {
     install_stdout=$(cat /tmp/datadog-installer-stdout.log)
     install_stderr=$(cat /tmp/datadog-installer-stderr.log)
     (report_installer_telemetry "$trace_id" "$os" "$distribution" "$start_time" "$exit_status" "$install_stdout" "$install_stderr" "${packages_to_install[*]}" "${packages_to_install_after_installer[*]}") || true
+    if [ $exit_status -ne 0 ] && [ -n "$datadog_installer" ]; then
+        echo -e "\033[31m\n* Failed to install the Datadog installer\n\033[0m"
+        echo "$install_stderr"
+        exit $exit_status
+    fi
     return $exit_status
 }
 
