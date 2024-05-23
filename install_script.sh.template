@@ -686,6 +686,16 @@ if [ -n "$DD_REMOTE_UPDATES" ]; then
     remote_updates=$DD_REMOTE_UPDATES
 fi
 
+installer_registry_url=
+if [ -n "$DD_INSTALLER_REGISTRY_URL" ]; then
+    installer_registry_url=$DD_INSTALLER_REGISTRY_URL
+fi
+
+installer_registry_auth=
+if [ -n "$DD_INSTALLER_REGISTRY_AUTH" ]; then
+    installer_registry_auth=$DD_INSTALLER_REGISTRY_AUTH
+fi
+
 ##
 # INSTALL SCRIPT CONFIGURATION OPTIONS
 # Technical options to test with non-production values for signature keys, packages or reporting telemetry.
@@ -1672,6 +1682,20 @@ function update_remote_updates(){
       $sudo_cmd sh -c "sed -i 's/^remote_updates:.*/remote_updates: $remote_updates/' $config_file"
   fi
 }
+function update_installer_registry(){
+  local sudo_cmd="$1"
+  local registry_url="$2"
+  local registry_auth="$3"
+  local config_file="$4"
+  if [ -n "$registry_url" ] || [ -n "$registry_auth" ]; then
+    printf "\033[34m\n* Adding your DD_INSTALLER_REGISTRY_URL and DD_INSTALLER_REGISTRY_AUTH to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    if ! $sudo_cmd grep -q "^installer:" "$config_file"; then
+      $sudo_cmd sh -c "echo 'installer: {registry: {url: \"$registry_url\", auth: \"$registry_auth\" }}' >> $config_file"
+    else
+      printf "\033[31mInstaller configuration already exists in $config_file, skipping the update.\033[0m\n"
+    fi
+  fi
+}
 function update_security_and_or_compliance(){
   local sudo_cmd="$1"
   local local_config_file="$2"
@@ -1737,6 +1761,7 @@ elif [ ! "$no_agent" ]; then
     update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
     update_env "$sudo_cmd" "$dd_env" "$config_file"
     update_remote_updates "$sudo_cmd" "$datadog_installer" "$remote_updates" "$fips_mode" "$site" "$config_file"
+    update_installer_registry "$sudo_cmd" "$installer_registry_url" "$installer_registry_auth" "$config_file"
   fi
   manage_security_and_system_probe_config "$sudo_cmd" "$security_agent_config_file" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
 fi
