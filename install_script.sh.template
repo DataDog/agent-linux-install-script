@@ -1675,20 +1675,12 @@ function update_installer_registry(){
   local registry_url="$2"
   local registry_auth="$3"
   local config_file="$4"
-  if [ -n "$registry_url" ]; then
-    printf "\033[34m\n* Adding your DD_INSTALLER_REGISTRY_URL to the $nice_flavor configuration: $config_file\n\033[0m\n"
-    if ! $sudo_cmd grep -q "^DD_INSTALLER_REGISTRY_URL:" "$config_file"; then
-      $sudo_cmd sh -c "echo 'DD_INSTALLER_REGISTRY_URL: $registry_url' >> $config_file"
+  if [ -n "$registry_url" ] || [ -n "$registry_auth" ]; then
+    printf "\033[34m\n* Adding your DD_INSTALLER_REGISTRY_URL and DD_INSTALLER_REGISTRY_AUTH to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    if ! $sudo_cmd grep -q "^installer:" "$config_file"; then
+      $sudo_cmd sh -c "echo 'installer: {registry: {url: \"$registry_url\", auth: \"$registry_auth\" }}' >> $config_file"
     else
-      $sudo_cmd sh -c "sed -i 's/^DD_INSTALLER_REGISTRY_URL:.*/DD_INSTALLER_REGISTRY_URL: $registry_url/' $config_file"
-    fi
-  fi
-  if [ -n "$registry_auth" ]; then
-    printf "\033[34m\n* Adding your DD_INSTALLER_REGISTRY_AUTH to the $nice_flavor configuration: $config_file\n\033[0m\n"
-    if ! $sudo_cmd grep -q "^DD_INSTALLER_REGISTRY_AUTH:" "$config_file"; then
-      $sudo_cmd sh -c "echo 'DD_INSTALLER_REGISTRY_AUTH: $registry_auth' >> $config_file"
-    else
-      $sudo_cmd sh -c "sed -i 's/^DD_INSTALLER_REGISTRY_AUTH:.*/DD_INSTALLER_REGISTRY_AUTH: $registry_auth/' $config_file"
+      printf "\033[31mInstaller configuration already exists in $config_file, skipping the update.\033[0m\n"
     fi
   fi
 }
