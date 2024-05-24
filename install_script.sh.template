@@ -563,8 +563,9 @@ function install_installer() {
     local os="$2"
     local distribution="$3"
     local datadog_installer="$4"
-    local apm_instrumentation_enabled="$5"
-    local pkg_array_name="$6"
+    local remote_updates="$5"
+    local apm_instrumentation_enabled="$6"
+    local pkg_array_name="$7"
 
     local trace_id
     local start_time
@@ -573,7 +574,7 @@ function install_installer() {
     local exit_status
 
     # The installer is currently only being rolled out to APM instrumentation users
-    if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ]; then
+    if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ] && [ -z "$remote_updates" ]; then
         return 0
     fi
 
@@ -1210,7 +1211,7 @@ if [ "$OS" == "RedHat" ]; then
 
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
-    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
 
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
@@ -1656,11 +1657,10 @@ function update_env(){
 }
 function update_remote_updates(){
   local sudo_cmd="$1"
-  local datadog_installer="$2"
-  local remote_updates="$3"
-  local fips_mode="$4"
-  local site="$5"
-  local config_file="$6"
+  local remote_updates="$2"
+  local fips_mode="$3"
+  local site="$4"
+  local config_file="$5"
 
   if [ -z "$remote_updates" ]; then
     return 0
@@ -1669,9 +1669,6 @@ function update_remote_updates(){
     return 0
   elif [ "$site" == "ddog-gov.com" ]; then
     printf "\033[31mRemote updates are not supported with the Datadog Gov site.\033[0m\n"
-    return 0
-  elif [ -z "$datadog_installer" ]; then
-    printf "\033[31mRemote updates are not supported without the datadog installer.\033[0m\n"
     return 0
   fi
 
@@ -1760,7 +1757,7 @@ elif [ ! "$no_agent" ]; then
     update_hostname "$sudo_cmd" "$hostname" "$config_file"
     update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
     update_env "$sudo_cmd" "$dd_env" "$config_file"
-    update_remote_updates "$sudo_cmd" "$datadog_installer" "$remote_updates" "$fips_mode" "$site" "$config_file"
+    update_remote_updates "$sudo_cmd" "$remote_updates" "$fips_mode" "$site" "$config_file"
     update_installer_registry "$sudo_cmd" "$installer_registry_url" "$installer_registry_auth" "$config_file"
   fi
   manage_security_and_system_probe_config "$sudo_cmd" "$security_agent_config_file" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
