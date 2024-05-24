@@ -1360,7 +1360,7 @@ If the cause is unclear, please contact Datadog support.
 
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
-    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
@@ -1518,7 +1518,7 @@ elif [ "$OS" == "SUSE" ]; then
 
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
-    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
 
   if [ ${#packages[@]} -ne 0 ]; then
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
