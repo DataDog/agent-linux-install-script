@@ -319,6 +319,7 @@ e2e:
           - RedHat_CentOS_7
           - RedHat_8
           - Amazon_Linux_2023
+          - openSUSE_15
         EXTRA_PARAMS:
           - --run TestInstallUpdaterSuite
       - FLAVOR: datadog-agent
