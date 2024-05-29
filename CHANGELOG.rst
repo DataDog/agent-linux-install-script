@@ -2,6 +2,16 @@
 Release Notes
 =============
 
+1.31.8
+=============
+
+- (fleet) make DD_REMOTE_UPDATES install the installer by default (#215)
+- (fleet) restart the installer service when remote updates are enabled (#214)
+- (fleet) populate the config with the installer registry parameters (#213)
+- Add a check to forbid APM injection installation on redhat 6 (#212)
+- (fleet) make the installer bootstrap mandatory if DD_INSTALLER is set (#211)
+- (fleet) filter out packages installed by the installer (#208)
+
 1.31.7
 ================
 
