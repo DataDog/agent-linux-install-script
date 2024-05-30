@@ -515,6 +515,9 @@ function _install_installer() {
     elif [ "$os" == "RedHat" ]; then
         echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
         $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install "datadog-installer" || $sudo_cmd yum -y install "datadog-installer" || return $?
+    elif [ "$os" == "SUSE" ]; then
+        echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
+	$sudo_cmd zypper --non-interactive --no-refresh install "datadog-installer" || return $?
     else
         return 0
     fi
@@ -575,11 +578,6 @@ function install_installer() {
 
     # The installer is currently only being rolled out to APM instrumentation users
     if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ] && [ -z "$remote_updates" ]; then
-        return 0
-    fi
-
-    # The installer is only supported on Debian and RedHat based distributions for now
-    if [ "$os" != "Debian" ] && [ "$os" != "RedHat" ]; then
         return 0
     fi
 
