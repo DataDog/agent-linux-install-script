@@ -320,6 +320,9 @@ function getMapData() {
              "datadog-heroku-agent")
                 DATA="Datadog Heroku Agent"
                 ;;
+             "datadog-installer")
+                DATA="Datadog Installer"
+                ;;
               *)
                 DATA="Unknown"
                 ;;
