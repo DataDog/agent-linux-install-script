@@ -57,10 +57,10 @@ const isInstalledScript = `#!/bin/bash
 
 func (s *installUpdaterTestSuite) TestPackagesInstalledByInstallerAreNotInstalledByPackageManager() {
 	t := s.T()
-	if _, err = vm.ExecuteWithError("command -v zypper"); err == nil {
+	vm := s.Env().VM
+	if _, err := vm.ExecuteWithError("command -v zypper"); err == nil {
 		t.Skip("zypper does not support apm packages")
 	}
-	vm := s.Env().VM
 	vm.Execute("echo 'export PATH=/usr/local/bin:$PATH' | sudo tee -a /etc/profile")
 	vm.Execute("echo '" + isInstalledScript + "' | sudo tee /usr/local/bin/datadog-installer && sudo chmod +x /usr/local/bin/datadog-installer")
 	_, _ = vm.ExecuteWithError("echo '" + isInstalledScript + "' | sudo tee /sbin/datadog-installer && sudo chmod +x /sbin/datadog-installer")
