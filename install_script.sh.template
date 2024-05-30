@@ -581,11 +581,6 @@ function install_installer() {
         return 0
     fi
 
-    # The installer is only supported on Debian and RedHat based distributions for now
-    if [ "$os" != "Debian" ] && [ "$os" != "RedHat" ]; then
-        return 0
-    fi
-
     trace_id=$(od -An -N8 -tu8 < /dev/urandom | tr -d ' ')
     start_time=$(date +%s%N)
 
