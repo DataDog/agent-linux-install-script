@@ -1737,6 +1737,7 @@ function manage_client_libraries_security_config(){
   local asm_enable="$3"
   local iast_enable="$4"
   local sca_enable="$5"
+  local standalone_enable="$6"
   if [ -n "$asm_enable" ]; then
     $sudo_cmd sed -i -n -e '/^DD_APPSEC_ENABLED=/!p' -e "\$aDD_APPSEC_ENABLED=$asm_enable" "$etc_environment"
   fi
@@ -1745,6 +1746,9 @@ function manage_client_libraries_security_config(){
   fi
   if [ -n "$sca_enable" ]; then
     $sudo_cmd sed -i -n -e '/^DD_APPSEC_SCA_ENABLED=/!p' -e "\$aDD_APPSEC_SCA_ENABLED=$sca_enable" "$etc_environment"
+  fi
+  if [ -n "$standalone_enable" ]; then
+    $sudo_cmd sed -i -n -e '/^DD_EXPERIMENTAL_APPSEC_STANDALONE_ENABLED=/!p' -e "\$aDD_EXPERIMENTAL_APPSEC_STANDALONE_ENABLED=$standalone_enable" "$etc_environment"
   fi
 }
 # "Main" configuration update
@@ -1768,7 +1772,7 @@ elif [ ! "$no_agent" ]; then
   manage_security_and_system_probe_config "$sudo_cmd" "$security_agent_config_file" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
 fi
 
-manage_client_libraries_security_config "$sudo_cmd" "/etc/environment" "$DD_APPSEC_ENABLED" "$DD_IAST_ENABLED" "$DD_APPSEC_SCA_ENABLED"
+manage_client_libraries_security_config "$sudo_cmd" "/etc/environment" "$DD_APPSEC_ENABLED" "$DD_IAST_ENABLED" "$DD_APPSEC_SCA_ENABLED" "$DD_EXPERIMENTAL_APPSEC_STANDALONE_ENABLED"
 
 if [ ! "$no_agent" ]; then
   $sudo_cmd chown dd-agent:dd-agent "$config_file"
