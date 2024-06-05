@@ -272,5 +272,17 @@ testManageClientLibrariesSecurityConfig() {
   assertEquals 0 $?
 }
 
+### Manage client libraries profiling config
+testManageClientLibrariesProfilingConfig() {
+  rm $environment_file
+  echo 'PATH="/usr/local/sbin"' > $environment_file
+  manage_client_libraries_profiling_config "sudo" $environment_file ""
+  grep -q "DD_PROFILING_ENABLED" $environment_file
+  assertEquals 1 $?
+  manage_client_libraries_profiling_config "sudo" $environment_file "auto"
+  grep -q "DD_PROFILING_ENABLED=auto" $environment_file
+  assertEquals 0 $?
+}
+
 # shellcheck source=/dev/null
 . shunit2
