@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.31.9
 ================
+
+- (fleet) add suse support (#217)
+- Fix installer being displayed as Unknown (#219)
 
 1.31.8
 =============
