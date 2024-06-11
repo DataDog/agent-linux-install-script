@@ -273,14 +273,33 @@ testManageClientLibrariesSecurityConfig() {
 }
 
 ### Manage client libraries profiling config
-testManageClientLibrariesProfilingConfig() {
+testManageClientLibrariesProfilingConfig_NotSpecified_FileDoesNotExist() {
+  rm $environment_file
+  manage_client_libraries_profiling_config "sudo" $environment_file ""
+  assertFalse "[ -s $environment_file ]"
+}
+testManageClientLibrariesProfilingConfig_NotSpecified_FileExists() {
   rm $environment_file
   echo 'PATH="/usr/local/sbin"' > $environment_file
   manage_client_libraries_profiling_config "sudo" $environment_file ""
   grep -q "DD_PROFILING_ENABLED" $environment_file
   assertEquals 1 $?
+  grep -q "PATH" $environment_file
+  assertEquals 0 $?
+}
+testManageClientLibrariesProfilingConfig_Specified_FileDoesNotExist() {
+  rm $environment_file
   manage_client_libraries_profiling_config "sudo" $environment_file "auto"
   grep -q "DD_PROFILING_ENABLED=auto" $environment_file
+  assertEquals 0 $?
+}
+testManageClientLibrariesProfilingConfig_Specified_FileExists() {
+  rm $environment_file
+  echo 'PATH="/usr/local/sbin"' > $environment_file
+  manage_client_libraries_profiling_config "sudo" $environment_file "auto"
+  grep -q "DD_PROFILING_ENABLED=auto" $environment_file
+  assertEquals 0 $?
+  grep -q "PATH" $environment_file
   assertEquals 0 $?
 }
 
