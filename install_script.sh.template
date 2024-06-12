@@ -934,6 +934,7 @@ fi
 config_file_fips=$etcdirfips/datadog-fips-proxy.cfg
 system_probe_config_file=$etcdir/system-probe.yaml
 security_agent_config_file=$etcdir/security-agent.yaml
+environment_file=/etc/environment
 
 agent_major_version=AGENT_MAJOR_VERSION_PLACEHOLDER
 # shellcheck disable=SC2050
@@ -1747,6 +1748,18 @@ function manage_client_libraries_security_config(){
     $sudo_cmd sed -i -n -e '/^DD_APPSEC_SCA_ENABLED=/!p' -e "\$aDD_APPSEC_SCA_ENABLED=$sca_enable" "$etc_environment"
   fi
 }
+function manage_client_libraries_profiling_config(){
+  local sudo_cmd="$1"
+  local etc_environment="$2"
+  local profiling_enable="$3"
+  if [ -n "$profiling_enable" ]; then
+    if [ ! -s "$etc_environment" ]; then
+      $sudo_cmd echo "DD_PROFILING_ENABLED=$profiling_enable" > "$etc_environment"
+    else
+      $sudo_cmd sed -i -n -e '/^DD_PROFILING_ENABLED=/!p' -e "\$aDD_PROFILING_ENABLED=$profiling_enable" "$etc_environment"
+    fi
+  fi
+}
 # "Main" configuration update
 if [ -e "$config_file" ] && [ -z "$upgrade" ]; then
   printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
@@ -1768,7 +1781,8 @@ elif [ ! "$no_agent" ]; then
   manage_security_and_system_probe_config "$sudo_cmd" "$security_agent_config_file" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
 fi
 
-manage_client_libraries_security_config "$sudo_cmd" "/etc/environment" "$DD_APPSEC_ENABLED" "$DD_IAST_ENABLED" "$DD_APPSEC_SCA_ENABLED"
+manage_client_libraries_security_config "$sudo_cmd" "$environment_file" "$DD_APPSEC_ENABLED" "$DD_IAST_ENABLED" "$DD_APPSEC_SCA_ENABLED"
+manage_client_libraries_profiling_config "$sudo_cmd" "$environment_file" "$DD_PROFILING_ENABLED"
 
 if [ ! "$no_agent" ]; then
   $sudo_cmd chown dd-agent:dd-agent "$config_file"
