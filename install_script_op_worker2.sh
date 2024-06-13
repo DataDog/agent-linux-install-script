@@ -164,64 +164,6 @@ if [ -n "$DD_INSTALL_ONLY" ]; then
     no_start=true
 fi
 
-# sources
-source_splunk_hec_address=
-if [ -n "$DD_OP_SOURCE_SPLUNK_HEC_ADDRESS" ]; then
-    source_splunk_hec_address="$DD_OP_SOURCE_SPLUNK_HEC_ADDRESS"
-fi
-
-source_splunk_tcp_address=
-if [ -n "$DD_OP_SOURCE_SPLUNK_TCP_ADDRESS" ]; then
-    source_splunk_tcp_address="$DD_OP_SOURCE_SPLUNK_TCP_ADDRESS"
-fi
-
-source_datadog_agent_address=
-if [ -n "$DD_OP_SOURCE_DATADOG_AGENT_ADDRESS" ]; then
-    source_datadog_agent_address="$DD_OP_SOURCE_DATADOG_AGENT_ADDRESS"
-fi
-
-source_sumo_logic_address=
-if [ -n "$DD_OP_SOURCE_SUMO_LOGIC_ADDRESS" ]; then
-    source_sumo_logic_address="$DD_OP_SOURCE_SUMO_LOGIC_ADDRESS"
-fi
-
-# source key passes
-source_splunk_tcp_key_pass=
-if [ -n "$DD_OP_SOURCE_SPLUNK_TCP_KEY_PASS" ]; then
-    source_splunk_tcp_key_pass="$DD_OP_SOURCE_SPLUNK_TCP_KEY_PASS"
-fi
-
-source_splunk_hec_key_pass=
-if [ -n "$DD_OP_SOURCE_SPLUNK_HEC_KEY_PASS" ]; then
-    source_splunk_hec_key_pass="$DD_OP_SOURCE_SPLUNK_HEC_KEY_PASS"
-fi
-
-# destinations
-dest_splunk_hec_endpoint=
-if [ -n "$DD_OP_DESTINATION_SPLUNK_HEC_ENDPOINT_URL" ]; then
-    dest_splunk_hec_endpoint="$DD_OP_DESTINATION_SPLUNK_HEC_ENDPOINT_URL"
-fi
-
-dest_splunk_hec_token=
-if [ -n "$DD_OP_DESTINATION_SPLUNK_HEC_TOKEN" ]; then
-    dest_splunk_hec_token="$DD_OP_DESTINATION_SPLUNK_HEC_TOKEN"
-fi
-
-dest_sumo_logic_endpoint=
-if [ -n "$DD_OP_DESTINATION_SUMO_LOGIC_HTTP_COLLECTOR_URL" ]; then
-    dest_sumo_logic_endpoint="$DD_OP_DESTINATION_SUMO_LOGIC_HTTP_COLLECTOR_URL"
-fi
-
-dest_datadog_archives_aws_key_id=
-if [ -n "$DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_ACCESS_KEY_ID" ]; then
-    dest_datadog_archives_aws_key_id="$DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_ACCESS_KEY_ID"
-fi
-
-dest_datadog_archives_aws_secret=
-if [ -n "$DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_SECRET_ACCESS_KEY" ]; then
-    dest_datadog_archives_aws_secret="$DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_SECRET_ACCESS_KEY"
-fi
-
 if [ -n "$DD_REPO_URL" ]; then
     repository_url=$DD_REPO_URL
 elif [ -n "$REPO_URL" ]; then
@@ -524,73 +466,16 @@ else
     $sudo_cmd sh -c "echo DD_API_KEY=$apikey >> $env_file"
   fi
 
-  if [ "$op_pipeline_id" ]; then
-    printf "\033[34m  * Assigning DD_OP_PIPELINE_ID.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_OP_PIPELINE_ID=$op_pipeline_id >> $env_file"
-  fi
-
   if [ "$site" ]; then
     printf "\033[34m  * Assigning DD_SITE.\n\033[0m\n"
     $sudo_cmd sh -c "echo DD_SITE=$site >> $env_file"
   fi
 
-  # sources
-  if [ "$source_splunk_hec_address" ]; then
-    printf "\033[34m  * Assigning DD_OP_SOURCE_SPLUNK_HEC_ADDRESS.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_OP_SOURCE_SPLUNK_HEC_ADDRESS=$source_splunk_hec_address>> $env_file"
-  fi
-
-  if [ "$source_splunk_tcp_address" ]; then
-    printf "\033[34m  * Assigning DD_OP_SOURCE_SPLUNK_TCP_ADDRESS.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_OP_SOURCE_SPLUNK_TCP_ADDRESS=$source_splunk_tcp_address>> $env_file"
-  fi
-
-  if [ "$source_datadog_agent_address" ]; then
-    printf "\033[34m  * Assigning DD_OP_SOURCE_DATADOG_AGENT_ADDRESS.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_OP_SOURCE_DATADOG_AGENT_ADDRESS=$source_datadog_agent_address>> $env_file"
-  fi
-
-  if [ "$source_sumo_logic_address" ]; then
-    printf "\033[34m  * Assigning DD_OP_SOURCE_SUMO_LOGIC_ADDRESS.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_OP_SOURCE_SUMO_LOGIC_ADDRESS=$source_sumo_logic_address>> $env_file"
-  fi
-
-  # source key passes
-  if [ "$source_splunk_tcp_key_pass" ]; then
-    printf "\033[34m  * Assigning DD_OP_SOURCE_SPLUNK_TCP_KEY_PASS.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_OP_SOURCE_SPLUNK_TCP_KEY_PASS=$source_splunk_tcp_key_pass>> $env_file"
-  fi
-
-  if [ "$source_splunk_hec_key_pass" ]; then
-    printf "\033[34m  * Assigning DD_OP_SOURCE_SPLUNK_HEC_KEY_PASS.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_OP_SOURCE_SPLUNK_HEC_KEY_PASS=$source_splunk_hec_key_pass>> $env_file"
-  fi
-
-  # destinations
-  if [ "$dest_splunk_hec_endpoint" ]; then
-    printf "\033[34m  * Assigning DD_OP_DESTINATION_SPLUNK_HEC_ENDPOINT_URL.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_OP_DESTINATION_SPLUNK_HEC_ENDPOINT_URL=$dest_splunk_hec_endpoint>> $env_file"
-  fi
-
-  if [ "$dest_splunk_hec_token" ]; then
-    printf "\033[34m  * Assigning DD_OP_DESTINATION_SPLUNK_HEC_TOKEN.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_OP_DESTINATION_SPLUNK_HEC_TOKEN=$dest_splunk_hec_token>> $env_file"
-  fi
-
-  if [ "$dest_sumo_logic_endpoint" ]; then
-    printf "\033[34m  * Assigning DD_OP_DESTINATION_SUMO_LOGIC_HTTP_COLLECTOR_URL.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_OP_DESTINATION_SUMO_LOGIC_HTTP_COLLECTOR_URL=$dest_sumo_logic_endpoint>> $env_file"
-  fi
-
-  if [ "$dest_datadog_archives_aws_key_id" ]; then
-    printf "\033[34m  * Assigning DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_ACCESS_KEY_ID.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_ACCESS_KEY_ID=$dest_datadog_archives_aws_key_id>> $env_file"
-  fi
-
-  if [ "$dest_datadog_archives_aws_secret" ]; then
-    printf "\033[34m  * Assigning DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_SECRET_ACCESS_KEY.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_OP_DESTINATION_DATADOG_ARCHIVES_AWS_SECRET_ACCESS_KEY=$dest_datadog_archives_aws_secret>> $env_file"
-  fi
+  # All env vars that are defined and used exclusively in OPW, are prefixed with `DD_OP_`
+  for dd_op_var in ${!DD_OP_@}; do
+    printf "\033[34m  * Assigning $dd_op_var.\n\033[0m\n"
+    $sudo_cmd sh -c "echo $dd_op_var=${!dd_op_var} >> $env_file"
+  done
 fi
 
 if ! $sudo_cmd grep -q -E '^DD_API_KEY=.+' "$env_file" && \
