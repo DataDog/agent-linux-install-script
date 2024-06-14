@@ -45,7 +45,7 @@ else
   echo "[PASS] DD_OP_WORKER_MINOR_VERSION not specified, not checking installed minor version"
 fi
 
-EXPECTED_TOOL_VERSION=install_script_op_worker1
+EXPECTED_TOOL_VERSION=install_script_op_worker2
 INSTALL_INFO_FILE=/etc/observability-pipelines-worker/install_info
 TOOL_VERSION=$(cat "$INSTALL_INFO_FILE" | grep "tool_version:" | cut -d":" -f 2)
 if echo "${TOOL_VERSION}" | grep "${EXPECTED_TOOL_VERSION}$" >/dev/null; then
