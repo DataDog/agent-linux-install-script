@@ -2,8 +2,12 @@
 Release Notes
 =============
 
-Unreleased
+1.32.0
 ================
+
+- Add dynamic env var assignment for OP Worker 2 script (#226)
+- Update README.md to use DD_APM_INSTRUMENTATION_LIBRARIES (#224)
+- PROF-9889: Add support for propagating DD_PROFILING_ENABLED (#220)
 
 1.31.9
 ================
