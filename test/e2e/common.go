@@ -12,11 +12,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
-	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/client"
+	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/components"
+	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/e2e"
+	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/environments"
 	componentsos "github.com/DataDog/test-infra-definitions/components/os"
-	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2os"
-	"github.com/DataDog/test-infra-definitions/scenarios/aws/vm/ec2params"
+	"github.com/DataDog/test-infra-definitions/scenarios/aws/ec2"
+
 	version "github.com/hashicorp/go-version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,8 +25,8 @@ import (
 )
 
 type osConfig struct {
-	ami    string
-	osType ec2os.Type
+	ami          string
+	osDescriptor componentsos.Descriptor
 }
 
 const (
@@ -56,13 +57,12 @@ var (
 		agentFlavorDatadogIOTAgent:  "datadog.yaml",
 	}
 	osConfigByPlatform = map[string]osConfig{
-		"Debian_11":         {osType: ec2os.DebianOS},
-		"Ubuntu_22_04":      {osType: ec2os.UbuntuOS},
-		"RedHat_CentOS_6":   {osType: ec2os.CentOS, ami: "ami-0506f01ccb6dddeda"},
-		"RedHat_CentOS_7":   {osType: ec2os.CentOS},
-		"RedHat_8":          {osType: ec2os.RedHatOS, ami: "ami-06640050dc3f556bb"},
-		"Amazon_Linux_2023": {osType: ec2os.AmazonLinuxOS, ami: "ami-0889a44b331db0194"},
-		"openSUSE_15":       {osType: ec2os.SuseOS},
+		"Debian_12":         {osDescriptor: componentsos.DebianDefault},
+		"Ubuntu_22_04":      {osDescriptor: componentsos.UbuntuDefault},
+		"RedHat_CentOS_9":   {osDescriptor: componentsos.CentOSDefault},
+		"RedHat_8":          {osDescriptor: componentsos.NewDescriptor(componentsos.RedHat, "8"), ami: "ami-06640050dc3f556bb"},
+		"Amazon_Linux_2023": {osDescriptor: componentsos.AmazonLinux2, ami: "ami-0889a44b331db0194"},
+		"openSUSE_15":       {osDescriptor: componentsos.SuseDefault},
 	}
 )
 
@@ -84,14 +84,14 @@ func getenv(key, fallback string) string {
 }
 
 type linuxInstallerTestSuite struct {
-	e2e.Suite[e2e.VMEnv]
+	e2e.BaseSuite[environments.Host]
 	baseName   string
 	configFile string
 }
 
 func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...string) string {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 
 	installationScriptPath := "scripts/install_agent.sh"
 	scriptEnvVariable := fmt.Sprintf("DD_API_KEY=%s", apiKey)
@@ -104,13 +104,13 @@ func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...s
 	}
 	extraParamLength := len(extraParam)
 	if extraParamLength == 0 {
-		t.Log(fmt.Sprintf("Install latest Agent %d", agentVersion))
+		t.Logf("Install latest Agent %d", agentVersion)
 	} else {
 		scriptEnvVariable = scriptEnvVariable + " " + strings.Join(extraParam[:extraParamLength-1], " ")
 		t.Log(extraParam[extraParamLength-1])
 	}
 	cmd := fmt.Sprintf("%s bash -c \"$(cat %s)\"", scriptEnvVariable, installationScriptPath)
-	output := vm.Execute(cmd)
+	output := vm.MustExecute(cmd)
 	t.Log(output)
 
 	return output
@@ -118,7 +118,6 @@ func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...s
 
 // SetupSuite is called at suite initialisation, once before all tests
 func (s *linuxInstallerTestSuite) SetupSuite() {
-	s.Suite.SetupSuite()
 	t := s.T()
 	if flavor == "" {
 		t.Log("setting default agent flavor")
@@ -126,33 +125,33 @@ func (s *linuxInstallerTestSuite) SetupSuite() {
 	}
 	s.baseName = baseNameByFlavor[flavor]
 	s.configFile = configFileByFlavor[flavor]
-	s.Env().VM.CopyFolder(scriptPath, "scripts")
+	s.Env().RemoteHost.CopyFolder(scriptPath, "scripts")
 }
 
-func getEC2Options(t *testing.T) []ec2params.Option {
+func getEC2Options(t *testing.T) []ec2.VMOption {
 	t.Helper()
 	if _, ok := osConfigByPlatform[platform]; !ok {
 		t.Skipf("not supported platform %s", platform)
 	}
 
-	ec2Options := []ec2params.Option{}
+	ec2Options := []ec2.VMOption{}
 	if osConfigByPlatform[platform].ami != "" {
-		ec2Options = append(ec2Options, ec2params.WithImageName(osConfigByPlatform[platform].ami, componentsos.AMD64Arch, osConfigByPlatform[platform].osType))
+		ec2Options = append(ec2Options, ec2.WithAMI(osConfigByPlatform[platform].ami, osConfigByPlatform[platform].osDescriptor, osConfigByPlatform[platform].osDescriptor.Architecture))
 	} else {
-		ec2Options = append(ec2Options, ec2params.WithOS(osConfigByPlatform[platform].osType))
+		ec2Options = append(ec2Options, ec2.WithOS(osConfigByPlatform[platform].osDescriptor))
 	}
 
 	if instanceType, ok := os.LookupEnv("E2E_OVERRIDE_INSTANCE_TYPE"); ok {
-		ec2Options = append(ec2Options, ec2params.WithInstanceType(instanceType))
+		ec2Options = append(ec2Options, ec2.WithInstanceType(instanceType))
 	}
 	return ec2Options
 }
 
 func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) string {
 	s.T().Helper()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	cmd := fmt.Sprintf("echo /opt/%s/embedded/lib/python*", baseName)
-	result, err := vm.ExecuteWithError(cmd)
+	result, err := vm.Execute(cmd)
 	require.NoError(s.T(), err, fmt.Sprintf("Python embedded libraries not found: %s", err))
 	require.NotEmpty(s.T(), result)
 	latest := ""
@@ -180,26 +179,26 @@ func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) s
 
 func (s *linuxInstallerTestSuite) assertInstallScript() {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	t.Helper()
 	t.Log("Check user, config file and service")
 	// check presence of the dd-agent user
-	_, err := vm.ExecuteWithError("id dd-agent")
+	_, err := vm.Execute("id dd-agent")
 	assert.NoError(t, err, "user datadog-agent does not exist after install")
 	// Check presence of the config file - the file is added by the install script, so this should always be okay
 	// if the install succeeds
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
 	// Check presence and ownership of the config and main directories
-	owner := strings.TrimSuffix(vm.Execute(fmt.Sprintf("stat -c \"%%U\" /etc/%s/", s.baseName)), "\n")
+	owner := strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("stat -c \"%%U\" /etc/%s/", s.baseName)), "\n")
 	assert.Equal(t, "dd-agent", owner, fmt.Sprintf("dd-agent does not own /etc/%s", s.baseName))
-	owner = strings.TrimSuffix(vm.Execute(fmt.Sprintf("stat -c \"%%U\" /opt/%s/", s.baseName)), "\n")
+	owner = strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("stat -c \"%%U\" /opt/%s/", s.baseName)), "\n")
 	assert.Equal(t, "dd-agent", owner, fmt.Sprintf("dd-agent does not own /opt/%s", s.baseName))
 	// Check that the service is active
-	if _, err = vm.ExecuteWithError("command -v systemctl"); err == nil {
-		_, err = vm.ExecuteWithError(fmt.Sprintf("systemctl is-active %s", s.baseName))
+	if _, err = vm.Execute("command -v systemctl"); err == nil {
+		_, err = vm.Execute(fmt.Sprintf("systemctl is-active %s", s.baseName))
 		assert.NoError(t, err, fmt.Sprintf("%s not running after Agent install", s.baseName))
-	} else if _, err = vm.ExecuteWithError("/sbin/init --version 2>&1 | grep -q upstart;"); err == nil {
-		status := strings.TrimSuffix(vm.Execute(fmt.Sprintf("sudo status %s", s.baseName)), "\n")
+	} else if _, err = vm.Execute("/sbin/init --version 2>&1 | grep -q upstart;"); err == nil {
+		status := strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("sudo status %s", s.baseName)), "\n")
 		assert.Contains(t, status, "running", fmt.Sprintf("%s not running after Agent install", s.baseName))
 	} else {
 		require.FailNow(t, "Unknown service manager")
@@ -212,25 +211,25 @@ func (s *linuxInstallerTestSuite) addExtraIntegration() {
 	if flavor != "datadog-agent" {
 		return
 	}
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	t.Log("Install an extra integration, and create a custom file")
-	_, err := vm.ExecuteWithError("sudo -u dd-agent -- datadog-agent integration install -t datadog-bind9==0.1.0")
+	_, err := vm.Execute("sudo -u dd-agent -- datadog-agent integration install -t datadog-bind9==0.1.0")
 	assert.NoError(t, err, "integration install failed")
-	_ = vm.Execute(fmt.Sprintf("sudo -u dd-agent -- touch %s/site-packages/testfile", s.getLatestEmbeddedPythonPath(s.baseName)))
+	_ = vm.MustExecute(fmt.Sprintf("sudo -u dd-agent -- touch %s/site-packages/testfile", s.getLatestEmbeddedPythonPath(s.baseName)))
 }
 
 func (s *linuxInstallerTestSuite) uninstall() {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	t.Helper()
 	t.Logf("Remove %s", flavor)
-	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
+	if _, err := vm.Execute("command -v apt"); err == nil {
 		t.Log("Uninstall with apt")
 		vm.Execute(fmt.Sprintf("sudo apt remove -y %s", flavor))
-	} else if _, err = vm.ExecuteWithError("command -v yum"); err == nil {
+	} else if _, err = vm.Execute("command -v yum"); err == nil {
 		t.Log("Uninstall with yum")
 		vm.Execute(fmt.Sprintf("sudo yum remove -y %s", flavor))
-	} else if _, err = vm.ExecuteWithError("command -v zypper"); err == nil {
+	} else if _, err = vm.Execute("command -v zypper"); err == nil {
 		t.Log("Uninstall with zypper")
 		vm.Execute(fmt.Sprintf("sudo zypper remove -y %s", flavor))
 	} else {
@@ -241,16 +240,16 @@ func (s *linuxInstallerTestSuite) uninstall() {
 func (s *linuxInstallerTestSuite) assertUninstall() {
 	t := s.T()
 	t.Helper()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	t.Logf("Assert %s is removed", flavor)
 	// dd-agent user and config file should still be here
-	_, err := vm.ExecuteWithError("id dd-agent")
+	_, err := vm.Execute("id dd-agent")
 	assert.NoError(t, err, "user datadog-agent not present after remove")
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
 	if flavor == "datadog-agent" {
 		// The custom file should still be here. All other files, including the extra integration, should be removed
 		assertFileExists(t, vm, fmt.Sprintf("%s/site-packages/testfile", s.getLatestEmbeddedPythonPath("datadog-agent")))
-		files := strings.Split(strings.TrimSuffix(vm.Execute("find /opt/datadog-agent -type f"), "\n"), "\n")
+		files := strings.Split(strings.TrimSuffix(vm.MustExecute("find /opt/datadog-agent -type f"), "\n"), "\n")
 		assert.Len(t, files, 1, fmt.Sprintf("/opt/datadog-agent present after remove, found %v", files))
 	} else {
 		// All files in /opt/datadog-agent should be removed
@@ -266,7 +265,7 @@ func (s *linuxInstallerTestSuite) purge() {
 		return
 	}
 
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 
 	t.Log("Purge package")
 	vm.Execute(fmt.Sprintf("sudo apt remove --purge -y %s", flavor))
@@ -274,12 +273,12 @@ func (s *linuxInstallerTestSuite) purge() {
 
 func (s *linuxInstallerTestSuite) shouldSkipPurge() bool {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	t.Helper()
 	if noFlush {
 		return true
 	}
-	if _, err := vm.ExecuteWithError("command -v apt"); err != nil {
+	if _, err := vm.Execute("command -v apt"); err != nil {
 		return true
 	}
 	return false
@@ -293,34 +292,34 @@ func (s *linuxInstallerTestSuite) assertPurge() {
 		return
 	}
 
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 
 	t.Log("Assert purge package")
-	_, err := vm.ExecuteWithError("id datadog-agent")
+	_, err := vm.Execute("id datadog-agent")
 	assert.Error(t, err, "dd-agent present after %s purge")
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s", s.baseName))
 	assertFileNotExists(t, vm, fmt.Sprintf("/opt/%s", s.baseName))
 }
 
-func assertFileExists(t *testing.T, vm *client.VM, filepath string) {
+func assertFileExists(t *testing.T, vm *components.RemoteHost, filepath string) {
 	t.Helper()
 	t.Logf("Check %s exists", filepath)
 	// Check presence of file, should not return error
-	_, err := vm.ExecuteWithError(fmt.Sprintf("stat %s", filepath))
+	_, err := vm.Execute(fmt.Sprintf("stat %s", filepath))
 	assert.NoError(t, err, fmt.Sprintf("file %s does not exist", filepath))
 }
 
-func assertFileNotExists(t *testing.T, vm *client.VM, filepath string) {
+func assertFileNotExists(t *testing.T, vm *components.RemoteHost, filepath string) {
 	t.Helper()
 	t.Logf("Check %s does not exists", filepath)
 	// Check absence of file, should return error
-	_, err := vm.ExecuteWithError(fmt.Sprintf("stat %s", filepath))
+	_, err := vm.Execute(fmt.Sprintf("stat %s", filepath))
 	assert.Error(t, err, fmt.Sprintf("file %s does exist", filepath))
 }
 
-func unmarshalConfigFile(t *testing.T, vm *client.VM, configFilePath string) map[string]any {
+func unmarshalConfigFile(t *testing.T, vm *components.RemoteHost, configFilePath string) map[string]any {
 	t.Helper()
-	configContent := vm.Execute(fmt.Sprintf("sudo cat /%s", configFilePath))
+	configContent := vm.MustExecute(fmt.Sprintf("sudo cat /%s", configFilePath))
 	config := map[string]any{}
 	err := yaml.Unmarshal([]byte(configContent), &config)
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v, raw content:\n%s\n\n", err, configContent))

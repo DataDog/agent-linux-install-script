@@ -7,11 +7,11 @@ package e2e
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
 
-	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
-	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
+	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/e2e"
+	awshost "github.com/DataDog/datadog-agent/test/new-e2e/pkg/environments/aws/host"
+	"github.com/stretchr/testify/assert"
 )
 
 type installTestSuite struct {
@@ -25,8 +25,8 @@ func TestInstallSuite(t *testing.T) {
 		testSuite := &installTestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(getEC2Options(t)...),
-			params.WithStackName(stackName),
+			e2e.WithProvisioner(awshost.ProvisionerNoAgentNoFakeIntake(awshost.WithEC2InstanceOptions(getEC2Options(t)...))),
+			e2e.WithStackName(stackName),
 		)
 	})
 }
@@ -65,7 +65,7 @@ func (s *installTestSuite) assertPinnedInstallScript(pinVersion string) {
 	s.linuxInstallerTestSuite.assertInstallScript()
 
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 
 	t.Log("Assert security agent, system probe and fips config are not created")
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
@@ -73,7 +73,7 @@ func (s *installTestSuite) assertPinnedInstallScript(pinVersion string) {
 	assertFileNotExists(t, vm, fipsConfigFilepath)
 
 	if flavor == "datadog-agent" {
-		_, err := vm.ExecuteWithError(fmt.Sprintf("datadog-agent version | grep %s", pinVersion))
+		_, err := vm.Execute(fmt.Sprintf("datadog-agent version | grep %s", pinVersion))
 		assert.NoError(t, err)
 	}
 
@@ -83,8 +83,7 @@ func (s *installTestSuite) assertInstallScript() {
 	s.linuxInstallerTestSuite.assertInstallScript()
 
 	t := s.T()
-	vm := s.Env().VM
-
+	vm := s.Env().RemoteHost
 	t.Log("Assert security agent, system probe and fips config are not created")
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))

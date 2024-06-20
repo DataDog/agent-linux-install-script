@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
-	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
+	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/e2e"
+	awshost "github.com/DataDog/datadog-agent/test/new-e2e/pkg/environments/aws/host"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,8 +28,8 @@ func TestInstallSecurityAgentSuite(t *testing.T) {
 		testSuite := &installSecurityAgentTestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(getEC2Options(t)...),
-			params.WithStackName(stackName),
+			e2e.WithProvisioner(awshost.ProvisionerNoAgentNoFakeIntake(awshost.WithEC2InstanceOptions(getEC2Options(t)...))),
+			e2e.WithStackName(stackName),
 		)
 	})
 }
@@ -54,7 +54,7 @@ func (s *installSecurityAgentTestSuite) assertInstallScript() {
 	s.linuxInstallerTestSuite.assertInstallScript()
 
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 
 	t.Log("Assert fips config is not created")
 	assertFileNotExists(t, vm, fipsConfigFilepath)
@@ -74,7 +74,7 @@ func (s *installSecurityAgentTestSuite) assertInstallScript() {
 func (s *installSecurityAgentTestSuite) assertUninstall() {
 	s.linuxInstallerTestSuite.assertUninstall()
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	t.Log("Assert system probe config and security-agent are there after uninstall")
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
@@ -86,7 +86,7 @@ func (s *installSecurityAgentTestSuite) assertPurge() {
 	}
 	s.linuxInstallerTestSuite.assertPurge()
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	t.Log("Assert system probe config and security-agent are removed after purge")
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
