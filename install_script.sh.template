@@ -1756,7 +1756,7 @@ function manage_client_libraries_profiling_config(){
   local profiling_enable="$3"
   if [ -n "$profiling_enable" ]; then
     if [ ! -s "$etc_environment" ]; then
-      $sudo_cmd echo "DD_PROFILING_ENABLED=$profiling_enable" > "$etc_environment"
+      echo "DD_PROFILING_ENABLED=$profiling_enable" | $sudo_cmd tee "$etc_environment" > /dev/null
     else
       $sudo_cmd sed -i -n -e '/^DD_PROFILING_ENABLED=/!p' -e "\$aDD_PROFILING_ENABLED=$profiling_enable" "$etc_environment"
     fi
