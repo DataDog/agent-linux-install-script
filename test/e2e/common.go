@@ -57,9 +57,9 @@ var (
 		agentFlavorDatadogIOTAgent:  "datadog.yaml",
 	}
 	osConfigByPlatform = map[string]osConfig{
-		"Debian_12":         {osDescriptor: componentsos.DebianDefault},
+		"Debian_11":         {osDescriptor: componentsos.NewDescriptor(componentsos.Debian, "11")},
 		"Ubuntu_22_04":      {osDescriptor: componentsos.UbuntuDefault},
-		"RedHat_CentOS_9":   {osDescriptor: componentsos.CentOSDefault},
+		"RedHat_CentOS_7":   {osDescriptor: componentsos.NewDescriptor(componentsos.CentOS, "7")},
 		"RedHat_8":          {osDescriptor: componentsos.NewDescriptor(componentsos.RedHat, "8"), ami: "ami-06640050dc3f556bb"},
 		"Amazon_Linux_2023": {osDescriptor: componentsos.AmazonLinux2, ami: "ami-0889a44b331db0194"},
 		"openSUSE_15":       {osDescriptor: componentsos.SuseDefault},
