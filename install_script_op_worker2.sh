@@ -43,7 +43,7 @@ useful and we will do our very best to help you solve your problem.\n"
 }
 
 function report(){
-  if curl -f -sSL --retry 5 \
+  if curl -f -sSL --retry 5 --retry-connrefused --retry-delay 0 --retry-max-time 60 \
     --data-urlencode "os=${OS}" \
     --data-urlencode "version=${worker_major_version}" \
     --data-urlencode "log=$(cat $logfile)" \
@@ -401,7 +401,7 @@ elif [ "$OS" == "Debian" ]; then
     $sudo_cmd chmod a+r $apt_usr_share_keyring
 
     for key in "${APT_GPG_KEYS[@]}"; do
-        $sudo_cmd curl -sSL --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}"
+        $sudo_cmd curl -sSL --retry 5 --retry-connrefused --retry-delay 0 --retry-max-time 10 -o "/tmp/${key}" "https://${keys_url}/${key}"
         $sudo_cmd cat "/tmp/${key}" | $sudo_cmd gpg --import --batch --no-default-keyring --keyring "$apt_usr_share_keyring"
     done
 

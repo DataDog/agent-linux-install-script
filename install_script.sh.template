@@ -64,7 +64,7 @@ useful and we will do our very best to help you solve your problem.\n"
 }
 
 function report(){
-  if curl -f -sSL --retry 5 \
+  if curl -f -sSL --retry 5 --retry-connrefused --retry-delay 0 --retry-max-time 60 \
     --data-urlencode "os=${OS}" \
     --data-urlencode "version=${agent_major_version}" \
     --data-urlencode "log=$(cat $logfile)" \
@@ -191,7 +191,7 @@ function report_telemetry() {
   if ! (cat <<END
        $telemetry_event
 END
-       ) | curl -f -sSL --retry 5 -o /dev/null \
+       ) | curl -f -sSL --retry 5 --retry-connrefused --retry-delay 0 --retry-max-time 10 -o /dev/null \
     "$telemetry_url" \
     --header 'Content-Type: application/json' \
     --header "DD-Api-Key: $apikey" \
@@ -488,7 +488,7 @@ END
 END
 )
 
-    if ! echo "$telemetry_logs" | curl --max-time 10 -f -sSL --retry 5 -o /dev/null \
+    if ! echo "$telemetry_logs" | curl --max-time 10 -f -sSL --retry 5 --retry-connrefused --retry-delay 0 --retry-max-time 10 -o /dev/null \
         "$telemetry_url" \
         --header 'Content-Type: application/json' \
         --header "DD-Api-Key: $apikey" \
@@ -497,7 +497,7 @@ END
         echo "Unable to send logs telemetry\n"
     fi
 
-    if ! echo "$telemetry_trace" | curl --max-time 10 -f -sSL --retry 5 -o /dev/null \
+    if ! echo "$telemetry_trace" | curl --max-time 10 -f -sSL --retry 5 --retry-connrefused --retry-delay 0 --retry-max-time 10 -o /dev/null \
     "$telemetry_url" \
     --header 'Content-Type: application/json' \
     --header "DD-Api-Key: $apikey" \
@@ -1285,7 +1285,7 @@ elif [ "$OS" == "Debian" ]; then
     $sudo_cmd chmod a+r $apt_usr_share_keyring
 
     for key in "${APT_GPG_KEYS[@]}"; do
-        $sudo_cmd curl -sSL --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}"
+        $sudo_cmd curl -sSL --retry 5 --retry-connrefused --retry-delay 0 --retry-max-time 10 -o "/tmp/${key}" "https://${keys_url}/${key}"
         $sudo_cmd cat "/tmp/${key}" | $sudo_cmd gpg --import --batch --no-default-keyring --keyring "$apt_usr_share_keyring"
     done
 
@@ -1433,7 +1433,7 @@ elif [ "$OS" == "SUSE" ]; then
   if [ "$SUSE11" == "yes" ]; then
     # SUSE 11 special case
     for key_path in "${RPM_GPG_KEYS[@]}"; do
-      $sudo_cmd curl -sSL --retry 5 -o "/tmp/${key_path}" "https://${keys_url}/${key_path}"
+      $sudo_cmd curl -sSL --retry 5 --retry-connrefused --retry-delay 0 --retry-max-time 10 -o "/tmp/${key_path}" "https://${keys_url}/${key_path}"
       $sudo_cmd rpm --import "/tmp/${key_path}"
     done
   else
