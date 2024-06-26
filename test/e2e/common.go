@@ -118,14 +118,18 @@ func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...s
 
 // SetupSuite is called at suite initialisation, once before all tests
 func (s *linuxInstallerTestSuite) SetupSuite() {
+	s.BaseSuite.SetupSuite()
 	t := s.T()
+	fmt.Println("SetupSuite")
 	if flavor == "" {
 		t.Log("setting default agent flavor")
 		flavor = defaultAgentFlavor
 	}
 	s.baseName = baseNameByFlavor[flavor]
 	s.configFile = configFileByFlavor[flavor]
+	fmt.Println("SetupSuite2")
 	s.Env().RemoteHost.CopyFolder(scriptPath, "scripts")
+	fmt.Println("SetupSuite3")
 }
 
 func getEC2Options(t *testing.T) []ec2.VMOption {
