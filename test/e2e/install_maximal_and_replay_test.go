@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
-	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
+	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/e2e"
+	awshost "github.com/DataDog/datadog-agent/test/new-e2e/pkg/environments/aws/host"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,8 +45,8 @@ func TestInstallMaximalAndRetrySuite(t *testing.T) {
 		testSuite := &installMaximalAndRetryTestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(getEC2Options(t)...),
-			params.WithStackName(stackName),
+			e2e.WithProvisioner(awshost.ProvisionerNoAgentNoFakeIntake(awshost.WithEC2InstanceOptions(getEC2Options(t)...))),
+			e2e.WithStackName(stackName),
 		)
 	})
 }
@@ -71,7 +71,7 @@ func (s *installMaximalAndRetryTestSuite) TestInstallMaximalAndReplayScript() {
 
 func (s *installMaximalAndRetryTestSuite) assertInstallMaximal(installCommandOutput string) {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	t.Log("assert install output contains configuration changes")
 
 	for _, line := range maximalInstallLogLines {
@@ -89,7 +89,7 @@ func (s *installMaximalAndRetryTestSuite) assertInstallMaximal(installCommandOut
 
 func (s *installMaximalAndRetryTestSuite) assertRetryInstall(installCommandOutput string) {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	t.Log("assert install output contains configuration changes")
 
 	for _, line := range maximalInstallLogLines {
@@ -108,7 +108,7 @@ func (s *installMaximalAndRetryTestSuite) assertRetryInstall(installCommandOutpu
 
 func (s *installMaximalAndRetryTestSuite) assertMaximalConfiguration() {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	t.Log("assert comfiguration contains expected properties")
 	config := unmarshalConfigFile(t, vm, fmt.Sprintf("etc/%s/%s", s.baseName, s.configFile))
 	assert.Equal(t, apiKey, config["api_key"], "not matching api key in config")

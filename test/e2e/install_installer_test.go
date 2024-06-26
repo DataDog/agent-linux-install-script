@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e"
-	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/utils/e2e/params"
+	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/e2e"
+	awshost "github.com/DataDog/datadog-agent/test/new-e2e/pkg/environments/aws/host"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -28,20 +28,20 @@ func TestInstallUpdaterSuite(t *testing.T) {
 		testSuite := &installUpdaterTestSuite{}
 		e2e.Run(t,
 			testSuite,
-			e2e.EC2VMStackDef(getEC2Options(t)...),
-			params.WithStackName(stackName),
+			e2e.WithProvisioner(awshost.ProvisionerNoAgentNoFakeIntake(awshost.WithEC2InstanceOptions(getEC2Options(t)...))),
+			e2e.WithStackName(stackName),
 		)
 	})
 }
 
 func (s *installUpdaterTestSuite) TestInstallUpdater() {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	cmd := fmt.Sprintf("DD_INSTALLER=true DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
-	if _, err := vm.ExecuteWithError("command -v zypper"); err == nil {
+	if _, err := vm.Execute("command -v zypper"); err == nil {
 		cmd = fmt.Sprintf("%s %s", "REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta", cmd)
 	}
-	output := vm.Execute(cmd)
+	output := vm.MustExecute(cmd)
 	t.Log(output)
 	defer s.purge()
 
@@ -60,15 +60,15 @@ const isInstalledScript = `#!/bin/bash
 
 func (s *installUpdaterTestSuite) TestPackagesInstalledByInstallerAreNotInstalledByPackageManager() {
 	t := s.T()
-	vm := s.Env().VM
-	if _, err := vm.ExecuteWithError("command -v zypper"); err == nil {
+	vm := s.Env().RemoteHost
+	if _, err := vm.Execute("command -v zypper"); err == nil {
 		t.Skip("zypper does not support apm packages")
 	}
 	vm.Execute("echo 'export PATH=/usr/local/bin:$PATH' | sudo tee -a /etc/profile")
 	vm.Execute("echo '" + isInstalledScript + "' | sudo tee /usr/local/bin/datadog-installer && sudo chmod +x /usr/local/bin/datadog-installer")
-	_, _ = vm.ExecuteWithError("echo '" + isInstalledScript + "' | sudo tee /sbin/datadog-installer && sudo chmod +x /sbin/datadog-installer")
+	_, _ = vm.Execute("echo '" + isInstalledScript + "' | sudo tee /sbin/datadog-installer && sudo chmod +x /sbin/datadog-installer")
 	cmd := fmt.Sprintf("DD_INSTALLER=true DD_APM_INSTRUMENTATION_ENABLED=host DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
-	output := vm.Execute(cmd)
+	output := vm.MustExecute(cmd)
 	t.Log(output)
 	defer s.purge()
 
@@ -81,18 +81,18 @@ func (s *installUpdaterTestSuite) TestPackagesInstalledByInstallerAreNotInstalle
 
 func (s *installUpdaterTestSuite) purge() {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	t.Helper()
-	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
+	if _, err := vm.Execute("command -v apt"); err == nil {
 		t.Log("Uninstall with apt")
 		// remove all datadog packages
 		vm.Execute("sudo apt remove -y --purge 'datadog-*'")
-	} else if _, err = vm.ExecuteWithError("command -v yum"); err == nil {
+	} else if _, err = vm.Execute("command -v yum"); err == nil {
 		t.Log("Uninstall with yum")
-		vm.Execute(fmt.Sprintf("sudo yum remove -y 'datadog-*'"))
-	} else if _, err = vm.ExecuteWithError("command -v zypper"); err == nil {
+		vm.Execute("sudo yum remove -y 'datadog-*'")
+	} else if _, err = vm.Execute("command -v zypper"); err == nil {
 		t.Log("Uninstall with zypper")
-		vm.Execute(fmt.Sprintf("sudo zypper remove -y 'datadog-*'"))
+		vm.Execute("sudo zypper remove -y 'datadog-*'")
 	} else {
 		require.FailNow(t, "Unknown package manager")
 	}
@@ -100,29 +100,29 @@ func (s *installUpdaterTestSuite) purge() {
 
 func (s *installUpdaterTestSuite) assertInstallerInstalled() {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 
 	t.Log("Assert installer is installed")
 	assertFileExists(t, vm, "/opt/datadog-packages/datadog-installer/stable/bin/installer/installer")
 	assertFileExists(t, vm, "/opt/datadog-installer/bin/installer/installer")
 
 	t.Log("Assert installer is not in enabled in systemd")
-	_, err := vm.ExecuteWithError(fmt.Sprintf("systemctl is-active datadog-installer"))
+	_, err := vm.Execute("systemctl is-active datadog-installer")
 	assert.Error(t, err)
 	assertFileNotExists(t, vm, "/lib/systemd/system/datadog-installer.service")
 }
 
 func (s *installUpdaterTestSuite) uninstallInstaller() {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 	t.Helper()
-	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
+	if _, err := vm.Execute("command -v apt"); err == nil {
 		t.Log("Uninstall with apt")
 		vm.Execute("sudo apt-get remove -y datadog-installer")
-	} else if _, err = vm.ExecuteWithError("command -v yum"); err == nil {
+	} else if _, err = vm.Execute("command -v yum"); err == nil {
 		t.Log("Uninstall with yum")
 		vm.Execute("sudo yum remove -y datadog-installer")
-	} else if _, err = vm.ExecuteWithError("command -v zypper"); err == nil {
+	} else if _, err = vm.Execute("command -v zypper"); err == nil {
 		t.Log("Uninstall with zypper")
 		vm.Execute("sudo zypper remove -y datadog-installer")
 	} else {
@@ -132,7 +132,7 @@ func (s *installUpdaterTestSuite) uninstallInstaller() {
 
 func (s *installUpdaterTestSuite) assertUninstallInstaller() {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 
 	t.Log("Assert installer is uninstalled")
 	assertFileNotExists(t, vm, "/opt/datadog-packages/datadog-installer/stable/bin/installer/installer")
@@ -141,13 +141,13 @@ func (s *installUpdaterTestSuite) assertUninstallInstaller() {
 
 func (s *installUpdaterTestSuite) assertPackageInstalledByPackageManager(pkg string) {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 
-	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
+	if _, err := vm.Execute("command -v apt"); err == nil {
 		vm.Execute("dpkg -l " + pkg + " | grep '^ii'")
-	} else if _, err = vm.ExecuteWithError("command -v yum"); err == nil {
+	} else if _, err = vm.Execute("command -v yum"); err == nil {
 		vm.Execute("yum list installed " + pkg)
-	} else if _, err = vm.ExecuteWithError("command -v zypper"); err == nil {
+	} else if _, err = vm.Execute("command -v zypper"); err == nil {
 		vm.Execute("zypper se -i " + pkg)
 	} else {
 		require.FailNow(t, "Unknown package manager")
@@ -156,13 +156,13 @@ func (s *installUpdaterTestSuite) assertPackageInstalledByPackageManager(pkg str
 
 func (s *installUpdaterTestSuite) assertPackageNotInstalledByPackageManager(pkg string) {
 	t := s.T()
-	vm := s.Env().VM
+	vm := s.Env().RemoteHost
 
-	if _, err := vm.ExecuteWithError("command -v apt"); err == nil {
+	if _, err := vm.Execute("command -v apt"); err == nil {
 		vm.Execute("! dpkg -l " + pkg + " | grep -q '^ii'")
-	} else if _, err = vm.ExecuteWithError("command -v yum"); err == nil {
+	} else if _, err = vm.Execute("command -v yum"); err == nil {
 		vm.Execute("! yum list installed " + pkg + " | grep -q " + pkg)
-	} else if _, err = vm.ExecuteWithError("command -v zypper"); err == nil {
+	} else if _, err = vm.Execute("command -v zypper"); err == nil {
 		vm.Execute("! zypper se -i " + pkg + " | grep -q " + pkg)
 	} else {
 		require.FailNow(t, "Unknown package manager")
