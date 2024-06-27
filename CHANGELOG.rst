@@ -2,8 +2,12 @@
 Release Notes
 =============
 
-Unreleased
+1.32.1
 ================
+
+- Bump datadog-agent version (#229)
+- feat(GPG): import new GPG future key (#210)
+- fix permission error with empty or missing /etc/environment
 
 1.32.0
 ================
