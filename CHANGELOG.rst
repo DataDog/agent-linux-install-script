@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.32.2
 ================
+
+- chore(codeowners): updates barx to agent-delivery (#233)
+- fix APM tracers pinning when installing through datadog-installer
 
 1.32.1
 ================
