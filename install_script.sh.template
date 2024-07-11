@@ -1376,8 +1376,10 @@ If the cause is unclear, please contact Datadog support.
 
     for pkg in "${packages_to_lock[@]}"
     do
-        # exclude pinned tracer versions from updates
-        $sudo_cmd apt-mark hold "${pkg}" >/dev/null 2>&1
+        if $sudo_cmd dpkg -l "${pkg}" >/dev/null 2>&1 ; then
+          # exclude pinned tracer versions from updates if they're installed through debs
+          $sudo_cmd apt-mark hold "${pkg}" >/dev/null 2>&1
+        fi
     done
 
     ERR_SUMMARY=$(grep "No space left on device" -C1 /tmp/ddog_install_error_msg || true)
