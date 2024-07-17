@@ -275,7 +275,7 @@ e2e:
     - export AWS_PROFILE=agent-qa-ci
     - aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.ssh_public_key --with-decryption --query "Parameter.Value" --out text > $E2E_PUBLIC_KEY_PATH
     - aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.ssh_private_key --with-decryption --query "Parameter.Value" --out text > $E2E_PRIVATE_KEY_PATH
-    - export DD_API_KEY=$(aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.datadog_api_key --with-decryption --query "Parameter.Value" --out text)
+    - export DD_API_KEY=$(aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.datadog_api_key_2 --with-decryption --query "Parameter.Value" --out text)
     # Use S3 backend
     - pulumi login "s3://dd-pulumi-state?region=us-east-1&awssdk=v2&profile=$AWS_PROFILE"
     # Put install scripts in a folder for copy
@@ -390,7 +390,7 @@ e2e_test_upload:
     - e2e
   script:
     - set +x
-    - export DATADOG_API_KEY=$(aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.datadog_api_key --with-decryption --query "Parameter.Value" --out text)
+    - export DATADOG_API_KEY=$(aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.datadog_api_key_2 --with-decryption --query "Parameter.Value" --out text)
     - set -x
     - for f in test/e2e/*.xml; do datadog-ci junit upload --service agent-linux-install-script --tags test.codeowners:@DataDog/agent-platform --tags ci.job.name:e2e --tags ci.stage.name:e2e "$f"; done
 
