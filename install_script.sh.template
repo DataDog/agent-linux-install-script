@@ -560,7 +560,7 @@ function filter_packages_installed_by_installer() {
         if ! is_installed_by_installer "$sudo_cmd" "$package"; then
             not_installed_packages+=("$package")
         else
-            echo -e "\033[34m\n* Skipping installation of $package as it is already installed by the installer\n\033[0m"
+            echo -e "\033[34m\n* $package has been installed successfully by the installer\n\033[0m"
         fi
     done
 
