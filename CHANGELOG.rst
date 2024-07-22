@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.32.3
 ================
+
+- upgrade(installer): Add telemetry on is-installed operation (#238)
+- clarify installer related logs (#240)
 
 1.32.2
 ================
