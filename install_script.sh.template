@@ -1863,7 +1863,7 @@ install_method:
   installer_version: install_script-$install_script_version
 "
 
-if [ ! "$no_agent" ]; then
+if [ ! "$no_agent" ] && ! is_installed_by_installer "$sudo_cmd" "datadog-agent"; then
   $sudo_cmd sh -c "echo '$install_signature' > $etcdir/install.json"
   $sudo_cmd chmod 644 "$etcdir/install.json"
   $sudo_cmd sh -c "exec cat > $etcdir/install_info " <<EOF
