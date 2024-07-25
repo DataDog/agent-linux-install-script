@@ -51,7 +51,7 @@ func (s *installSecurityAgentTestSuite) TestInstallSecurityAgent() {
 }
 
 func (s *installSecurityAgentTestSuite) assertInstallScript() {
-	s.linuxInstallerTestSuite.assertInstallScript()
+	s.linuxInstallerTestSuite.assertInstallScript(true)
 
 	t := s.T()
 	vm := s.Env().RemoteHost

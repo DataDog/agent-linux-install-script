@@ -181,7 +181,7 @@ func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) s
 	return stringOutput
 }
 
-func (s *linuxInstallerTestSuite) assertInstallScript() {
+func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 	t := s.T()
 	vm := s.Env().RemoteHost
 	t.Helper()
@@ -200,10 +200,18 @@ func (s *linuxInstallerTestSuite) assertInstallScript() {
 	// Check that the service is active
 	if _, err = vm.Execute("command -v systemctl"); err == nil {
 		_, err = vm.Execute(fmt.Sprintf("systemctl is-active %s", s.baseName))
-		assert.NoError(t, err, fmt.Sprintf("%s not running after Agent install", s.baseName))
+		if active {
+			assert.NoError(t, err, fmt.Sprintf("%s not running after Agent install", s.baseName))
+		} else {
+			assert.Error(t, err, fmt.Sprintf("%s running after Agent install", s.baseName))
+		}
 	} else if _, err = vm.Execute("/sbin/init --version 2>&1 | grep -q upstart;"); err == nil {
 		status := strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("sudo status %s", s.baseName)), "\n")
-		assert.Contains(t, status, "running", fmt.Sprintf("%s not running after Agent install", s.baseName))
+		if active {
+			assert.Contains(t, status, "running", fmt.Sprintf("%s not running after Agent install", s.baseName))
+		} else {
+			assert.NotContains(t, status, "running", fmt.Sprintf("%s running after Agent install", s.baseName))
+		}
 	} else {
 		require.FailNow(t, "Unknown service manager")
 	}

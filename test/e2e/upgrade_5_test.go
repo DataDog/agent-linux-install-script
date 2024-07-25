@@ -39,7 +39,7 @@ func (s *upgrade5TestSuite) TestUpgrade5() {
 	s.InstallAgent(5)
 	s.InstallAgent(7)
 
-	s.assertInstallScript()
+	s.assertInstallScript(true)
 
 	s.addExtraIntegration()
 

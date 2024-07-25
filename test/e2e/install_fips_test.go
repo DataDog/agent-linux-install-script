@@ -51,7 +51,7 @@ func (s *installFipsTestSuite) assertInstallFips(installCommandOutput string) {
 	t := s.T()
 	vm := s.Env().RemoteHost
 
-	s.assertInstallScript()
+	s.assertInstallScript(true)
 
 	t.Log("assert install output contains expected lines")
 	matched, err := regexp.MatchString(`Installing\ package\(s\):\ .*\ datadog-fips-proxy.*`, installCommandOutput)

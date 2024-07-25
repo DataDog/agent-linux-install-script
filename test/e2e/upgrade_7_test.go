@@ -35,7 +35,7 @@ func (s *upgrade7TestSuite) TestUpgrade7() {
 	s.InstallAgent(7, "DD_AGENT_MINOR_VERSION=42.0", "Install Old Agent 7 version : 7.42.0")
 	s.InstallAgent(7)
 
-	s.assertInstallScript()
+	s.assertInstallScript(true)
 
 	s.addExtraIntegration()
 

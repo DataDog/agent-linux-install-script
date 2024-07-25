@@ -51,7 +51,7 @@ func (s *installSystemProbeTestSuite) TestInstallSystemProbe() {
 }
 
 func (s *installSystemProbeTestSuite) assertInstallScript() {
-	s.linuxInstallerTestSuite.assertInstallScript()
+	s.linuxInstallerTestSuite.assertInstallScript(true)
 	t := s.T()
 	vm := s.Env().RemoteHost
 	t.Log("Assert system probe config is created and security-agent is not created")
