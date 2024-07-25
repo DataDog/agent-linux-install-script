@@ -446,7 +446,14 @@ If the cause is unclear, please contact Datadog support.
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "${packages[@]}"
+    # apt-get will automatically start the service after installation
+    # As a workaround, we can use policy.d to prevent this behavior
+    POLICYRCD=/tmp/policy-do-not-start-service-rc.d
+    echo exit 101 > "${POLICYRCD}"
+    $sudo_cmd chmod +x "${POLICYRCD}"
+
+    $sudo_cmd bash -c "POLICYRCD=${POLICYRCD} apt-get install -o Acquire::Retries='5' -y --force-yes '${worker_flavor[*]}'"
+    $sudo_cmd apt-get install -o Acquire::Retries='5' -y --force-yes datadog-signing-keys
 
     ERROR_MESSAGE=""
 else
