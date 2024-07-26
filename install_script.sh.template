@@ -1931,7 +1931,9 @@ for current_service in "${services[@]}"; do
     You will have to do it manually using the following command:
 
     $start_instructions\033[0m\n\n"
-
+    # It is possible that services were started during the installation phase, for example on CentOS7 (systemd < v237)
+    # In that case, we should stop them
+    $stop_instructions || true
     continue
   fi
 
