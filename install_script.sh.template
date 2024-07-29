@@ -914,6 +914,7 @@ if [ -z "$system_service" ]; then
 fi
 
 declare -a services
+declare -a running_services
 
 if [ -n "$no_agent" ]; then
   services=()
@@ -927,6 +928,23 @@ fi
 
 if [ -n "$remote_updates" ]; then
   services+=("datadog-installer")
+fi
+
+# Track running services to avoid stopping them if they were already running
+if [[ $($sudo_cmd ps --no-headers -o comm 1 2>&1) == "systemd" ]] && command -v systemctl 2>&1; then
+  # Check with services are already running
+  for service in "${services[@]}"; do
+    if $sudo_cmd systemctl is-active --quiet "$service"; then
+      running_services+=("$service")
+    fi
+  done
+elif /sbin/init --version 2>&1 | grep -q upstart; then
+  # Check which services are already running
+  for service in "${services[@]}"; do
+    if $sudo_cmd status "$service" 2>&1 | grep -q "start/running"; then
+      running_services+=("$service")
+    fi
+  done
 fi
 
 if [ -z "$etcdir" ]; then
@@ -1927,13 +1945,26 @@ for current_service in "${services[@]}"; do
   fi
 
   if [ -n "$no_start" ]; then
+    # It is possible that services were started during the installation phase, for example on CentOS7 (systemd < v237)
+    # In that case, we should stop them
+    running=0
+    for s in "${running_services[@]}"; do
+      if [[ "$s" == "$current_service" ]]; then
+        running=1
+        break
+      fi
+    done
+
+    if [[ $running -eq 0 ]]; then
+      printf "\033[34m\n  Stopping service ${current_service} that was launched during the package installation.\033[0m\n"
+      $stop_instructions || true
+    fi
+  
     printf "\033[34m\n    The newly installed version of the ${nice_current_flavor} will not be started.
     You will have to do it manually using the following command:
 
     $start_instructions\033[0m\n\n"
-    # It is possible that services were started during the installation phase, for example on CentOS7 (systemd < v237)
-    # In that case, we should stop them
-    $stop_instructions || true
+
     continue
   fi
 
