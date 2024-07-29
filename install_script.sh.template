@@ -1958,6 +1958,14 @@ for current_service in "${services[@]}"; do
     if [[ $running -eq 0 ]]; then
       printf "\033[34m\n  Stopping service ${current_service} that was launched during the package installation.\033[0m\n"
       $stop_instructions || true
+      if [[ $current_service == "datadog-agent" ]]; then
+        # Stop all the related services 
+        # https://github.com/DataDog/datadog-agent/blob/def18e3815c6cc67d8669408032961804821687a/omnibus/package-scripts/agent-rpm/preinst#L16-L20
+        "${stop_instructions}-process" || true
+        "${stop_instructions}-sysprobe" || true
+        "${stop_instructions}-trace" || true
+        "${stop_instructions}-security" || true
+      fi
     fi
   
     printf "\033[34m\n    The newly installed version of the ${nice_current_flavor} will not be started.
