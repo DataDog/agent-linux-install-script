@@ -45,13 +45,13 @@ func (s *installUpdaterTestSuite) TestInstallUpdater() {
 	t.Log(output)
 	defer s.purge()
 
-	s.assertInstallScript()
+	s.assertInstallScript(true)
 	s.assertInstallerInstalled()
 
 	s.uninstallInstaller()
 	s.assertUninstallInstaller()
 	// agent should not be uninstalled
-	s.assertInstallScript()
+	s.assertInstallScript(true)
 }
 
 // mock installer, it will return 0 for datadog-apm-inject and datadog-apm-library-python
@@ -72,7 +72,7 @@ func (s *installUpdaterTestSuite) TestPackagesInstalledByInstallerAreNotInstalle
 	t.Log(output)
 	defer s.purge()
 
-	s.assertInstallScript()
+	s.assertInstallScript(true)
 	s.assertPackageInstalledByPackageManager("datadog-agent")
 	s.assertPackageInstalledByPackageManager("datadog-apm-library-ruby")
 	s.assertPackageNotInstalledByPackageManager("datadog-apm-inject")

@@ -637,6 +637,9 @@ fi
 no_start=
 if [ -n "$DD_INSTALL_ONLY" ]; then
     no_start=true
+    # When installing rpm packages, scripts might try to start the service
+    # which we want to avoid
+    SYSTEMD_OFFLINE=1
 fi
 
 no_agent=
@@ -911,6 +914,7 @@ if [ -z "$system_service" ]; then
 fi
 
 declare -a services
+declare -a running_services
 
 if [ -n "$no_agent" ]; then
   services=()
@@ -924,6 +928,23 @@ fi
 
 if [ -n "$remote_updates" ]; then
   services+=("datadog-installer")
+fi
+
+# Track running services to avoid stopping them if they were already running
+if [[ $($sudo_cmd ps --no-headers -o comm 1 2>&1) == "systemd" ]] && command -v systemctl 2>&1; then
+  # Check with services are already running
+  for service in "${services[@]}"; do
+    if $sudo_cmd systemctl is-active --quiet "$service"; then
+      running_services+=("$service")
+    fi
+  done
+elif /sbin/init --version 2>&1 | grep -q upstart; then
+  # Check which services are already running
+  for service in "${services[@]}"; do
+    if $sudo_cmd status "$service" 2>&1 | grep -q "start/running"; then
+      running_services+=("$service")
+    fi
+  done
 fi
 
 if [ -z "$etcdir" ]; then
@@ -1229,7 +1250,7 @@ if [ "$OS" == "RedHat" ]; then
       echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
-      $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd yum -y install $dnf_flag "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
+      $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >(tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${packages[*]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
 
       ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
     else
@@ -1375,7 +1396,13 @@ If the cause is unclear, please contact Datadog support.
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
-    $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
+    # apt-get will automatically start the service after installation
+    # As a workaround, we can use policy.d to prevent this behavior
+    POLICYRCD=/tmp/policy-do-not-start-service-rc.d
+    echo exit 101 > "${POLICYRCD}"
+    $sudo_cmd chmod +x "${POLICYRCD}"
+    
+    $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >(tee /tmp/ddog_install_error_msg >&2)"
 
     for pkg in "${packages_to_lock[@]}"
     do
@@ -1537,9 +1564,9 @@ elif [ "$OS" == "SUSE" ]; then
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
     # Not yet retry mechanism in zypper, see https://github.com/openSUSE/zypper/issues/420
     if [ -z "$sudo_cmd" ]; then
-      ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive --no-refresh install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
+      ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} zypper --non-interactive --no-refresh install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
     else
-      $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" zypper --non-interactive --no-refresh install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
+      $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE="${SYSTEMD_OFFLINE:-0}" zypper --non-interactive --no-refresh install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
     fi
 
     ERR_SUMMARY=$(grep "Write error" -C1 /tmp/ddog_install_error_msg || true)
@@ -1918,6 +1945,29 @@ for current_service in "${services[@]}"; do
   fi
 
   if [ -n "$no_start" ]; then
+    # It is possible that services were started during the installation phase, for example on CentOS7 (systemd < v237)
+    # In that case, we should stop them
+    running=0
+    for s in "${running_services[@]}"; do
+      if [[ "$s" == "$current_service" ]]; then
+        running=1
+        break
+      fi
+    done
+
+    if [[ $running -eq 0 ]]; then
+      printf "\033[34m\n  Stopping service ${current_service} that was launched during the package installation.\033[0m\n"
+      $stop_instructions || true
+      if [[ $current_service == "datadog-agent" ]]; then
+        # Stop all the related services 
+        # https://github.com/DataDog/datadog-agent/blob/def18e3815c6cc67d8669408032961804821687a/omnibus/package-scripts/agent-rpm/preinst#L16-L20
+        "${stop_instructions}-process" || true
+        "${stop_instructions}-sysprobe" || true
+        "${stop_instructions}-trace" || true
+        "${stop_instructions}-security" || true
+      fi
+    fi
+  
     printf "\033[34m\n    The newly installed version of the ${nice_current_flavor} will not be started.
     You will have to do it manually using the following command:
 

@@ -32,37 +32,35 @@ func TestInstallSuite(t *testing.T) {
 }
 
 func (s *installTestSuite) TestInstall() {
-	// Installation
 	s.InstallAgent(7)
-
-	s.assertInstallScript()
-
+	s.assertInstallScript(true)
 	s.addExtraIntegration()
-
 	s.uninstall()
-
 	s.assertUninstall()
-
 	s.purge()
+	s.assertPurge()
+}
 
+func (s *installTestSuite) TestInstallOnly() {
+	s.InstallAgent(7, "DD_INSTALL_ONLY=true", "Install Only")
+	s.assertInstallScript(false)
+	s.addExtraIntegration()
+	s.uninstall()
+	s.assertUninstall()
+	s.purge()
 	s.assertPurge()
 }
 
 func (s *installTestSuite) TestInstallMinorVersionPin() {
-	// Installation
 	s.InstallAgent(7, "DD_AGENT_MINOR_VERSION=42.0", "Install Agent 7 pinned to 7.42.0")
-
 	s.assertPinnedInstallScript("7.42.0")
-
 	s.uninstall()
-
 	s.purge()
-
 	s.assertPurge()
 }
 
 func (s *installTestSuite) assertPinnedInstallScript(pinVersion string) {
-	s.linuxInstallerTestSuite.assertInstallScript()
+	s.linuxInstallerTestSuite.assertInstallScript(true)
 
 	t := s.T()
 	vm := s.Env().RemoteHost
@@ -79,8 +77,8 @@ func (s *installTestSuite) assertPinnedInstallScript(pinVersion string) {
 
 }
 
-func (s *installTestSuite) assertInstallScript() {
-	s.linuxInstallerTestSuite.assertInstallScript()
+func (s *installTestSuite) assertInstallScript(active bool) {
+	s.linuxInstallerTestSuite.assertInstallScript(active)
 
 	t := s.T()
 	vm := s.Env().RemoteHost

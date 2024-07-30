@@ -78,7 +78,7 @@ func (s *installMaximalAndRetryTestSuite) assertInstallMaximal(installCommandOut
 		assert.Contains(t, installCommandOutput, line)
 	}
 
-	s.assertInstallScript()
+	s.assertInstallScript(true)
 
 	assertFileNotExists(t, vm, fipsConfigFilepath)
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
