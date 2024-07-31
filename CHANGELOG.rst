@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.33.0
 ================
+
+- (fleet) enable remote updates on existing installs (#247)
+- Ensure the Agent is not launched when DD_INSTALL_ONLY is set (#244)
 
 1.32.3
 ================
