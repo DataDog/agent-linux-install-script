@@ -1062,7 +1062,7 @@ if [ "$DISTRIBUTION" == "Darwin" ]; then
     ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE
 
-Please use the 1-step script available at https://app.datadoghq.com/account/settings#agent/mac.\033[0m\n"
+Please use the 1-step script available at https://app.datadoghq.com/account/settings/agent/latest?platform=macos.\033[0m\n"
     report_telemetry
     exit 1;
 
@@ -1590,7 +1590,7 @@ else
     ERROR_MESSAGE="Your OS or distribution are not supported by this install script.
 Please follow the instructions on the Agent setup page:
 
-https://app.datadoghq.com/account/settings#agent"
+https://app.datadoghq.com/account/settings/agent/latest?platform=overview"
     ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE\033[0m\n"
     report_telemetry
