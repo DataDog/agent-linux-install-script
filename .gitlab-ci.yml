@@ -120,8 +120,11 @@ test_centos6:
   parallel:
     matrix:
       - IMAGE: centos:centos6
+        FLAVOR: datadog-agent
+        MAJOR_VERSION: 6
+      - IMAGE: centos:centos6
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
+        MAJOR_VERSION: 7
 
 test:
   extends: .test
@@ -132,34 +135,61 @@ test:
     matrix:
       - IMAGE: centos:centos7
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
+        MAJOR_VERSION: 7
       - IMAGE: rockylinux:9.0
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
+        MAJOR_VERSION: 7
       - IMAGE: amazonlinux:2
-        MAJOR_VERSION: [6, 7]
+        MAJOR_VERSION: 7
       - IMAGE: amazonlinux:2022
-        MAJOR_VERSION: [6, 7]
+        MAJOR_VERSION: 7
       - IMAGE: ubuntu:14.04
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
+        MAJOR_VERSION: 7
       - IMAGE: debian:10.9
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
+        MAJOR_VERSION: 7
       - IMAGE: ubuntu:22.04
-        MAJOR_VERSION: [6, 7]
+        MAJOR_VERSION: 7
       - IMAGE: opensuse/archive:42.3
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
+        MAJOR_VERSION: 7
       - IMAGE: opensuse/leap:15.4
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
+        MAJOR_VERSION: 7
       - IMAGE: debian:12.1
-        MAJOR_VERSION: [6, 7]
+        MAJOR_VERSION: 7
   artifacts:
     name: "artifacts"
     paths:
       - artifacts/
+
+test_agent6:
+  extends: .test
+  parallel:
+    # NOTE: Agent 6 only exists for the datadog-agent "flavor".
+    # Since we've dropped Agent 6 from the regular release cadence, it makes sense to separate these
+    matrix:
+      - IMAGE: centos:centos7
+        MAJOR_VERSION: 6
+      - IMAGE: rockylinux:9.0
+        MAJOR_VERSION: 6
+      - IMAGE: amazonlinux:2
+        MAJOR_VERSION: 6
+      - IMAGE: amazonlinux:2022
+        MAJOR_VERSION: 6
+      - IMAGE: ubuntu:14.04
+        MAJOR_VERSION: 6
+      - IMAGE: debian:10.9
+        MAJOR_VERSION: 6
+      - IMAGE: ubuntu:22.04
+        MAJOR_VERSION: 6
+      - IMAGE: opensuse/archive:42.3
+        MAJOR_VERSION: 6
+      - IMAGE: opensuse/leap:15.4
+        MAJOR_VERSION: 6
+      - IMAGE: debian:12.1
+        MAJOR_VERSION: 6
 
 .test-yaml:
   image: registry.ddbuild.io/images/mirror/python:3.9.6-alpine3.14
