@@ -70,6 +70,7 @@ unit_tests:
   dependencies: ["generate-scripts"]
   variables:
     SCRIPT: "install_script_agent${MAJOR_VERSION}.sh"
+    DD_AGENT_FLAVOR: $FLAVOR
   script:
     - ./test/localtest.sh
   # retry the job in case of failure, we might have network issues downloading the image
@@ -119,11 +120,16 @@ test_centos6:
   parallel:
     matrix:
       - IMAGE: centos:centos6
+        FLAVOR: datadog-agent
+        MAJOR_VERSION: 6
+      - IMAGE: centos:centos6
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
+        MAJOR_VERSION: 7
 
 test:
   extends: .test
+  variables:
+    MAJOR_VERSION: 7
   parallel:
     # NOTE: to keep the matrix reasonably sized, we don't test everything everywhere
     # for example, it's ok to test getting specific flavor/minor version only on
@@ -131,34 +137,43 @@ test:
     matrix:
       - IMAGE: centos:centos7
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
       - IMAGE: rockylinux:9.0
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
       - IMAGE: amazonlinux:2
-        MAJOR_VERSION: [6, 7]
       - IMAGE: amazonlinux:2022
-        MAJOR_VERSION: [6, 7]
       - IMAGE: ubuntu:14.04
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
       - IMAGE: debian:10.9
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
       - IMAGE: ubuntu:22.04
-        MAJOR_VERSION: [6, 7]
       - IMAGE: opensuse/archive:42.3
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
       - IMAGE: opensuse/leap:15.4
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
-        MAJOR_VERSION: [6, 7]
       - IMAGE: debian:12.1
-        MAJOR_VERSION: [6, 7]
   artifacts:
     name: "artifacts"
     paths:
       - artifacts/
+
+test_agent6:
+  extends: .test
+  variables:
+    MAJOR_VERSION: 6
+  parallel:
+    # NOTE: Agent 6 only exists for the datadog-agent "flavor".
+    # Since we've dropped Agent 6 from the regular release cadence, it makes sense to separate these
+    matrix:
+      - IMAGE: centos:centos7
+      - IMAGE: rockylinux:9.0
+      - IMAGE: amazonlinux:2
+      - IMAGE: amazonlinux:2022
+      - IMAGE: ubuntu:14.04
+      - IMAGE: debian:10.9
+      - IMAGE: ubuntu:22.04
+      - IMAGE: opensuse/archive:42.3
+      - IMAGE: opensuse/leap:15.4
+      - IMAGE: debian:12.1
 
 .test-yaml:
   image: registry.ddbuild.io/images/mirror/python:3.9.6-alpine3.14
@@ -171,17 +186,17 @@ test:
 test-yaml-redhat:
   extends: .test-yaml
   needs:
-    - "test: [centos:centos7, datadog-agent, 7]"
+    - "test: [centos:centos7, datadog-agent]"
 
 test-yaml-debian:
   extends: .test-yaml
   needs:
-    - "test: [ubuntu:14.04, datadog-agent, 7]"
+    - "test: [ubuntu:14.04, datadog-agent]"
 
 test-yaml-suse:
   extends: .test-yaml
   needs:
-    - "test: [opensuse/archive:42.3, datadog-agent, 7]"
+    - "test: [opensuse/archive:42.3, datadog-agent]"
 
 test-apm-injection:
   image: registry.ddbuild.io/images/mirror/${IMAGE}
