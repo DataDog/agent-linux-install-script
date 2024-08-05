@@ -70,6 +70,7 @@ unit_tests:
   dependencies: ["generate-scripts"]
   variables:
     SCRIPT: "install_script_agent${MAJOR_VERSION}.sh"
+    DD_AGENT_FLAVOR: $FLAVOR
   script:
     - ./test/localtest.sh
   # retry the job in case of failure, we might have network issues downloading the image
