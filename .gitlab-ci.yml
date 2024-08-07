@@ -1,5 +1,6 @@
 stages:
   - generate
+  - deps_fetch
   - test
   - e2e
   - e2e_test_upload
@@ -51,6 +52,31 @@ generate-scripts:
       - install_script_op_worker1.sh
       - install_script_op_worker2.sh
       - install_script_vector0.sh
+
+# Common fetching step to avoid having every e2e test job re-fetch everything over the net
+go_e2e_deps:
+  stage: deps_fetch
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64$DATADOG_AGENT_BUILDIMAGES_SUFFIX:$DATADOG_AGENT_BUILDIMAGES
+  tags: ["arch:amd64"]
+  variables:
+    KUBERNETES_CPU_REQUEST: 16
+  script:
+    - if [ -f modcache_e2e.tar.xz  ]; then exit 0; fi
+    - source /root/.bashrc
+    - cd test/e2e && go mod download
+    - cd $GOPATH/pkg/mod/ && tar c -I "pxz -T${KUBERNETES_CPU_REQUEST}" -f $CI_PROJECT_DIR/modcache_e2e.tar.xz .
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - $CI_PROJECT_DIR/modcache_e2e.tar.xz
+  cache:
+    - key:
+        files:
+          - ./test/e2e/go.mod
+        prefix: "go_e2e_deps"
+      paths:
+        - modcache_e2e.tar.xz
+  retry: 1
 
 unit_tests:
   image: registry.ddbuild.io/images/mirror/ubuntu:22.04
@@ -283,6 +309,7 @@ e2e:
   tags: ["arch:amd64"]
   dependencies:
     - generate-scripts
+    - go_e2e_deps
   before_script:
     # Setup AWS Credentials
     - mkdir -p ~/.aws
@@ -295,6 +322,8 @@ e2e:
     - pulumi login "s3://dd-pulumi-state?region=us-east-1&awssdk=v2&profile=$AWS_PROFILE"
     # Put install scripts in a folder for copy
     - mkdir -p $CI_PROJECT_DIR/test/e2e/scripts && cp $CI_PROJECT_DIR/install_script*.sh $CI_PROJECT_DIR/test/e2e/scripts
+    # Retrieve common go deps
+    - mkdir -p $GOPATH/pkg/mod && tar xJf modcache_e2e.tar.xz -C $GOPATH/pkg/mod && rm -f modcache_e2e.tar.xz
   script:
     - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_NAME}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} --scriptPath ${SCRIPT_PATH} ${EXTRA_PARAMS}
   rules:
