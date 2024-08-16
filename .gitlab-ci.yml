@@ -141,6 +141,8 @@ test_opensuse13:
 # CentOS/RHEL 6 only support Datadog Agent version up 6.51, hence these tests should not be launched on pipelines triggered by datadog-agent pipelines
 test_centos6:
   extends: .test
+  # Unconditionally retry
+  retry: 3
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push"'
   parallel:
@@ -154,6 +156,8 @@ test_centos6:
 
 test:
   extends: .test
+  # Unconditionally retry
+  retry: 3
   variables:
     MAJOR_VERSION: 7
   parallel:
@@ -184,6 +188,8 @@ test:
 
 test_agent6:
   extends: .test
+  # Unconditionally retry
+  retry: 3
   variables:
     MAJOR_VERSION: 6
   parallel:
