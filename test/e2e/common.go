@@ -134,6 +134,7 @@ func (s *linuxInstallerTestSuite) SetupSuite() {
 }
 
 func getEC2Options(t *testing.T) []ec2.VMOption {
+	t.Helper()
 	if _, ok := osConfigByPlatform[platform]; !ok {
 		t.Skipf("not supported platform %s", platform)
 	}
@@ -152,6 +153,7 @@ func getEC2Options(t *testing.T) []ec2.VMOption {
 }
 
 func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) string {
+	s.T().Helper()
 	vm := s.Env().RemoteHost
 	cmd := fmt.Sprintf("echo /opt/%s/embedded/lib/python*", baseName)
 	result, err := vm.Execute(cmd)
@@ -183,6 +185,7 @@ func (s *linuxInstallerTestSuite) getLatestEmbeddedPythonPath(baseName string) s
 func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 	t := s.T()
 	vm := s.Env().RemoteHost
+	t.Helper()
 	t.Log("Check user, config file and service")
 	// check presence of the dd-agent user
 	_, err := vm.Execute("id dd-agent")
@@ -217,6 +220,7 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 
 func (s *linuxInstallerTestSuite) addExtraIntegration() {
 	t := s.T()
+	t.Helper()
 	if flavor != "datadog-agent" {
 		return
 	}
@@ -230,6 +234,7 @@ func (s *linuxInstallerTestSuite) addExtraIntegration() {
 func (s *linuxInstallerTestSuite) uninstall() {
 	t := s.T()
 	vm := s.Env().RemoteHost
+	t.Helper()
 	t.Logf("Remove %s", flavor)
 	if _, err := vm.Execute("command -v apt"); err == nil {
 		t.Log("Uninstall with apt")
@@ -268,6 +273,8 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 
 func (s *linuxInstallerTestSuite) purge() {
 	t := s.T()
+	t.Helper()
+
 	if s.shouldSkipPurge() {
 		return
 	}
@@ -279,7 +286,9 @@ func (s *linuxInstallerTestSuite) purge() {
 }
 
 func (s *linuxInstallerTestSuite) shouldSkipPurge() bool {
+	t := s.T()
 	vm := s.Env().RemoteHost
+	t.Helper()
 	if noFlush {
 		return true
 	}
@@ -291,6 +300,7 @@ func (s *linuxInstallerTestSuite) shouldSkipPurge() bool {
 
 func (s *linuxInstallerTestSuite) assertPurge() {
 	t := s.T()
+	t.Helper()
 
 	if s.shouldSkipPurge() {
 		return
@@ -316,6 +326,7 @@ func assertFileNotExists(t assert.TestingT, vm *components.RemoteHost, filepath 
 }
 
 func unmarshalConfigFile(t *testing.T, vm *components.RemoteHost, configFilePath string) map[string]any {
+	t.Helper()
 	configContent := vm.MustExecute(fmt.Sprintf("sudo cat /%s", configFilePath))
 	config := map[string]any{}
 	err := yaml.Unmarshal([]byte(configContent), &config)
