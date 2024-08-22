@@ -198,20 +198,29 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 	assert.Equal(t, "dd-agent", owner, fmt.Sprintf("dd-agent does not own /etc/%s", s.baseName))
 	owner = strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("stat -c \"%%U\" /opt/%s/", s.baseName)), "\n")
 	assert.Equal(t, "dd-agent", owner, fmt.Sprintf("dd-agent does not own /opt/%s", s.baseName))
-	// Check that the service is active
+	serviceNames := []string{s.baseName}
+	if s.baseName == "datadog-agent" {
+		serviceNames = append(serviceNames, "datadog-agent-trace")
+		serviceNames = append(serviceNames, "datadog-agent-process")
+	}
+	// Check that the services are active
 	if _, err = vm.Execute("command -v systemctl"); err == nil {
-		_, err = vm.Execute(fmt.Sprintf("systemctl is-active %s", s.baseName))
-		if active {
-			assert.NoError(t, err, fmt.Sprintf("%s not running after Agent install", s.baseName))
-		} else {
-			assert.Error(t, err, fmt.Sprintf("%s running after Agent install", s.baseName))
+		for _, serviceName := range serviceNames {
+			_, err = vm.Execute(fmt.Sprintf("systemctl is-active %s", serviceName))
+			if active {
+				assert.NoError(t, err, fmt.Sprintf("%s not running after Agent install", serviceName))
+			} else {
+				assert.Error(t, err, fmt.Sprintf("%s running after Agent install", serviceName))
+			}
 		}
 	} else if _, err = vm.Execute("/sbin/init --version 2>&1 | grep -q upstart;"); err == nil {
-		status := strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("sudo status %s", s.baseName)), "\n")
-		if active {
-			assert.Contains(t, status, "running", fmt.Sprintf("%s not running after Agent install", s.baseName))
-		} else {
-			assert.NotContains(t, status, "running", fmt.Sprintf("%s running after Agent install", s.baseName))
+		for _, serviceName := range serviceNames {
+			status := strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("sudo status %s", serviceName)), "\n")
+			if active {
+				assert.Contains(t, status, "running", fmt.Sprintf("%s not running after Agent install", serviceName))
+			} else {
+				assert.NotContains(t, status, "running", fmt.Sprintf("%s running after Agent install", serviceName))
+			}
 		}
 	} else {
 		require.FailNow(t, "Unknown service manager")
