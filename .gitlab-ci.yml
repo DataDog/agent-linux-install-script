@@ -426,10 +426,7 @@ e2e_test_upload:
   stage: e2e_test_upload
   allow_failure: true
   rules:
-    - if: $CI_COMMIT_TAG
-      when: always
-    - when: on_success
-      allow_failure: true
+    - when: always
   dependencies:
     - e2e
   script:
