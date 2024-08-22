@@ -8,6 +8,7 @@ package e2e
 import (
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"testing"
@@ -259,9 +260,15 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 		_, err := vm.Execute("id dd-agent")
 		assert.NoError(c, err, "user datadog-agent not present after remove")
 		assertFileExists(c, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
+
+		// Make the test fail randomly 1 out of 10 times
+		if rand.Float64() < 0.1 {
+			assert.True(t, false)
+		}
+
 		if flavor == "datadog-agent" {
 			// The custom file should still be here. All other files, including the extra integration, should be removed
-			expectedFile := fmt.Sprintf("%s/site-packages/testfile-", s.getLatestEmbeddedPythonPath("datadog-agent"))
+			expectedFile := fmt.Sprintf("%s/site-packages/testfile", s.getLatestEmbeddedPythonPath("datadog-agent"))
 			assertFileExists(c, vm, expectedFile)
 			files := strings.Split(strings.TrimSuffix(vm.MustExecute("find /opt/datadog-agent -type f"), "\n"), "\n")
 			assert.Len(c, files, 1, fmt.Sprintf("/opt/datadog-agent present after remove, found %v, expected only %s", files, expectedFile))
