@@ -325,7 +325,7 @@ e2e:
     # Retrieve common go deps
     - mkdir -p $GOPATH/pkg/mod && tar xJf modcache_e2e.tar.xz -C $GOPATH/pkg/mod && rm -f modcache_e2e.tar.xz
   script:
-    - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_NAME}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} --scriptPath ${SCRIPT_PATH} ${EXTRA_PARAMS}
+    - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_ID}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} --scriptPath ${SCRIPT_PATH} ${EXTRA_PARAMS}
   rules:
     - if: $CI_COMMIT_TAG
       when: always
@@ -336,7 +336,7 @@ e2e:
     E2E_PUBLIC_KEY_PATH: /tmp/agent-qa-ssh-key.pub
     E2E_PRIVATE_KEY_PATH: /tmp/agent-qa-ssh-key
     E2E_KEY_PAIR_NAME: ci.agent-linux-install-script
-    TEAM: agent-platform
+    TEAM: agent-delivery
     SCRIPT_PATH: $CI_PROJECT_DIR/test/e2e/scripts
   artifacts:
     expire_in: 2 weeks
