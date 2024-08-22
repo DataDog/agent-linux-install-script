@@ -261,7 +261,7 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 		assertFileExists(c, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
 		if flavor == "datadog-agent" {
 			// The custom file should still be here. All other files, including the extra integration, should be removed
-			expectedFile := fmt.Sprintf("%s/site-packages/testfile", s.getLatestEmbeddedPythonPath("datadog-agent"))
+			expectedFile := fmt.Sprintf("%s/site-packages/testfile-", s.getLatestEmbeddedPythonPath("datadog-agent"))
 			assertFileExists(c, vm, expectedFile)
 			files := strings.Split(strings.TrimSuffix(vm.MustExecute("find /opt/datadog-agent -type f"), "\n"), "\n")
 			assert.Len(c, files, 1, fmt.Sprintf("/opt/datadog-agent present after remove, found %v, expected only %s", files, expectedFile))
