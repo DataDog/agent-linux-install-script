@@ -199,7 +199,7 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 	owner = strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("stat -c \"%%U\" /opt/%s/", s.baseName)), "\n")
 	assert.Equal(t, "dd-agent", owner, fmt.Sprintf("dd-agent does not own /opt/%s", s.baseName))
 	serviceNames := []string{s.baseName}
-	if s.baseName == "datadog-agent" {
+	if flavor == agentFlavorDatadogAgent {
 		serviceNames = append(serviceNames, "datadog-agent-trace")
 		serviceNames = append(serviceNames, "datadog-agent-process")
 	}
@@ -224,6 +224,14 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 		}
 	} else {
 		require.FailNow(t, "Unknown service manager")
+	}
+	if t.Failed() {
+		stdout, err := vm.Execute("journalctl --no-pager")
+		if err != nil {
+			t.Logf("Failed to get journalctl logs: %s", err)
+		} else {
+			t.Logf("journalctl logs:\n%s", stdout)
+		}
 	}
 }
 
