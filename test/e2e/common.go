@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/components"
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/e2e"
@@ -197,23 +198,40 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 	assert.Equal(t, "dd-agent", owner, fmt.Sprintf("dd-agent does not own /etc/%s", s.baseName))
 	owner = strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("stat -c \"%%U\" /opt/%s/", s.baseName)), "\n")
 	assert.Equal(t, "dd-agent", owner, fmt.Sprintf("dd-agent does not own /opt/%s", s.baseName))
-	// Check that the service is active
+	serviceNames := []string{s.baseName}
+	if flavor == agentFlavorDatadogAgent {
+		serviceNames = append(serviceNames, "datadog-agent-trace")
+		serviceNames = append(serviceNames, "datadog-agent-process")
+	}
+	// Check that the services are active
 	if _, err = vm.Execute("command -v systemctl"); err == nil {
-		_, err = vm.Execute(fmt.Sprintf("systemctl is-active %s", s.baseName))
-		if active {
-			assert.NoError(t, err, fmt.Sprintf("%s not running after Agent install", s.baseName))
-		} else {
-			assert.Error(t, err, fmt.Sprintf("%s running after Agent install", s.baseName))
+		for _, serviceName := range serviceNames {
+			_, err = vm.Execute(fmt.Sprintf("systemctl is-active %s", serviceName))
+			if active {
+				assert.NoError(t, err, fmt.Sprintf("%s not running after Agent install", serviceName))
+			} else {
+				assert.Error(t, err, fmt.Sprintf("%s running after Agent install", serviceName))
+			}
 		}
 	} else if _, err = vm.Execute("/sbin/init --version 2>&1 | grep -q upstart;"); err == nil {
-		status := strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("sudo status %s", s.baseName)), "\n")
-		if active {
-			assert.Contains(t, status, "running", fmt.Sprintf("%s not running after Agent install", s.baseName))
-		} else {
-			assert.NotContains(t, status, "running", fmt.Sprintf("%s running after Agent install", s.baseName))
+		for _, serviceName := range serviceNames {
+			status := strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("sudo status %s", serviceName)), "\n")
+			if active {
+				assert.Contains(t, status, "running", fmt.Sprintf("%s not running after Agent install", serviceName))
+			} else {
+				assert.NotContains(t, status, "running", fmt.Sprintf("%s running after Agent install", serviceName))
+			}
 		}
 	} else {
 		require.FailNow(t, "Unknown service manager")
+	}
+	if t.Failed() {
+		stdout, err := vm.Execute("journalctl --no-pager")
+		if err != nil {
+			t.Logf("Failed to get journalctl logs: %s", err)
+		} else {
+			t.Logf("journalctl logs:\n%s", stdout)
+		}
 	}
 }
 
@@ -251,22 +269,24 @@ func (s *linuxInstallerTestSuite) uninstall() {
 
 func (s *linuxInstallerTestSuite) assertUninstall() {
 	t := s.T()
-	t.Helper()
 	vm := s.Env().RemoteHost
 	t.Logf("Assert %s is removed", flavor)
 	// dd-agent user and config file should still be here
-	_, err := vm.Execute("id dd-agent")
-	assert.NoError(t, err, "user datadog-agent not present after remove")
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
-	if flavor == "datadog-agent" {
-		// The custom file should still be here. All other files, including the extra integration, should be removed
-		assertFileExists(t, vm, fmt.Sprintf("%s/site-packages/testfile", s.getLatestEmbeddedPythonPath("datadog-agent")))
-		files := strings.Split(strings.TrimSuffix(vm.MustExecute("find /opt/datadog-agent -type f"), "\n"), "\n")
-		assert.Len(t, files, 1, fmt.Sprintf("/opt/datadog-agent present after remove, found %v", files))
-	} else {
-		// All files in /opt/datadog-agent should be removed
-		assertFileNotExists(t, vm, fmt.Sprintf("/opt/%s", s.baseName))
-	}
+	assert.EventuallyWithT(t, func(c *assert.CollectT) {
+		_, err := vm.Execute("id dd-agent")
+		assert.NoError(c, err, "user datadog-agent not present after remove")
+		assertFileExists(c, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
+		if flavor == "datadog-agent" {
+			// The custom file should still be here. All other files, including the extra integration, should be removed
+			expectedFile := fmt.Sprintf("%s/site-packages/testfile", s.getLatestEmbeddedPythonPath("datadog-agent"))
+			assertFileExists(c, vm, expectedFile)
+			files := strings.Split(strings.TrimSuffix(vm.MustExecute("find /opt/datadog-agent -type f"), "\n"), "\n")
+			assert.Len(c, files, 1, fmt.Sprintf("/opt/datadog-agent present after remove, found %v, expected only %s", files, expectedFile))
+		} else {
+			// All files in /opt/datadog-agent should be removed
+			assertFileNotExists(c, vm, fmt.Sprintf("/opt/%s", s.baseName))
+		}
+	}, 10*time.Second, time.Second)
 }
 
 func (s *linuxInstallerTestSuite) purge() {
@@ -313,18 +333,12 @@ func (s *linuxInstallerTestSuite) assertPurge() {
 	assertFileNotExists(t, vm, fmt.Sprintf("/opt/%s", s.baseName))
 }
 
-func assertFileExists(t *testing.T, vm *components.RemoteHost, filepath string) {
-	t.Helper()
-	t.Logf("Check %s exists", filepath)
-	// Check presence of file, should not return error
+func assertFileExists(t assert.TestingT, vm *components.RemoteHost, filepath string) {
 	_, err := vm.Execute(fmt.Sprintf("stat %s", filepath))
 	assert.NoError(t, err, fmt.Sprintf("file %s does not exist", filepath))
 }
 
-func assertFileNotExists(t *testing.T, vm *components.RemoteHost, filepath string) {
-	t.Helper()
-	t.Logf("Check %s does not exists", filepath)
-	// Check absence of file, should return error
+func assertFileNotExists(t assert.TestingT, vm *components.RemoteHost, filepath string) {
 	_, err := vm.Execute(fmt.Sprintf("stat %s", filepath))
 	assert.Error(t, err, fmt.Sprintf("file %s does exist", filepath))
 }
