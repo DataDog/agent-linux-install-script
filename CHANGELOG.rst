@@ -2,8 +2,15 @@
 Release Notes
 =============
 
-Unreleased
+1.34.0
 ================
+
+- feat(apm): Add support for the PHP tracer (#254)
+- Check that trace and process services are stopped as well (#261)
+- [gitlab] store test results artifacts by job id instead of by job name (#258)
+- chore(github): reduce workflow token permission (#255)
+- Prefetch go dependencies (#252)
+- Pass flavor to tests (#251)
 
 1.33.0
 ================
