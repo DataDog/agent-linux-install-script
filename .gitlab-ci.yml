@@ -326,6 +326,12 @@ e2e:
     - mkdir -p $GOPATH/pkg/mod && tar xJf modcache_e2e.tar.xz -C $GOPATH/pkg/mod && rm -f modcache_e2e.tar.xz
   script:
     - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_ID}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} --scriptPath ${SCRIPT_PATH} ${EXTRA_PARAMS}
+  after_script:
+    - set +x
+    - export DATADOG_API_KEY=$(aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.datadog_api_key_2 --with-decryption --query "Parameter.Value" --out text)
+    - set -x
+    - for f in test/e2e/*.xml; do datadog-ci junit upload --service agent-linux-install-script --tags test.codeowners:@DataDog/agent-platform --tags ci.job.name:e2e --tags ci.stage.name:e2e "$f"; done
+
   rules:
     - if: $CI_COMMIT_TAG
       when: always
@@ -419,24 +425,6 @@ e2e:
         EXTRA_PARAMS:
           - --run TestInstallSuite
           - --run TestUpgrade7Suite
-
-e2e_test_upload:
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/datadog-ci-uploader:$DATADOG_AGENT_BUILDIMAGES
-  tags: ["arch:amd64"]
-  stage: e2e_test_upload
-  allow_failure: true
-  rules:
-    - if: $CI_COMMIT_TAG
-      when: always
-    - when: on_success
-      allow_failure: true
-  dependencies:
-    - e2e
-  script:
-    - set +x
-    - export DATADOG_API_KEY=$(aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.datadog_api_key_2 --with-decryption --query "Parameter.Value" --out text)
-    - set -x
-    - for f in test/e2e/*.xml; do datadog-ci junit upload --service agent-linux-install-script --tags test.codeowners:@DataDog/agent-platform --tags ci.job.name:e2e --tags ci.stage.name:e2e "$f"; done
 
 deploy:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/gitlab_agent_deploy:$DATADOG_AGENT_BUILDERS
