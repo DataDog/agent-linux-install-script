@@ -119,7 +119,7 @@ test_pinned_version:
       #  MINOR_VERSION: 38
       - IMAGE:
           [
-            centos:centos7,
+            registry.ddbuild.io/images/base:v38221072-2485f17-centos7,
             rockylinux:9.0,
             ubuntu:14.04,
             debian:10.9,
