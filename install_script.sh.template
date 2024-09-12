@@ -1784,20 +1784,29 @@ function manage_security_and_system_probe_config(){
     fi
   fi
 }
+function set_in_env_file(){
+  local sudo_cmd="$1"
+  local etc_environment="$2"
+  local key="$3"
+  local value="$4"
+  $sudo_cmd sed -i "/^$key=/d" $etc_environment
+  echo "$key=$value" | $sudo_cmd tee -a $etc_environment
+}
 function manage_client_libraries_security_config(){
   local sudo_cmd="$1"
   local etc_environment="$2"
   local asm_enable="$3"
   local iast_enable="$4"
   local sca_enable="$5"
+  $sudo_cmd touch $etc_environment
   if [ -n "$asm_enable" ]; then
-    $sudo_cmd sed -i -n -e '/^DD_APPSEC_ENABLED=/!p' -e "\$aDD_APPSEC_ENABLED=$asm_enable" "$etc_environment"
+    set_in_env_file $sudo_cmd $etc_environment DD_APPSEC_ENABLED "$asm_enable"
   fi
   if [ -n "$iast_enable" ]; then
-    $sudo_cmd sed -i -n -e '/^DD_IAST_ENABLED=/!p' -e "\$aDD_IAST_ENABLED=$iast_enable" "$etc_environment"
+    set_in_env_file $sudo_cmd $etc_environment DD_IAST_ENABLED "$iast_enable"
   fi
   if [ -n "$sca_enable" ]; then
-    $sudo_cmd sed -i -n -e '/^DD_APPSEC_SCA_ENABLED=/!p' -e "\$aDD_APPSEC_SCA_ENABLED=$sca_enable" "$etc_environment"
+    set_in_env_file $sudo_cmd $etc_environment DD_APPSEC_SCA_ENABLED "$sca_enable"
   fi
 }
 function manage_client_libraries_profiling_config(){
