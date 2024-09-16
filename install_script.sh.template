@@ -530,7 +530,7 @@ function _install_installer() {
         return 0
     fi
     command_prefix="${sudo_cmd:+$sudo_cmd -E}"
-    $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DD_REMOTE_UPDATES=\"${remote_updates}\" DATADOG_TRACE_ID=\"${trace_id}\" DATADOG_PARENT_ID=\"${trace_id}\" /usr/bin/datadog-bootstrap bootstrap"
+    $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DD_REMOTE_POLICIES=\"${remote_policies}\" DD_REMOTE_UPDATES=\"${remote_updates}\" DATADOG_TRACE_ID=\"${trace_id}\" DATADOG_PARENT_ID=\"${trace_id}\" /usr/bin/datadog-bootstrap bootstrap"
     return $?
 }
 
@@ -697,6 +697,11 @@ fi
 remote_updates=
 if [ -n "$DD_REMOTE_UPDATES" ]; then
     remote_updates=$DD_REMOTE_UPDATES
+fi
+
+remote_policies=
+if [ -n "$DD_REMOTE_POLICIES" ]; then
+    remote_policies=$DD_REMOTE_POLICIES
 fi
 
 installer_registry_url=
@@ -1402,7 +1407,7 @@ If the cause is unclear, please contact Datadog support.
     POLICYRCD=/tmp/policy-do-not-start-service-rc.d
     echo exit 101 > "${POLICYRCD}"
     $sudo_cmd chmod +x "${POLICYRCD}"
-    
+
     $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >(tee /tmp/ddog_install_error_msg >&2)"
 
     for pkg in "${packages_to_lock[@]}"
@@ -1696,28 +1701,37 @@ function update_env(){
     $sudo_cmd sh -c "sed -i 's/^# env:.*/env: $dd_env/' $config_file"
   fi
 }
-function update_remote_updates(){
+function update_fleet_automation(){
   local sudo_cmd="$1"
   local remote_updates="$2"
-  local fips_mode="$3"
-  local site="$4"
-  local config_file="$5"
+  local remote_policies="$3"
+  local fips_mode="$4"
+  local site="$5"
+  local config_file="$6"
 
-  if [ -z "$remote_updates" ]; then
-    return 0
-  elif [ -n "$fips_mode" ]; then
-    printf "\033[31mRemote updates are not supported in FIPS mode.\033[0m\n"
+  if [ -n "$fips_mode" ]; then
+    printf "\033[31mFleet automation is not supported in FIPS mode.\033[0m\n"
     return 0
   elif [ "$site" == "ddog-gov.com" ]; then
-    printf "\033[31mRemote updates are not supported with the Datadog Gov site.\033[0m\n"
+    printf "\033[31mFleet automation is not supported with the Datadog Gov site.\033[0m\n"
     return 0
   fi
 
-  printf "\033[34m\n* Adding your DD_REMOTE_UPDATES to the $nice_flavor configuration: $config_file\n\033[0m\n"
-  if ! $sudo_cmd grep -q "^remote_updates:" "$config_file"; then
-      $sudo_cmd sh -c "echo 'remote_updates: $remote_updates' >> $config_file"
-  else
-      $sudo_cmd sh -c "sed -i 's/^remote_updates:.*/remote_updates: $remote_updates/' $config_file"
+  if [ -n "$remote_updates" ]; then
+    printf "\033[34m\n* Adding your DD_REMOTE_UPDATES to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    if ! $sudo_cmd grep -q "^remote_updates:" "$config_file"; then
+        $sudo_cmd sh -c "echo 'remote_updates: $remote_updates' >> $config_file"
+    else
+        $sudo_cmd sh -c "sed -i 's/^remote_updates:.*/remote_updates: $remote_updates/' $config_file"
+    fi
+  fi
+  if [ -n "$remote_policies" ]; then
+    printf "\033[34m\n* Adding your DD_REMOTE_POLICIES to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    if ! $sudo_cmd grep -q "^remote_policies:" "$config_file"; then
+        $sudo_cmd sh -c "echo 'remote_policies: $remote_policies' >> $config_file"
+    else
+        $sudo_cmd sh -c "sed -i 's/^remote_policies:.*/remote_policies: $remote_policies/' $config_file"
+    fi
   fi
 }
 function update_installer_registry(){
@@ -1817,7 +1831,7 @@ fi
 manage_client_libraries_security_config "$sudo_cmd" "$environment_file" "$DD_APPSEC_ENABLED" "$DD_IAST_ENABLED" "$DD_APPSEC_SCA_ENABLED"
 manage_client_libraries_profiling_config "$sudo_cmd" "$environment_file" "$DD_PROFILING_ENABLED"
 
-update_remote_updates "$sudo_cmd" "$remote_updates" "$fips_mode" "$site" "$config_file"
+update_fleet_automation "$sudo_cmd" "$remote_updates" "$remote_policies" "$fips_mode" "$site" "$config_file"
 update_installer_registry "$sudo_cmd" "$installer_registry_url" "$installer_registry_auth" "$config_file"
 
 if [ ! "$no_agent" ]; then
@@ -1961,15 +1975,15 @@ for current_service in "${services[@]}"; do
       printf "\033[34m\n  Stopping service ${current_service} that was launched during the package installation.\033[0m\n"
       $stop_instructions || true
       if [[ $current_service == "datadog-agent" ]]; then
-        # Stop all the related services 
+        # Stop all the related services
         # https://github.com/DataDog/datadog-agent/blob/def18e3815c6cc67d8669408032961804821687a/omnibus/package-scripts/agent-rpm/preinst#L16-L20
         eval "${stop_instructions}-process || true"
         eval "${stop_instructions}-sysprobe || true"
         eval "${stop_instructions}-trace || true"
-        eval "${stop_instructions}-security || true" 
+        eval "${stop_instructions}-security || true"
       fi
     fi
-  
+
     printf "\033[34m\n    The newly installed version of the ${nice_current_flavor} will not be started.
     You will have to do it manually using the following command:
 
