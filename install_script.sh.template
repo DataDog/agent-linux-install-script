@@ -788,14 +788,6 @@ if [ -n "${host_injection_enabled}${docker_injection_enabled}" ] ; then
     apm_libraries=("datadog-apm-inject")
 fi
 
-if [ -n "${host_injection_enabled}" ] && [ -n "${no_agent}" ] ; then
-    ERROR_MESSAGE="Host injection is not supported with the DD_NO_AGENT_INSTALL flag. Unset either DD_APM_INSTRUMENTATION_ENABLED or DD_NO_AGENT_INSTALL"
-    ERROR_CODE=$INVALID_PARAMETERS_CODE
-    echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
-    report_telemetry
-    exit 1;
-fi
-
 docker_config_dir="/etc/docker"
 
 if [ -n "$docker_injection_enabled" ]; then
