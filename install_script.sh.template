@@ -1266,7 +1266,7 @@ elif [ "$OS" == "Debian" ]; then
 
     DD_APT_INSTALL_ERROR_MSG=/tmp/ddog_install_error_msg
     MAX_RETRY_NB=10
-    APT_DEPS="curl gnupg"
+    APT_DEPS=(curl gnupg)
     apt_version=$(apt-get --version | head -n 1 | cut -d ' ' -f 2)
     # apt-transport-https is only a transitive package for apt version >= 1.5.0
     # where https support was baked in
@@ -1275,12 +1275,12 @@ elif [ "$OS" == "Debian" ]; then
     set -o pipefail
     if printf "${apt_version}\n1.4.9" | sort -V -C; then
         echo "APT version (${apt_version} doesn't include HTTPS support, installing apt-transport-https"
-        APT_DEPS="apt-transport-https ${APT_DEPS}"
+        APT_DEPS+=("apt-transport-https")
     fi
     set +o pipefail
     for i in $(seq 1 $MAX_RETRY_NB)
     do
-        printf "\033[34m\n* Installing ${APT_DEPS}\n\033[0m\n"
+        printf "\033[34m\n* Installing ${APT_DEPS[*]}\n\033[0m\n"
         $sudo_cmd apt-get update || printf "\033[31m'apt-get update' failed, the script will not install the latest version of apt-transport-https.\033[0m\n"
         # installing curl might trigger install of additional version of libssl; this will fail the installation process,
         # see https://unix.stackexchange.com/q/146283 for reference - we use DEBIAN_FRONTEND=noninteractive to fix that
@@ -1289,9 +1289,9 @@ elif [ "$OS" == "Debian" ]; then
             # if $sudo_cmd is empty, doing `$sudo_cmd X=Y command` fails with
             # `X=Y: command not found`; therefore we don't prefix the command with
             # $sudo_cmd at all in this case
-            DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y ${APT_DEPS} 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
+            DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y "${APT_DEPS[@]}" 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
         else
-            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y ${APT_DEPS} 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
+            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y "${APT_DEPS[@]}" 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
         fi
 
         if grep "Could not get lock" $DD_APT_INSTALL_ERROR_MSG; then
