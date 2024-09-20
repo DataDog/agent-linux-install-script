@@ -651,7 +651,10 @@ if [ -n "$DD_NO_AGENT_INSTALL" ]; then
 fi
 
 host_tags=  # A comma-separated list of tags, e.g. foo:bar,env:prod
-if [ -n "$DD_HOST_TAGS" ]; then
+if [ -n "$DD_TAGS" ]; then
+    host_tags=$DD_TAGS
+    # Falling back to the deprecated DD_HOST_TAGS if DD_TAGS is not set
+elif [ -n "$DD_HOST_TAGS" ]; then
     host_tags=$DD_HOST_TAGS
 fi
 
