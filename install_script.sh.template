@@ -796,18 +796,6 @@ if [ -n "${host_injection_enabled}${docker_injection_enabled}" ] ; then
     apm_libraries=("datadog-apm-inject")
 fi
 
-docker_config_dir="/etc/docker"
-
-if [ -n "$docker_injection_enabled" ]; then
-    if [ ! -d "$docker_config_dir" ]; then
-      ERROR_MESSAGE="$docker_config_dir does not exist. Please ensure docker is installed"
-      ERROR_CODE=$INVALID_PARAMETERS_CODE
-      echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
-      report_telemetry
-      exit 1;
-    fi
-fi
-
 if [ -n "$DD_APM_INSTRUMENTATION_LIBRARIES" ]; then
   read -r -a lib_array <<< "$(echo "$DD_APM_INSTRUMENTATION_LIBRARIES" | tr , ' ')"
   for lib in "${lib_array[@]}"
@@ -2017,6 +2005,7 @@ for current_service in "${services[@]}"; do
 
       $start_instructions\033[0m\n\n"
 
+  docker_config_dir="/etc/docker"
   if [ -d "$docker_config_dir" ]; then
     groups dd-agent 2>&1 | grep -v docker > /dev/null && printf "\033[32m  Consider adding dd-agent to the docker group to enable the docker support, run:
 
