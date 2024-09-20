@@ -1266,6 +1266,15 @@ elif [ "$OS" == "Debian" ]; then
 
     DD_APT_INSTALL_ERROR_MSG=/tmp/ddog_install_error_msg
     MAX_RETRY_NB=10
+    APT_DEPS="curl gnupg"
+    apt_version=$(apt-get --version | head -n 1 | cut -d ' ' -f 2)
+    # apt-transport-https is only a transitive package for apt version >= 1.5.0
+    # where https support was baked in
+    # Sort will return an error code if the 2 compared versions are the same, so we
+    # compare to 1.4.9
+    if echo "${apt_version}\n1.4.9" | sort -V -C; then
+        APT_DEPS="apt-transport-https ${APT_DEPS}"
+    fi
     for i in $(seq 1 $MAX_RETRY_NB)
     do
         printf "\033[34m\n* Installing apt-transport-https, curl and gnupg\n\033[0m\n"
@@ -1277,9 +1286,9 @@ elif [ "$OS" == "Debian" ]; then
             # if $sudo_cmd is empty, doing `$sudo_cmd X=Y command` fails with
             # `X=Y: command not found`; therefore we don't prefix the command with
             # $sudo_cmd at all in this case
-            DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
+            DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y ${APT_DEPS} 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
         else
-            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
+            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y ${APT_DEPS} 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
         fi
 
         if grep "Could not get lock" $DD_APT_INSTALL_ERROR_MSG; then
