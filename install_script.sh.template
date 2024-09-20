@@ -1272,12 +1272,15 @@ elif [ "$OS" == "Debian" ]; then
     # where https support was baked in
     # Sort will return an error code if the 2 compared versions are the same, so we
     # compare to 1.4.9
-    if echo "${apt_version}\n1.4.9" | sort -V -C; then
+    set -o pipefail
+    if printf "${apt_version}\n1.4.9" | sort -V -C; then
+        echo "APT version (${apt_version} doesn't include HTTPS support, installing apt-transport-https"
         APT_DEPS="apt-transport-https ${APT_DEPS}"
     fi
+    set +o pipefail
     for i in $(seq 1 $MAX_RETRY_NB)
     do
-        printf "\033[34m\n* Installing apt-transport-https, curl and gnupg\n\033[0m\n"
+        printf "\033[34m\n* Installing ${APT_DEPS}\n\033[0m\n"
         $sudo_cmd apt-get update || printf "\033[31m'apt-get update' failed, the script will not install the latest version of apt-transport-https.\033[0m\n"
         # installing curl might trigger install of additional version of libssl; this will fail the installation process,
         # see https://unix.stackexchange.com/q/146283 for reference - we use DEBIAN_FRONTEND=noninteractive to fix that
