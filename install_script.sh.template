@@ -1140,13 +1140,6 @@ if [ "$OS" == "Red Hat" ]; then
         release_version=7
     fi
     if { [ "$DISTRIBUTION" == "Red Hat" ] || [ "$DISTRIBUTION" == "CentOS" ]; } && [ "$release_version" -lt 7 ]; then
-        if [ ${#apm_libraries[@]} -gt 0 ]; then
-          ERROR_MESSAGE="APM injection is not supported on $DISTRIBUTION  < 7"
-          ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
-          echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
-          report_telemetry
-          exit 1;
-        fi
         if [ -n "$agent_minor_version_without_patch" ]; then
             if [ "$agent_minor_version_without_patch" -ge "52" ]; then
                 ERROR_MESSAGE="$DISTRIBUTION < 7 only supports $nice_flavor $agent_major_version up to $agent_major_version.51."
