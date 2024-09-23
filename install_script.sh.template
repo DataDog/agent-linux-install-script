@@ -520,7 +520,7 @@ function _install_installer() {
     if [ "$os" == "Debian" ]; then
         echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
         $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "datadog-installer" || return $?
-    elif [ "$os" == "RedHat" ]; then
+    elif [ "$os" == "Red Hat" ]; then
         echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
         $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install "datadog-installer" || $sudo_cmd yum -y install "datadog-installer" || return $?
     elif [ "$os" == "SUSE" ]; then
@@ -530,7 +530,7 @@ function _install_installer() {
         return 0
     fi
     command_prefix="${sudo_cmd:+$sudo_cmd -E}"
-    $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DD_REMOTE_UPDATES=\"${remote_updates}\" DATADOG_TRACE_ID=\"${trace_id}\" DATADOG_PARENT_ID=\"${trace_id}\" /usr/bin/datadog-bootstrap bootstrap"
+    $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DD_REMOTE_POLICIES=\"${remote_policies}\" DD_REMOTE_UPDATES=\"${remote_updates}\" DATADOG_TRACE_ID=\"${trace_id}\" DATADOG_PARENT_ID=\"${trace_id}\" /usr/bin/datadog-bootstrap bootstrap"
     return $?
 }
 
@@ -651,7 +651,10 @@ if [ -n "$DD_NO_AGENT_INSTALL" ]; then
 fi
 
 host_tags=  # A comma-separated list of tags, e.g. foo:bar,env:prod
-if [ -n "$DD_HOST_TAGS" ]; then
+if [ -n "$DD_TAGS" ]; then
+    host_tags=$DD_TAGS
+    # Falling back to the deprecated DD_HOST_TAGS if DD_TAGS is not set
+elif [ -n "$DD_HOST_TAGS" ]; then
     host_tags=$DD_HOST_TAGS
 fi
 
@@ -697,6 +700,11 @@ fi
 remote_updates=
 if [ -n "$DD_REMOTE_UPDATES" ]; then
     remote_updates=$DD_REMOTE_UPDATES
+fi
+
+remote_policies=
+if [ -n "$DD_REMOTE_POLICIES" ]; then
+    remote_policies=$DD_REMOTE_POLICIES
 fi
 
 installer_registry_url=
@@ -786,26 +794,6 @@ fi
 
 if [ -n "${host_injection_enabled}${docker_injection_enabled}" ] ; then
     apm_libraries=("datadog-apm-inject")
-fi
-
-if [ -n "${host_injection_enabled}" ] && [ -n "${no_agent}" ] ; then
-    ERROR_MESSAGE="Host injection is not supported with the DD_NO_AGENT_INSTALL flag. Unset either DD_APM_INSTRUMENTATION_ENABLED or DD_NO_AGENT_INSTALL"
-    ERROR_CODE=$INVALID_PARAMETERS_CODE
-    echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
-    report_telemetry
-    exit 1;
-fi
-
-docker_config_dir="/etc/docker"
-
-if [ -n "$docker_injection_enabled" ]; then
-    if [ ! -d "$docker_config_dir" ]; then
-      ERROR_MESSAGE="$docker_config_dir does not exist. Please ensure docker is installed"
-      ERROR_CODE=$INVALID_PARAMETERS_CODE
-      echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
-      report_telemetry
-      exit 1;
-    fi
 fi
 
 if [ -n "$DD_APM_INSTRUMENTATION_LIBRARIES" ]; then
@@ -1063,8 +1051,8 @@ fi
 
 # OS/Distro Detection
 # Try lsb_release, fallback with /etc/issue then uname command
-KNOWN_DISTRIBUTION="(Debian|Ubuntu|RedHat|CentOS|openSUSE|Amazon|Arista|SUSE|Rocky|AlmaLinux)"
-DISTRIBUTION=$(lsb_release -d 2>/dev/null | grep -Eo $KNOWN_DISTRIBUTION  || grep -Eo $KNOWN_DISTRIBUTION /etc/issue 2>/dev/null || grep -Eo $KNOWN_DISTRIBUTION /etc/Eos-release 2>/dev/null || grep -m1 -Eo $KNOWN_DISTRIBUTION /etc/os-release 2>/dev/null || uname -s)
+KNOWN_DISTRIBUTION="(Debian|Ubuntu|Red Hat|CentOS|openSUSE|Amazon|Arista|SUSE|Rocky|AlmaLinux)"
+DISTRIBUTION=$(lsb_release -d 2>/dev/null | grep -Eo "$KNOWN_DISTRIBUTION" || grep -Eo "$KNOWN_DISTRIBUTION" /etc/issue 2>/dev/null || grep -Eo "$KNOWN_DISTRIBUTION" /etc/Eos-release 2>/dev/null || grep -m1 -Eo "$KNOWN_DISTRIBUTION" /etc/os-release 2>/dev/null || uname -s)
 
 if [ "$DISTRIBUTION" == "Darwin" ]; then
     ERROR_MESSAGE="This script does not support installing on the Mac."
@@ -1077,14 +1065,14 @@ Please use the 1-step script available at https://app.datadoghq.com/account/sett
 
 elif [ -f /etc/debian_version ] || [ "$DISTRIBUTION" == "Debian" ] || [ "$DISTRIBUTION" == "Ubuntu" ]; then
     OS="Debian"
-elif [ -f /etc/redhat-release ] || [ "$DISTRIBUTION" == "RedHat" ] || [ "$DISTRIBUTION" == "CentOS" ] || [ "$DISTRIBUTION" == "Amazon" ] || [ "$DISTRIBUTION" == "Rocky" ] || [ "$DISTRIBUTION" == "AlmaLinux" ]; then
-    OS="RedHat"
+elif [ -f /etc/redhat-release ] || [ "$DISTRIBUTION" == "Red Hat" ] || [ "$DISTRIBUTION" == "CentOS" ] || [ "$DISTRIBUTION" == "Amazon" ] || [ "$DISTRIBUTION" == "Rocky" ] || [ "$DISTRIBUTION" == "AlmaLinux" ]; then
+    OS="Red Hat"
 # Some newer distros like Amazon may not have a redhat-release file
 elif [ -f /etc/system-release ] || [ "$DISTRIBUTION" == "Amazon" ]; then
-    OS="RedHat"
+    OS="Red Hat"
 # Arista is based off of Fedora14/18 but do not have /etc/redhat-release
 elif [ -f /etc/Eos-release ] || [ "$DISTRIBUTION" == "Arista" ]; then
-    OS="RedHat"
+    OS="Red Hat"
 # openSUSE and SUSE use /etc/SuSE-release or /etc/os-release
 elif [ -f /etc/SuSE-release ] || [ "$DISTRIBUTION" == "SUSE" ] || [ "$DISTRIBUTION" == "openSUSE" ]; then
     OS="SUSE"
@@ -1135,7 +1123,7 @@ fi
 ##
 # INSTALL THE NECESSARY PACKAGE SOURCES
 ##
-if [ "$OS" == "RedHat" ]; then
+if [ "$OS" == "Red Hat" ]; then
     remove_rpm_gpg_keys "$sudo_cmd" "${RPM_GPG_KEYS_TO_REMOVE[@]}"
     if { [ "$DISTRIBUTION" == "Rocky" ] || [ "$DISTRIBUTION" == "AlmaLinux" ]; } && { [ -n "$agent_minor_version_without_patch" ] && [ "$agent_minor_version_without_patch" -lt 33 ]; } && ! echo "$agent_flavor" | grep '[0-9]' > /dev/null; then
         ERROR_MESSAGE="A future version of $nice_flavor will support $DISTRIBUTION"
@@ -1150,7 +1138,7 @@ if [ "$OS" == "RedHat" ]; then
     if [ -z "$release_version" ]; then
         release_version=7
     fi
-    if { [ "$DISTRIBUTION" == "RedHat" ] || [ "$DISTRIBUTION" == "CentOS" ]; } && [ "$release_version" -lt 7 ]; then
+    if { [ "$DISTRIBUTION" == "Red Hat" ] || [ "$DISTRIBUTION" == "CentOS" ]; } && [ "$release_version" -lt 7 ]; then
         if [ ${#apm_libraries[@]} -gt 0 ]; then
           ERROR_MESSAGE="APM injection is not supported on $DISTRIBUTION  < 7"
           ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
@@ -1278,9 +1266,21 @@ elif [ "$OS" == "Debian" ]; then
 
     DD_APT_INSTALL_ERROR_MSG=/tmp/ddog_install_error_msg
     MAX_RETRY_NB=10
+    APT_DEPS=(curl gnupg)
+    apt_version=$(apt-get --version | head -n 1 | cut -d ' ' -f 2)
+    # apt-transport-https is only a transitive package for apt version >= 1.5.0
+    # where https support was baked in
+    # Sort will return an error code if the 2 compared versions are the same, so we
+    # compare to 1.4.9
+    set -o pipefail
+    if printf "${apt_version}\n1.4.9" | sort -V -C; then
+        echo "APT version (${apt_version} doesn't include HTTPS support, installing apt-transport-https"
+        APT_DEPS+=("apt-transport-https")
+    fi
+    set +o pipefail
     for i in $(seq 1 $MAX_RETRY_NB)
     do
-        printf "\033[34m\n* Installing apt-transport-https, curl and gnupg\n\033[0m\n"
+        printf "\033[34m\n* Installing ${APT_DEPS[*]}\n\033[0m\n"
         $sudo_cmd apt-get update || printf "\033[31m'apt-get update' failed, the script will not install the latest version of apt-transport-https.\033[0m\n"
         # installing curl might trigger install of additional version of libssl; this will fail the installation process,
         # see https://unix.stackexchange.com/q/146283 for reference - we use DEBIAN_FRONTEND=noninteractive to fix that
@@ -1289,9 +1289,9 @@ elif [ "$OS" == "Debian" ]; then
             # if $sudo_cmd is empty, doing `$sudo_cmd X=Y command` fails with
             # `X=Y: command not found`; therefore we don't prefix the command with
             # $sudo_cmd at all in this case
-            DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
+            DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y "${APT_DEPS[@]}" 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
         else
-            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
+            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y "${APT_DEPS[@]}" 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
         fi
 
         if grep "Could not get lock" $DD_APT_INSTALL_ERROR_MSG; then
@@ -1410,7 +1410,7 @@ If the cause is unclear, please contact Datadog support.
     POLICYRCD=/tmp/policy-do-not-start-service-rc.d
     echo exit 101 > "${POLICYRCD}"
     $sudo_cmd chmod +x "${POLICYRCD}"
-    
+
     $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >(tee /tmp/ddog_install_error_msg >&2)"
 
     for pkg in "${packages_to_lock[@]}"
@@ -1704,28 +1704,37 @@ function update_env(){
     $sudo_cmd sh -c "sed -i 's/^# env:.*/env: $dd_env/' $config_file"
   fi
 }
-function update_remote_updates(){
+function update_fleet_automation(){
   local sudo_cmd="$1"
   local remote_updates="$2"
-  local fips_mode="$3"
-  local site="$4"
-  local config_file="$5"
+  local remote_policies="$3"
+  local fips_mode="$4"
+  local site="$5"
+  local config_file="$6"
 
-  if [ -z "$remote_updates" ]; then
-    return 0
-  elif [ -n "$fips_mode" ]; then
-    printf "\033[31mRemote updates are not supported in FIPS mode.\033[0m\n"
+  if [ -n "$fips_mode" ]; then
+    printf "\033[31mFleet automation is not supported in FIPS mode.\033[0m\n"
     return 0
   elif [ "$site" == "ddog-gov.com" ]; then
-    printf "\033[31mRemote updates are not supported with the Datadog Gov site.\033[0m\n"
+    printf "\033[31mFleet automation is not supported with the Datadog Gov site.\033[0m\n"
     return 0
   fi
 
-  printf "\033[34m\n* Adding your DD_REMOTE_UPDATES to the $nice_flavor configuration: $config_file\n\033[0m\n"
-  if ! $sudo_cmd grep -q "^remote_updates:" "$config_file"; then
-      $sudo_cmd sh -c "echo 'remote_updates: $remote_updates' >> $config_file"
-  else
-      $sudo_cmd sh -c "sed -i 's/^remote_updates:.*/remote_updates: $remote_updates/' $config_file"
+  if [ -n "$remote_updates" ]; then
+    printf "\033[34m\n* Adding your DD_REMOTE_UPDATES to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    if ! $sudo_cmd grep -q "^remote_updates:" "$config_file"; then
+        $sudo_cmd sh -c "echo 'remote_updates: $remote_updates' >> $config_file"
+    else
+        $sudo_cmd sh -c "sed -i 's/^remote_updates:.*/remote_updates: $remote_updates/' $config_file"
+    fi
+  fi
+  if [ -n "$remote_policies" ]; then
+    printf "\033[34m\n* Adding your DD_REMOTE_POLICIES to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    if ! $sudo_cmd grep -q "^remote_policies:" "$config_file"; then
+        $sudo_cmd sh -c "echo 'remote_policies: $remote_policies' >> $config_file"
+    else
+        $sudo_cmd sh -c "sed -i 's/^remote_policies:.*/remote_policies: $remote_policies/' $config_file"
+    fi
   fi
 }
 function update_installer_registry(){
@@ -1825,7 +1834,7 @@ fi
 manage_client_libraries_security_config "$sudo_cmd" "$environment_file" "$DD_APPSEC_ENABLED" "$DD_IAST_ENABLED" "$DD_APPSEC_SCA_ENABLED"
 manage_client_libraries_profiling_config "$sudo_cmd" "$environment_file" "$DD_PROFILING_ENABLED"
 
-update_remote_updates "$sudo_cmd" "$remote_updates" "$fips_mode" "$site" "$config_file"
+update_fleet_automation "$sudo_cmd" "$remote_updates" "$remote_policies" "$fips_mode" "$site" "$config_file"
 update_installer_registry "$sudo_cmd" "$installer_registry_url" "$installer_registry_auth" "$config_file"
 
 if [ ! "$no_agent" ]; then
@@ -1969,15 +1978,15 @@ for current_service in "${services[@]}"; do
       printf "\033[34m\n  Stopping service ${current_service} that was launched during the package installation.\033[0m\n"
       $stop_instructions || true
       if [[ $current_service == "datadog-agent" ]]; then
-        # Stop all the related services 
+        # Stop all the related services
         # https://github.com/DataDog/datadog-agent/blob/def18e3815c6cc67d8669408032961804821687a/omnibus/package-scripts/agent-rpm/preinst#L16-L20
         eval "${stop_instructions}-process || true"
         eval "${stop_instructions}-sysprobe || true"
         eval "${stop_instructions}-trace || true"
-        eval "${stop_instructions}-security || true" 
+        eval "${stop_instructions}-security || true"
       fi
     fi
-  
+
     printf "\033[34m\n    The newly installed version of the ${nice_current_flavor} will not be started.
     You will have to do it manually using the following command:
 
@@ -2008,6 +2017,7 @@ for current_service in "${services[@]}"; do
 
       $start_instructions\033[0m\n\n"
 
+  docker_config_dir="/etc/docker"
   if [ -d "$docker_config_dir" ]; then
     groups dd-agent 2>&1 | grep -v docker > /dev/null && printf "\033[32m  Consider adding dd-agent to the docker group to enable the docker support, run:
 
