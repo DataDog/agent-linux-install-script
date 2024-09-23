@@ -958,6 +958,7 @@ config_file_fips=$etcdirfips/datadog-fips-proxy.cfg
 system_probe_config_file=$etcdir/system-probe.yaml
 security_agent_config_file=$etcdir/security-agent.yaml
 environment_file=/etc/environment
+dd_environment_file=/etc/datadog-agent/environment
 
 agent_major_version=AGENT_MAJOR_VERSION_PLACEHOLDER
 # shellcheck disable=SC2050
@@ -1784,20 +1785,45 @@ function manage_security_and_system_probe_config(){
     fi
   fi
 }
+function set_in_env_file(){
+  local sudo_cmd="$1"
+  local etc_environment="$2"
+  local key="$3"
+  local value="$4"
+  $sudo_cmd sed -i "/^$key=/d" "$etc_environment"
+  echo "$key=$value" | $sudo_cmd tee -a "$etc_environment"
+}
+function manage_infrastructure_vulnerabilities_config(){
+  local sudo_cmd="$1"
+  local etc_environment="$2"
+  local container_image_vm_enable="$3"
+  local host_vm_enable="$4"
+  $sudo_cmd touch "$etc_environment"
+  if [ "$container_image_vm_enable" == "true" ] || [ "$host_vm_enable" == "true" ]; then
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_SBOM_ENABLED true
+  fi
+  if [ -n "$container_image_vm_enable" ]; then
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_SBOM_CONTAINER_IMAGE_ENABLED "$container_image_vm_enable"
+  fi
+  if [ -n "$host_vm_enable" ]; then
+    set_in_env_file" $sudo_cmd" "$etc_environment" DD_SBOM_HOST_ENABLED "$host_vm_enable"
+  fi
+}
 function manage_client_libraries_security_config(){
   local sudo_cmd="$1"
   local etc_environment="$2"
   local asm_enable="$3"
   local iast_enable="$4"
   local sca_enable="$5"
+  $sudo_cmd touch "$etc_environment"
   if [ -n "$asm_enable" ]; then
-    $sudo_cmd sed -i -n -e '/^DD_APPSEC_ENABLED=/!p' -e "\$aDD_APPSEC_ENABLED=$asm_enable" "$etc_environment"
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_APPSEC_ENABLED "$asm_enable"
   fi
   if [ -n "$iast_enable" ]; then
-    $sudo_cmd sed -i -n -e '/^DD_IAST_ENABLED=/!p' -e "\$aDD_IAST_ENABLED=$iast_enable" "$etc_environment"
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_IAST_ENABLED "$iast_enable"
   fi
   if [ -n "$sca_enable" ]; then
-    $sudo_cmd sed -i -n -e '/^DD_APPSEC_SCA_ENABLED=/!p' -e "\$aDD_APPSEC_SCA_ENABLED=$sca_enable" "$etc_environment"
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_APPSEC_SCA_ENABLED "$sca_enable"
   fi
 }
 function manage_client_libraries_profiling_config(){
@@ -1833,6 +1859,9 @@ fi
 
 manage_client_libraries_security_config "$sudo_cmd" "$environment_file" "$DD_APPSEC_ENABLED" "$DD_IAST_ENABLED" "$DD_APPSEC_SCA_ENABLED"
 manage_client_libraries_profiling_config "$sudo_cmd" "$environment_file" "$DD_PROFILING_ENABLED"
+if [ -e "$(dirname $dd_environment_file)" ]; then
+  manage_infrastructure_vulnerabilities_config "$sudo_cmd" "$dd_environment_file" "$DD_SBOM_CONTAINER_IMAGE_ENABLED" "$DD_SBOM_HOST_ENABLED"
+fi
 
 update_fleet_automation "$sudo_cmd" "$remote_updates" "$remote_policies" "$fips_mode" "$site" "$config_file"
 update_installer_registry "$sudo_cmd" "$installer_registry_url" "$installer_registry_auth" "$config_file"
