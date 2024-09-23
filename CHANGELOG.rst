@@ -2,8 +2,15 @@
 Release Notes
 =============
 
-Unreleased
+1.35.0
 ================
+
+- Allow enabling Infrastructure Vulnerabilities at install time (#268)
+- don't attempt to install apt-transport-https with APT >= 1.5.0 (#273)
+- remove dependency on /etc/docker (#271)
+- Deprecate `DD_HOST_TAGS` in favor of `DD_TAGS` (#272)
+- (fleet) add remote policies config (#270)
+- Allod APM install without updating the agent (#269)
 
 1.34.0
 ================
