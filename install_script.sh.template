@@ -520,7 +520,7 @@ function _install_installer() {
     if [ "$os" == "Debian" ]; then
         echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
         $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "datadog-installer" || return $?
-    elif [ "$os" == "RedHat" ]; then
+    elif [ "$os" == "Red Hat" ]; then
         echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
         $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install "datadog-installer" || $sudo_cmd yum -y install "datadog-installer" || return $?
     elif [ "$os" == "SUSE" ]; then
@@ -1051,8 +1051,8 @@ fi
 
 # OS/Distro Detection
 # Try lsb_release, fallback with /etc/issue then uname command
-KNOWN_DISTRIBUTION="(Debian|Ubuntu|RedHat|CentOS|openSUSE|Amazon|Arista|SUSE|Rocky|AlmaLinux)"
-DISTRIBUTION=$(lsb_release -d 2>/dev/null | grep -Eo $KNOWN_DISTRIBUTION  || grep -Eo $KNOWN_DISTRIBUTION /etc/issue 2>/dev/null || grep -Eo $KNOWN_DISTRIBUTION /etc/Eos-release 2>/dev/null || grep -m1 -Eo $KNOWN_DISTRIBUTION /etc/os-release 2>/dev/null || uname -s)
+KNOWN_DISTRIBUTION="(Debian|Ubuntu|Red Hat|CentOS|openSUSE|Amazon|Arista|SUSE|Rocky|AlmaLinux)"
+DISTRIBUTION=$(lsb_release -d 2>/dev/null | grep -Eo "$KNOWN_DISTRIBUTION" || grep -Eo "$KNOWN_DISTRIBUTION" /etc/issue 2>/dev/null || grep -Eo "$KNOWN_DISTRIBUTION" /etc/Eos-release 2>/dev/null || grep -m1 -Eo "$KNOWN_DISTRIBUTION" /etc/os-release 2>/dev/null || uname -s)
 
 if [ "$DISTRIBUTION" == "Darwin" ]; then
     ERROR_MESSAGE="This script does not support installing on the Mac."
@@ -1065,14 +1065,14 @@ Please use the 1-step script available at https://app.datadoghq.com/account/sett
 
 elif [ -f /etc/debian_version ] || [ "$DISTRIBUTION" == "Debian" ] || [ "$DISTRIBUTION" == "Ubuntu" ]; then
     OS="Debian"
-elif [ -f /etc/redhat-release ] || [ "$DISTRIBUTION" == "RedHat" ] || [ "$DISTRIBUTION" == "CentOS" ] || [ "$DISTRIBUTION" == "Amazon" ] || [ "$DISTRIBUTION" == "Rocky" ] || [ "$DISTRIBUTION" == "AlmaLinux" ]; then
-    OS="RedHat"
+elif [ -f /etc/redhat-release ] || [ "$DISTRIBUTION" == "Red Hat" ] || [ "$DISTRIBUTION" == "CentOS" ] || [ "$DISTRIBUTION" == "Amazon" ] || [ "$DISTRIBUTION" == "Rocky" ] || [ "$DISTRIBUTION" == "AlmaLinux" ]; then
+    OS="Red Hat"
 # Some newer distros like Amazon may not have a redhat-release file
 elif [ -f /etc/system-release ] || [ "$DISTRIBUTION" == "Amazon" ]; then
-    OS="RedHat"
+    OS="Red Hat"
 # Arista is based off of Fedora14/18 but do not have /etc/redhat-release
 elif [ -f /etc/Eos-release ] || [ "$DISTRIBUTION" == "Arista" ]; then
-    OS="RedHat"
+    OS="Red Hat"
 # openSUSE and SUSE use /etc/SuSE-release or /etc/os-release
 elif [ -f /etc/SuSE-release ] || [ "$DISTRIBUTION" == "SUSE" ] || [ "$DISTRIBUTION" == "openSUSE" ]; then
     OS="SUSE"
@@ -1123,7 +1123,7 @@ fi
 ##
 # INSTALL THE NECESSARY PACKAGE SOURCES
 ##
-if [ "$OS" == "RedHat" ]; then
+if [ "$OS" == "Red Hat" ]; then
     remove_rpm_gpg_keys "$sudo_cmd" "${RPM_GPG_KEYS_TO_REMOVE[@]}"
     if { [ "$DISTRIBUTION" == "Rocky" ] || [ "$DISTRIBUTION" == "AlmaLinux" ]; } && { [ -n "$agent_minor_version_without_patch" ] && [ "$agent_minor_version_without_patch" -lt 33 ]; } && ! echo "$agent_flavor" | grep '[0-9]' > /dev/null; then
         ERROR_MESSAGE="A future version of $nice_flavor will support $DISTRIBUTION"
@@ -1138,7 +1138,7 @@ if [ "$OS" == "RedHat" ]; then
     if [ -z "$release_version" ]; then
         release_version=7
     fi
-    if { [ "$DISTRIBUTION" == "RedHat" ] || [ "$DISTRIBUTION" == "CentOS" ]; } && [ "$release_version" -lt 7 ]; then
+    if { [ "$DISTRIBUTION" == "Red Hat" ] || [ "$DISTRIBUTION" == "CentOS" ]; } && [ "$release_version" -lt 7 ]; then
         if [ ${#apm_libraries[@]} -gt 0 ]; then
           ERROR_MESSAGE="APM injection is not supported on $DISTRIBUTION  < 7"
           ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
