@@ -10,7 +10,8 @@ Release Notes
 - remove dependency on /etc/docker (#271)
 - Deprecate `DD_HOST_TAGS` in favor of `DD_TAGS` (#272)
 - (fleet) add remote policies config (#270)
-- Allod APM install without updating the agent (#269)
+- Allow APM install without updating the agent (#269)
+- Add back support for APM SSI centos6 (#275)
 
 1.34.0
 ================
