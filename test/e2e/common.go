@@ -95,7 +95,8 @@ func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...s
 	vm := s.Env().RemoteHost
 
 	installationScriptPath := "scripts/install_agent.sh"
-	scriptEnvVariable := fmt.Sprintf("DD_API_KEY=%s", apiKey)
+	scriptEnvVariable := fmt.Sprintf("DD_API_KEY=%s TESTING_APT_URL=apttesting.datad0g.com TESTING_APT_REPO_VERSION='pipeline-44978092-a7-x86_64 7' TESTING_YUM_URL=yumtesting.datad0g.com TESTING_YUM_VERSION_PATH=testing/pipeline-44978092-a7/7", apiKey)
+
 	if agentVersion != 5 {
 		scriptEnvVariable = scriptEnvVariable + fmt.Sprintf(" DD_AGENT_MAJOR_VERSION=%d DD_AGENT_FLAVOR=%s", agentVersion, flavor)
 		installationScriptPath = "scripts/install_script_agent7.sh"
@@ -288,12 +289,12 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 		}
 	}, 10*time.Second, time.Second)
 	// if t.Failed() {
-    stdout, err := vm.Execute("journalctl --no-pager")
-    if err != nil {
-        t.Logf("Failed to get journalctl logs: %s", err)
-    } else {
-        t.Logf("journalctl logs:\n%s", stdout)
-    }
+	stdout, err := vm.Execute("journalctl --no-pager")
+	if err != nil {
+		t.Logf("Failed to get journalctl logs: %s", err)
+	} else {
+		t.Logf("journalctl logs:\n%s", stdout)
+	}
 	// }
 }
 
