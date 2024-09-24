@@ -1944,6 +1944,8 @@ if [ -n "$fips_mode" ]; then
   $sudo_cmd sh -c "echo '$install_info_content' > $etcdirfips/install_info"
 fi
 
+$sudo_cmd sh -c "echo log_level: debug > /etc/datadog-agent/system-probe.yaml"
+
 # On SUSE 11, sudo service datadog-agent start fails (because /sbin is not in a base user's path)
 # However, sudo /sbin/service datadog-agent does work.
 # Use which (from root user) to find the absolute path to service
