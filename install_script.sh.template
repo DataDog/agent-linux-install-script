@@ -1799,7 +1799,7 @@ function manage_infrastructure_vulnerabilities_config(){
     set_in_env_file "$sudo_cmd" "$etc_environment" DD_SBOM_CONTAINER_IMAGE_ENABLED "$container_image_vm_enable"
   fi
   if [ -n "$host_vm_enable" ]; then
-    set_in_env_file" $sudo_cmd" "$etc_environment" DD_SBOM_HOST_ENABLED "$host_vm_enable"
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_SBOM_HOST_ENABLED "$host_vm_enable"
   fi
 }
 function manage_client_libraries_security_config(){
