@@ -1783,8 +1783,8 @@ function set_in_env_file(){
   local etc_environment="$2"
   local key="$3"
   local value="$4"
-  $sudo_cmd sed -i "/^$key=/d" "$etc_environment"
-  echo "$key=$value" | $sudo_cmd tee -a "$etc_environment"
+  $sudo_cmd sed -i "/^$key=/d" "$etc_environment" > /dev/null
+  echo "$key=$value" | $sudo_cmd tee -a "$etc_environment" > /dev/null
 }
 function manage_infrastructure_vulnerabilities_config(){
   local sudo_cmd="$1"
@@ -1799,7 +1799,7 @@ function manage_infrastructure_vulnerabilities_config(){
     set_in_env_file "$sudo_cmd" "$etc_environment" DD_SBOM_CONTAINER_IMAGE_ENABLED "$container_image_vm_enable"
   fi
   if [ -n "$host_vm_enable" ]; then
-    set_in_env_file" $sudo_cmd" "$etc_environment" DD_SBOM_HOST_ENABLED "$host_vm_enable"
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_SBOM_HOST_ENABLED "$host_vm_enable"
   fi
 }
 function manage_client_libraries_security_config(){
