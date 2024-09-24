@@ -1945,7 +1945,8 @@ if [ -n "$fips_mode" ]; then
 fi
 
 $sudo_cmd mkdir -p /etc/datadog-agent
-$sudo_cmd sh -c "echo 'log_level: debug' > /etc/datadog-agent/system-probe.yaml"
+$sudo_cmd sh -c "echo 'system_probe_config:' > /etc/datadog-agent/system-probe.yaml"
+$sudo_cmd sh -c "echo '  log_level: debug' > /etc/datadog-agent/system-probe.yaml"
 
 # On SUSE 11, sudo service datadog-agent start fails (because /sbin is not in a base user's path)
 # However, sudo /sbin/service datadog-agent does work.
