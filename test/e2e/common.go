@@ -287,14 +287,14 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 			assertFileNotExists(c, vm, fmt.Sprintf("/opt/%s", s.baseName))
 		}
 	}, 10*time.Second, time.Second)
-	if t.Failed() {
-		stdout, err := vm.Execute("journalctl --no-pager")
-		if err != nil {
-			t.Logf("Failed to get journalctl logs: %s", err)
-		} else {
-			t.Logf("journalctl logs:\n%s", stdout)
-		}
-	}
+	// if t.Failed() {
+    stdout, err := vm.Execute("journalctl --no-pager")
+    if err != nil {
+        t.Logf("Failed to get journalctl logs: %s", err)
+    } else {
+        t.Logf("journalctl logs:\n%s", stdout)
+    }
+	// }
 }
 
 func (s *linuxInstallerTestSuite) purge() {
