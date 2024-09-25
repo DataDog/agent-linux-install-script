@@ -1241,7 +1241,7 @@ if [ "$OS" == "Red Hat" ]; then
       echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
-      $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >(tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${packages[*]}" 2> >(tee /tmp/ddog_install_error_msg >&2)
+      $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
 
       ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
     else
@@ -1285,7 +1285,7 @@ elif [ "$OS" == "Debian" ]; then
             # $sudo_cmd at all in this case
             DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y "${APT_DEPS[@]}" 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
         else
-            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y "${APT_DEPS[@]}" 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
+            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y "${APT_DEPS[@]}" 2> >($sudo_cmd tee $DD_APT_INSTALL_ERROR_MSG >&2) || apt_exit_code=$?
         fi
 
         if grep "Could not get lock" $DD_APT_INSTALL_ERROR_MSG; then
@@ -1405,7 +1405,7 @@ If the cause is unclear, please contact Datadog support.
     echo exit 101 > "${POLICYRCD}"
     $sudo_cmd chmod +x "${POLICYRCD}"
 
-    $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >(tee /tmp/ddog_install_error_msg >&2)"
+    $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
 
     for pkg in "${packages_to_lock[@]}"
     do
@@ -1567,9 +1567,9 @@ elif [ "$OS" == "SUSE" ]; then
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
     # Not yet retry mechanism in zypper, see https://github.com/openSUSE/zypper/issues/420
     if [ -z "$sudo_cmd" ]; then
-      ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} zypper --non-interactive --no-refresh install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
+      ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} zypper --non-interactive --no-refresh install "${packages[@]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
     else
-      $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE="${SYSTEMD_OFFLINE:-0}" zypper --non-interactive --no-refresh install "${packages[@]}" 2> >(tee /tmp/ddog_install_error_msg >&2) ||:
+      $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE="${SYSTEMD_OFFLINE:-0}" zypper --non-interactive --no-refresh install "${packages[@]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
     fi
 
     ERR_SUMMARY=$(grep "Write error" -C1 /tmp/ddog_install_error_msg || true)
