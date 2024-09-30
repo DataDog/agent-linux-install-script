@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.35.1
 ================
+
+- [BUGFIX] Fix vulnerability management config edition (#277)
+- [BUGFIX] ensure we can write to the log files (#278)
 
 1.35.0
 ================
