@@ -99,8 +99,6 @@ unit_tests:
     DD_AGENT_FLAVOR: $FLAVOR
   script:
     - ./test/localtest.sh
-  # retry the job in case of failure, we might have network issues downloading the image
-  retry: 2
 
 test_pinned_version:
   extends: .test
@@ -190,8 +188,12 @@ test:
     paths:
       - artifacts/
 
+# These tests should not be launched on pipelines triggered by datadog-agent pipelines, but in the future we will trigger
+# them from the `6.53.x` branch of the datadog-agent repo
 test_agent6:
   extends: .test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
   variables:
     MAJOR_VERSION: 6
   parallel:
