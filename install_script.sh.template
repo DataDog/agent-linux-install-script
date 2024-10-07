@@ -410,9 +410,9 @@ function report_installer_telemetry() {
         "seq_id": 1,
         "origin": "linux-install-script",
         "network": {
-            "gcr.io": "$(json_escape "$(curl --max-time 5 -s -o /dev/null -w "%{http_code}" "https://gcr.io/v2/datadoghq/installer-package/manifests/latest")")",
-            "install.datadoghq.com": "$(json_escape "$(curl --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/scripts/install_script_agent7.sh")")",
-            "public.ecr.aws": "$(json_escape "$(curl --max-time 5 -s -o /dev/null -w "%{http_code}" "https://public.ecr.aws/datadog/agent/manifests/latest")")"
+            "gcr.io": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://gcr.io/v2/datadoghq/installer-package/manifests/latest")")",
+            "install.datadoghq.com": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/scripts/install_script_agent7.sh")")",
+            "public.ecr.aws": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://public.ecr.aws/datadog/agent/manifests/latest")")"
         },
         "host": {
             "hostname": "$(json_escape "$(uname -n)")",
