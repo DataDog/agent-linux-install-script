@@ -409,6 +409,10 @@ function report_installer_telemetry() {
         "runtime_id": "${trace_id}",
         "seq_id": 1,
         "origin": "linux-install-script",
+        "network": {
+            "gcr.io": "$(json_escape "$(curl --max-time 5 -s -o /dev/null -w "%{http_code}" "https://gcr.io/v2/datadoghq/installer-package/manifests/latest")")",
+            "install.datadoghq.com": "$(json_escape "$(curl --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/scripts/install_script_agent7.sh")")"
+        },
         "host": {
             "hostname": "$(json_escape "$(uname -n)")",
             "os": "$(json_escape "${os}")",
@@ -1402,7 +1406,7 @@ If the cause is unclear, please contact Datadog support.
     POLICYRCD=/tmp/policy-do-not-start-service-rc.d
     echo exit 101 > "${POLICYRCD}"
     $sudo_cmd chmod +x "${POLICYRCD}"
-    
+
     $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >(tee /tmp/ddog_install_error_msg >&2)"
 
     for pkg in "${packages_to_lock[@]}"
@@ -1961,15 +1965,15 @@ for current_service in "${services[@]}"; do
       printf "\033[34m\n  Stopping service ${current_service} that was launched during the package installation.\033[0m\n"
       $stop_instructions || true
       if [[ $current_service == "datadog-agent" ]]; then
-        # Stop all the related services 
+        # Stop all the related services
         # https://github.com/DataDog/datadog-agent/blob/def18e3815c6cc67d8669408032961804821687a/omnibus/package-scripts/agent-rpm/preinst#L16-L20
         eval "${stop_instructions}-process || true"
         eval "${stop_instructions}-sysprobe || true"
         eval "${stop_instructions}-trace || true"
-        eval "${stop_instructions}-security || true" 
+        eval "${stop_instructions}-security || true"
       fi
     fi
-  
+
     printf "\033[34m\n    The newly installed version of the ${nice_current_flavor} will not be started.
     You will have to do it manually using the following command:
 
