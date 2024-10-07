@@ -52,13 +52,13 @@ func TestInstallMaximalAndRetrySuite(t *testing.T) {
 }
 
 func (s *installMaximalAndRetryTestSuite) TestInstallMaximalAndReplayScript() {
-	output := s.InstallAgent(7, "DD_HOST_TAGS=\"foo:bar,baz:toto\" DD_ENV=kiki DD_HOSTNAME=totoro DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_SITE=\"mysite.com\" DD_URL=myintake.com", "install agent 7 with maximal environment variables")
+	output := s.InstallAgent(7, "DD_TAGS=\"foo:bar,baz:toto\" DD_ENV=kiki DD_HOSTNAME=totoro DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_SITE=\"mysite.com\" DD_URL=myintake.com", "install agent 7 with maximal environment variables")
 
 	s.assertInstallMaximal(output)
 
 	s.addExtraIntegration()
 
-	output = s.InstallAgent(7, "DD_HOST_TAGS=\"john:doe,john:lennon\" DD_ENV=totoro DD_HOSTNAME=kiki DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_SITE=darthmaul.com DD_URL=otherintake.com", "install Agent 7 RC again with new environment variables")
+	output = s.InstallAgent(7, "DD_TAGS=\"john:doe,john:lennon\" DD_ENV=totoro DD_HOSTNAME=kiki DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_SITE=darthmaul.com DD_URL=otherintake.com", "install Agent 7 RC again with new environment variables")
 
 	s.assertRetryInstall(output)
 

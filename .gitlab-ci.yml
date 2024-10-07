@@ -99,8 +99,6 @@ unit_tests:
     DD_AGENT_FLAVOR: $FLAVOR
   script:
     - ./test/localtest.sh
-  # retry the job in case of failure, we might have network issues downloading the image
-  retry: 2
 
 test_pinned_version:
   extends: .test
@@ -119,13 +117,21 @@ test_pinned_version:
       #  MINOR_VERSION: 38
       - IMAGE:
           [
-            centos:centos7,
             rockylinux:9.0,
             ubuntu:14.04,
             debian:10.9,
             opensuse/leap:15.4,
           ]
         MAJOR_VERSION: [6, 7]
+
+test_pinned_version_centos:
+  extends: test_pinned_version
+  # We need to use a dedicated image for centos 7 that is not using the
+  # same path as the other images.
+  image: registry.ddbuild.io/images/base:v38221072-2485f17-centos7
+  parallel:
+    matrix:
+      - MAJOR_VERSION: [6, 7]
 
 # Opensuse13 only supports Datadog Agent version up 6.32, hence these tests should not be launched on pipelines triggered by datadog-agent pipelines
 test_opensuse13:
@@ -182,8 +188,12 @@ test:
     paths:
       - artifacts/
 
+# These tests should not be launched on pipelines triggered by datadog-agent pipelines, but in the future we will trigger
+# them from the `6.53.x` branch of the datadog-agent repo
 test_agent6:
   extends: .test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
   variables:
     MAJOR_VERSION: 6
   parallel:
