@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.35.2
 ================
+
+- (fleet) add network healthchecks to the script (#282)
+- chore: [BARX-576] Don't run test_agent6 jobs from datadog-agent pipelines (#281)
 
 1.35.1
 ================
