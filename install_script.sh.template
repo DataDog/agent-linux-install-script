@@ -445,7 +445,8 @@ function report_installer_telemetry() {
                         "packages_to_install": "$(json_escape "${packages_to_install}")",
                         "packages_to_install_after_installer": "$(json_escape "${packages_to_install_after_installer}")",
                         "network.gcr_io": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://gcr.io/v2/datadoghq/installer-package/manifests/latest")")",
-                        "network.install_datadoghq_com": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/scripts/install_script_agent7.sh")")",
+                        "network.install_datadoghq_com_install_script": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/scripts/install_script_agent7.sh")")",
+                        "network.install_datadoghq_com_index": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/index.html")")",
                         "network.public_ecr_aws": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://public.ecr.aws/datadog/agent/manifests/latest")")",
                         "network.yum_datadoghq_com": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://yum.datadoghq.com/index.html")")",
                         "network.apt_datadoghq_com": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://apt.datadoghq.com/index.html")")"
