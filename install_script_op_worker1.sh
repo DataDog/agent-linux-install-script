@@ -8,7 +8,7 @@
 
 set -e
 
-install_script_version=1.35.3.post
+install_script_version=1.35.4
 logfile="dd-install.log"
 support_email=support@datadoghq.com
 variant=install_script_op_worker1
