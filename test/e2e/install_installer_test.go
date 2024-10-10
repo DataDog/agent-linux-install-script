@@ -6,6 +6,7 @@
 package e2e
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -47,6 +48,7 @@ func (s *installUpdaterTestSuite) TestInstallUpdater() {
 
 	s.assertInstallScript(true)
 	s.assertInstallerInstalled()
+	s.assertValidTraceGenerated()
 
 	s.uninstallInstaller()
 	s.assertUninstallInstaller()
@@ -166,5 +168,18 @@ func (s *installUpdaterTestSuite) assertPackageNotInstalledByPackageManager(pkg 
 		vm.Execute("! zypper se -i " + pkg + " | grep -q " + pkg)
 	} else {
 		require.FailNow(t, "Unknown package manager")
+	}
+}
+
+func (s *installUpdaterTestSuite) assertValidTraceGenerated() {
+	t := s.T()
+	vm := s.Env().RemoteHost
+
+	t.Log("Assert valid trace generated")
+	assertFileExists(t, vm, "/tmp/datadog-installer-trace.json")
+	rawTrace, err := vm.ReadFile("/tmp/datadog-installer-trace.json")
+	require.NoError(t, err)
+	if !json.Valid(rawTrace) {
+		t.Fatalf("Trace is not valid JSON: %s", string(rawTrace))
 	}
 }
