@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.35.3
 ================
+
+- (fleet) fix network telemetry (#285)
 
 1.35.2
 ================
