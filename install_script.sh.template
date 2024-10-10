@@ -514,7 +514,7 @@ END
     then
         echo "Unable to send trace telemetry\n"
     fi
-    echo "$telemetry_trace" > /tmp/datadog-installer-trace.json
+    echo "$telemetry_trace" | $sudo_cmd tee /tmp/datadog-installer-trace.json
 }
 
 function _install_installer() {
