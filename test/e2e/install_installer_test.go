@@ -48,6 +48,7 @@ func (s *installUpdaterTestSuite) TestInstallUpdater() {
 
 	s.assertInstallScript(true)
 	s.assertInstallerInstalled()
+	s.assertValidTraceGenerated()
 
 	s.uninstallInstaller()
 	s.assertUninstallInstaller()
