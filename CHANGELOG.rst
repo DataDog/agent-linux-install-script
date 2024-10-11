@@ -2,6 +2,11 @@
 Release Notes
 =============
 
+1.35.4
+================
+
+- (fleet) add more tested networks, fix missing comma, add e2e to validate the trace telemetry
+
 1.35.3
 ================
 
