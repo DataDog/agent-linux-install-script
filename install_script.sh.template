@@ -9,7 +9,7 @@ set -e
 
 DEPRECATION_MESSAGE_PLACEHOLDER
 
-install_script_version=1.35.2.post
+install_script_version=1.35.4.post
 logfile="ddagent-install.log"
 support_email=support@datadoghq.com
 variant=install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
@@ -409,11 +409,6 @@ function report_installer_telemetry() {
         "runtime_id": "${trace_id}",
         "seq_id": 1,
         "origin": "linux-install-script",
-        "network": {
-            "gcr.io": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://gcr.io/v2/datadoghq/installer-package/manifests/latest")")",
-            "install.datadoghq.com": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/scripts/install_script_agent7.sh")")",
-            "public.ecr.aws": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://public.ecr.aws/datadog/agent/manifests/latest")")"
-        },
         "host": {
             "hostname": "$(json_escape "$(uname -n)")",
             "os": "$(json_escape "${os}")",
@@ -448,7 +443,13 @@ function report_installer_telemetry() {
                         "error.message": "${install_stderr}",
                         "version": "${install_script_version}",
                         "packages_to_install": "$(json_escape "${packages_to_install}")",
-                        "packages_to_install_after_installer": "$(json_escape "${packages_to_install_after_installer}")"
+                        "packages_to_install_after_installer": "$(json_escape "${packages_to_install_after_installer}")",
+                        "network.gcr_io": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://gcr.io/v2/datadoghq/installer-package/manifests/latest")")",
+                        "network.install_datadoghq_com_install_script": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/scripts/install_script_agent7.sh")")",
+                        "network.install_datadoghq_com_index": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/index.html")")",
+                        "network.public_ecr_aws": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://public.ecr.aws/datadog/agent/manifests/latest")")",
+                        "network.yum_datadoghq_com": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://yum.datadoghq.com/index.html")")",
+                        "network.apt_datadoghq_com": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://apt.datadoghq.com/index.html")")"
                     },
                     "metrics": {
                         "_trace_root": 1,
@@ -513,6 +514,7 @@ END
     then
         echo "Unable to send trace telemetry\n"
     fi
+    echo "$telemetry_trace" | $sudo_cmd tee /tmp/datadog-installer-trace.json
 }
 
 function _install_installer() {
