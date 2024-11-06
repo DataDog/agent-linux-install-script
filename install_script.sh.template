@@ -740,7 +740,6 @@ fi
 # APM SPECIFIC CONFIGURATION
 ##
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "docker" ] ; then
-  docker_injection_enabled="true"
   install_type="linux_single_step_dkr"
   no_agent=true
 fi
