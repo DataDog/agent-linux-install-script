@@ -59,7 +59,7 @@ install_script_docker_injection.sh: install_script.sh.template
 		-e 's|INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER|Docker Injection|' \
 		-e 's|INSTALL_INFO_VERSION_PLACEHOLDER|_docker_injection|' \
 		-e 's|IS_LEGACY_SCRIPT_PLACEHOLDER||' \
-		-e 's|DD_APM_INSTRUMENTATION_ENABLED_DOCKER_PLACEHOLDER|export DD_APM_INSTRUMENTATION_ENABLED="docker"|' \
+		-e 's|DD_APM_INSTRUMENTATION_ENABLED_DOCKER_PLACEHOLDER|DD_APM_INSTRUMENTATION_ENABLED="docker"|' \
 		-e 's|APM_TELEMETRY_SAFE_AGENT_VERSION_OVERRIDE_PLACEHOLDER|safe_agent_version=noagent_autoinstrumentation|' \
 		-e 's|DEPRECATION_MESSAGE_PLACEHOLDER||' \
 		install_script.sh.template > $@

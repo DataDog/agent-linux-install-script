@@ -17,8 +17,6 @@ fi
 
 cp "$SCRIPT" /tmp/script.sh
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "$DD_APM_INSTRUMENTATION_ENABLED" == "docker" ] || [ "$SCRIPT_FLAVOR" == "docker_injection" ]; then
-    # fake presence of docker for the installer
-    touch /usr/local/bin/docker && chmod +x /usr/local/bin/docker
     # fake presence of docker and make sure the script doesn't try to restart it
     mkdir /etc/docker
     sed -i "s|dd-container-install --no-agent-restart|dd-container-install --no-agent-restart --no-docker-reload|" /tmp/script.sh
@@ -168,13 +166,23 @@ if [ -n "${DD_SYSTEM_PROBE_ENSURE_CONFIG}" ]; then
 fi
 
 if [ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] || [ "${SCRIPT_FLAVOR}" == "docker_injection" ]; then
-  test -d /opt/datadog-packages/datadog-apm-inject/stable
-  test -d /opt/datadog-packages/datadog-apm-library-dotnet/stable
-  test -d /opt/datadog-packages/datadog-apm-library-java/stable
-  test -d /opt/datadog-packages/datadog-apm-library-js/stable
-  test -d /opt/datadog-packages/datadog-apm-library-python/stable
-  test -d /opt/datadog-packages/datadog-apm-library-ruby/stable
-  echo "[OK] Inject libraries installed"
+  if [[ "$OS_TYPE" == "ubuntu" ]]; then
+      test -d /opt/datadog-packages/datadog-apm-inject/stable || debsums -c datadog-apm-inject
+      test -d /opt/datadog-packages/datadog-apm-library-dotnet/stable || debsums -c datadog-apm-library-dotnet
+      test -d /opt/datadog-packages/datadog-apm-library-java/stable || debsums -c datadog-apm-library-java
+      test -d /opt/datadog-packages/datadog-apm-library-js/stable || debsums -c datadog-apm-library-js
+      test -d /opt/datadog-packages/datadog-apm-library-python/stable || debsums -c datadog-apm-library-python
+      test -d /opt/datadog-packages/datadog-apm-library-ruby/stable || debsums -c datadog-apm-library-ruby
+      echo "[OK] Inject libraries installed"
+  else
+      test -d /opt/datadog-packages/datadog-apm-inject/stable || rpm --verify --nomode --nouser --nogroup datadog-apm-inject
+      test -d /opt/datadog-packages/datadog-apm-library-dotnet/stable || rpm --verify --nomode --nouser --nogroup datadog-apm-library-dotnet
+      test -d /opt/datadog-packages/datadog-apm-library-java/stable || rpm --verify --nomode --nouser --nogroup datadog-apm-library-java
+      test -d /opt/datadog-packages/datadog-apm-library-js/stable || rpm --verify --nomode --nouser --nogroup datadog-apm-library-js
+      test -d /opt/datadog-packages/datadog-apm-library-python/stable || rpm --verify --nomode --nouser --nogroup datadog-apm-library-python
+      test -d /opt/datadog-packages/datadog-apm-library-ruby/stable || rpm --verify --nomode --nouser --nogroup datadog-apm-library-ruby
+      echo "[OK] Inject libraries installed"
+  fi
 
   if [ "$DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "$DD_APM_INSTRUMENTATION_ENABLED" == "host" ]; then
     if [ -f "/etc/ld.so.preload" ]; then
@@ -197,12 +205,21 @@ else
 fi
 
 if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
-  test -d /opt/datadog-packages/datadog-apm-library-dotnet/stable
-  test -d /opt/datadog-packages/datadog-apm-library-java/stable
-  test -d /opt/datadog-packages/datadog-apm-library-js/stable
-  test -d /opt/datadog-packages/datadog-apm-library-python/stable
-  test -d /opt/datadog-packages/datadog-apm-library-ruby/stable
-  echo "[OK] Inject libraries installed"
+  if [[ "$OS_TYPE" == "ubuntu" ]]; then
+    test -d /opt/datadog-packages/datadog-apm-library-dotnet/stable || debsums -c datadog-apm-library-dotnet
+    test -d /opt/datadog-packages/datadog-apm-library-java/stable || debsums -c datadog-apm-library-java
+    test -d /opt/datadog-packages/datadog-apm-library-js/stable || debsums -c datadog-apm-library-js
+    test -d /opt/datadog-packages/datadog-apm-library-python/stable || debsums -c datadog-apm-library-python
+    test -d /opt/datadog-packages/datadog-apm-library-ruby/stable || debsums -c datadog-apm-library-ruby
+    echo "[OK] Inject libraries installed"
+  else
+    test -d /opt/datadog-packages/datadog-apm-library-dotnet/stable || rpm --verify --nomode --nouser --nogroup datadog-apm-library-dotnet
+    test -d /opt/datadog-packages/datadog-apm-library-java/stable || rpm --verify --nomode --nouser --nogroup datadog-apm-library-java
+    test -d /opt/datadog-packages/datadog-apm-library-js/stable || rpm --verify --nomode --nouser --nogroup datadog-apm-library-js
+    test -d /opt/datadog-packages/datadog-apm-library-python/stable || rpm --verify --nomode --nouser --nogroup datadog-apm-library-python
+    test -d /opt/datadog-packages/datadog-apm-library-ruby/stable || rpm --verify --nomode --nouser --nogroup datadog-apm-library-ruby
+    echo "[OK] Inject libraries installed"
+  fi
 fi
 
 exit ${RESULT}
