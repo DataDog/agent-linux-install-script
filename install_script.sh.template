@@ -109,6 +109,43 @@ function report_telemetry() {
     safe_agent_version=$(echo -n "$agent_major_version" | tr '\n' ' ' | tr '"' '_')
   fi
 
+  library_telemetry_info=
+
+  if [ ${#apm_libraries[@]} -gt 0 ]; then
+    for lib in "${apm_libraries[@]}"
+    do
+      cur_lib=$(echo "$lib" | cut -s -d':' -f1)
+      cur_version=$(echo "$lib" | cut -s -d':' -f2)
+      if [ -z "$cur_version" ] ; then
+        cur_version="default"
+        cur_lib="$lib"
+      fi
+      case $cur_lib in
+        datadog-apm-library-java)
+          library_telemetry_info="${library_telemetry_info},\"specified_java_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-js)
+          library_telemetry_info="${library_telemetry_info},\"specified_nodejs_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-python)
+          library_telemetry_info="${library_telemetry_info},\"specified_python_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-dotnet)
+          library_telemetry_info="${library_telemetry_info},\"specified_dotnet_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-ruby)
+          library_telemetry_info="${library_telemetry_info},\"specified_ruby_lib_version\": \"${cur_version}\""
+          ;;
+        datadog-apm-library-php)
+          library_telemetry_info="${library_telemetry_info},\"specified_php_lib_version\": \"${cur_version}\""
+          ;;
+        *)
+          ;;
+      esac
+    done
+  fi
+
+  APM_TELEMETRY_SAFE_AGENT_VERSION_OVERRIDE_PLACEHOLDER
   if [ -z "${ERROR_CODE}" ] ; then
     telemetry_event="
 {
@@ -122,7 +159,7 @@ function report_telemetry() {
            $install_time_tag
            \"agent_platform\": \"native\",
            \"agent_version\": \"$safe_agent_version\",
-           \"script_version\": \"$install_script_version\"
+           \"script_version\": \"$install_script_version\" $library_telemetry_info
        }
    }
 }
@@ -143,7 +180,7 @@ function report_telemetry() {
            $install_time_tag
            \"agent_platform\": \"native\",
            \"agent_version\": \"$safe_agent_version\",
-           \"script_version\": \"$install_script_version\"
+           \"script_version\": \"$install_script_version\" $library_telemetry_info
        },
        \"error\": {
           \"code\": $ERROR_CODE,
@@ -739,10 +776,120 @@ fi
 ##
 # APM SPECIFIC CONFIGURATION
 ##
+declare -a apm_libraries
+declare host_injection_enabled
+declare docker_injection_enabled
+install_type="linux_agent_installer"
 DD_APM_INSTRUMENTATION_ENABLED_DOCKER_PLACEHOLDER
+
+if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "all" ] ; then
+  host_injection_enabled="true"
+  docker_injection_enabled="true"
+  install_type="linux_single_step_all"
+fi
+
+if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "host" ] ; then
+  host_injection_enabled="true"
+  install_type="linux_single_step_hst"
+fi
+
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "docker" ] ; then
+  docker_injection_enabled="true"
   install_type="linux_single_step_dkr"
   no_agent=true
+fi
+
+if [ -n "${host_injection_enabled}${docker_injection_enabled}" ] ; then
+    apm_libraries=("datadog-apm-inject")
+fi
+
+if [ -n "$DD_APM_INSTRUMENTATION_LIBRARIES" ]; then
+  read -r -a lib_array <<< "$(echo "$DD_APM_INSTRUMENTATION_LIBRARIES" | tr , ' ')"
+  for lib in "${lib_array[@]}"
+  do
+    cur_lib=$(echo "$lib" | cut -s -d':' -f1)
+    cur_version=$(echo "$lib" | cut -s -d':' -f2)
+    if [ -z "$cur_lib" ] ; then
+      cur_lib="$lib"
+    elif [ "$cur_version" = "latest" ] ; then
+      cur_version=""
+    else
+      cur_version=":${cur_version}-1"
+    fi
+    case $cur_lib in
+      all)
+        apm_libraries+=("datadog-apm-library-java" "datadog-apm-library-js" "datadog-apm-library-python" "datadog-apm-library-dotnet" "datadog-apm-library-ruby") # php is not installed by default yet
+        ;;
+      java)
+        apm_libraries+=("datadog-apm-library-java${cur_version}")
+        ;;
+      js)
+        apm_libraries+=("datadog-apm-library-js${cur_version}")
+        ;;
+      python)
+        apm_libraries+=("datadog-apm-library-python${cur_version}")
+        ;;
+      dotnet)
+        apm_libraries+=("datadog-apm-library-dotnet${cur_version}")
+        ;;
+      ruby)
+        apm_libraries+=("datadog-apm-library-ruby${cur_version}")
+        ;;
+      php)
+        apm_libraries+=("datadog-apm-library-php${cur_version}")
+        ;;
+      *)
+        ERROR_MESSAGE="Unknown apm library: $cur_lib. Must be one of: all, java, js, python, dotnet, ruby, php"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
+        echo "$ERROR_MESSAGE"
+        report_telemetry
+        exit 1;
+        ;;
+    esac
+  done
+elif [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
+  read -r -a lib_array <<< "$DD_APM_INSTRUMENTATION_LANGUAGES"
+  for lib in "${lib_array[@]}"
+  do
+    case $lib in
+      all)
+        apm_libraries+=("datadog-apm-library-java" "datadog-apm-library-js" "datadog-apm-library-python" "datadog-apm-library-dotnet" "datadog-apm-library-ruby") # php is not installed by default yet
+        ;;
+      java)
+        apm_libraries+=("datadog-apm-library-java")
+        ;;
+      js)
+        apm_libraries+=("datadog-apm-library-js")
+        ;;
+      python)
+        apm_libraries+=("datadog-apm-library-python")
+        ;;
+      dotnet)
+        apm_libraries+=("datadog-apm-library-dotnet")
+        ;;
+      ruby)
+        apm_libraries+=("datadog-apm-library-ruby")
+        ;;
+      php)
+        apm_libraries+=("datadog-apm-library-php")
+        ;;
+      *)
+        ERROR_MESSAGE="Unknown apm library: $lib. Must be one of: all, java, js, python, dotnet, ruby, php"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
+        echo "$ERROR_MESSAGE"
+        report_telemetry
+        exit 1;
+        ;;
+    esac
+  done
+elif [ -n "$host_injection_enabled" ] || [ -n "$docker_injection_enabled" ]; then
+  # Default to all libraries if injection is enabled
+  apm_libraries+=("datadog-apm-library-java" "datadog-apm-library-js" "datadog-apm-library-python" "datadog-apm-library-dotnet" "datadog-apm-library-ruby") # php is not installed by default yet
+fi
+
+no_config_change=
+if [ -n "$DD_APM_INSTRUMENTATION_NO_CONFIG_CHANGE" ]; then
+  no_config_change="--no-config-change"
 fi
 
 ##
@@ -902,7 +1049,7 @@ if [[ $(uname -m) == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]] && [ 
     exit 1;
 fi
 
-if [ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] && [ "$agent_major_version" = "6" ] ; then
+if [ ${#apm_libraries[@]} -gt 0 ] && [ "$agent_major_version" = "6" ] ; then
   ERROR_MESSAGE="APM library injection is not supported with Agent version 6"
   ERROR_CODE=$INVALID_PARAMETERS_CODE
   echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
@@ -1077,6 +1224,21 @@ if [ "$OS" == "Red Hat" ]; then
       packages+=("datadog-fips-proxy")
     fi
 
+    excludepkgs=""
+    if [ ${#apm_libraries[@]} -gt 0 ]; then
+      for lib in "${apm_libraries[@]}"
+      do
+        cur_lib=$(echo "$lib" | cut -s -d':' -f1)
+        cur_version=$(echo "$lib" | cut -s -d':' -f2)
+        if [ -z "$cur_lib" ] ; then
+          packages+=("${lib}")
+        else
+          packages+=("${cur_lib}-${cur_version}")
+          excludepkgs="${excludepkgs:+${excludepkgs}, }${cur_lib}"
+        fi
+      done
+    fi
+
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
     install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
@@ -1220,6 +1382,24 @@ If the cause is unclear, please contact Datadog support.
      packages+=("datadog-fips-proxy")
     fi
 
+    packages_to_lock=()
+    if [ ${#apm_libraries[@]} -gt 0 ]; then
+      for lib in "${apm_libraries[@]}"
+      do
+        cur_lib=$(echo "$lib" | cut -s -d':' -f1)
+        cur_version=$(echo "$lib" | cut -s -d':' -f2)
+        if [ -z "$cur_lib" ] ; then
+          packages+=("${lib}")
+          # the tracer might have been excluded from updates previously => un-hold it
+          $sudo_cmd dpkg --set-selections <<< "${lib} install" >/dev/null 2>&1
+        else
+          packages_to_lock+=("${cur_lib}")
+          packages+=("${cur_lib}=${cur_version}")
+          $sudo_cmd dpkg --set-selections <<< "${cur_lib} install" >/dev/null 2>&1
+        fi
+      done
+    fi
+
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
     install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
@@ -1233,6 +1413,14 @@ If the cause is unclear, please contact Datadog support.
     $sudo_cmd chmod +x "${POLICYRCD}"
 
     $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
+
+    for pkg in "${packages_to_lock[@]}"
+    do
+        if $sudo_cmd dpkg -l "${pkg}" >/dev/null 2>&1 ; then
+          # exclude pinned tracer versions from updates if they're installed through debs
+          $sudo_cmd apt-mark hold "${pkg}" >/dev/null 2>&1
+        fi
+    done
 
     ERR_SUMMARY=$(grep "No space left on device" -C1 /tmp/ddog_install_error_msg || true)
 
@@ -1368,6 +1556,14 @@ elif [ "$OS" == "SUSE" ]; then
   fi
   if [ -n "$fips_mode" ]; then
     packages+=("datadog-fips-proxy")
+  fi
+
+  if [ ${#apm_libraries[@]} -gt 0 ]; then
+    ERROR_MESSAGE="APM injection is not supported on SUSE"
+    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
+    echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
+    report_telemetry
+    exit 1;
   fi
 
     # Install the installer
@@ -1684,6 +1880,17 @@ fi
 # set the system-probe configuration
 if [ -n "$system_probe_ensure_config" ]; then
   ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
+fi
+
+# run apm injection scripts
+if ! is_installed_by_installer "$sudo_cmd" "datadog-apm-inject"; then
+  if [ -n "$host_injection_enabled" ]; then
+    $sudo_cmd dd-host-install --no-agent-restart ${no_config_change}
+  fi
+
+  if [ -n "$docker_injection_enabled" ]; then
+    $sudo_cmd dd-container-install --no-agent-restart
+  fi
 fi
 
 # Creating or overriding the install information
