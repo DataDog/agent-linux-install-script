@@ -739,6 +739,7 @@ fi
 ##
 # APM SPECIFIC CONFIGURATION
 ##
+DD_APM_INSTRUMENTATION_ENABLED_DOCKER_PLACEHOLDER
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "docker" ] ; then
   install_type="linux_single_step_dkr"
   no_agent=true

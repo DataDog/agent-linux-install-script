@@ -251,7 +251,6 @@ test-apm-injection:
         # We intentionally don't pass NO_AGENT here to ensure this script works without it
         # NO_AGENT: "true"
         DD_APM_INSTRUMENTATION_LANGUAGES: "all"
-        DD_APM_INSTRUMENTATION_ENABLED: "docker"
         SCRIPT: "install_script_docker_injection.sh"
 
   script:
