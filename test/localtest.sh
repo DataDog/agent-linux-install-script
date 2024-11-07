@@ -17,6 +17,8 @@ fi
 
 cp "$SCRIPT" /tmp/script.sh
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "$DD_APM_INSTRUMENTATION_ENABLED" == "docker" ] || [ "$SCRIPT_FLAVOR" == "docker_injection" ]; then
+    # fake presence of docker for the installer
+    touch /usr/local/bin/docker && chmod +x /usr/local/bin/docker
     # fake presence of docker and make sure the script doesn't try to restart it
     mkdir /etc/docker
     sed -i "s|dd-container-install --no-agent-restart|dd-container-install --no-agent-restart --no-docker-reload|" /tmp/script.sh
