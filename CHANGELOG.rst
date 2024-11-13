@@ -2,8 +2,14 @@
 Release Notes
 =============
 
-Unreleased
+1.36.0
 ================
+
+- remove deb/rpm fallback for apm (#298)
+- Tests to ensure that deb/rpm are not installed (#299)
+- [ACIX-322] Use registry.ddbuild.io for buildimages (#295)
+- ci(buildimages): Rename buildimages (#293)
+- Transfer ownership to container-ecosystems (#286)
 
 1.35.4
 ================
