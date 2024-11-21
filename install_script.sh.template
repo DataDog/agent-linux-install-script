@@ -1507,7 +1507,7 @@ function update_env(){
   local config_file="$3"
   if [ -n "$dd_env" ]; then
     printf "\033[34m\n* Adding your DD_ENV to the $nice_flavor configuration: $config_file\n\033[0m\n"
-    $sudo_cmd sh -c "sed -i 's/^# env:.*/env: $dd_env/' $config_file"
+    $sudo_cmd sh -c "sed -i 's|^# env:.*|env: $dd_env|' $config_file"
   fi
 }
 function update_fleet_automation(){
