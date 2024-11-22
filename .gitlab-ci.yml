@@ -328,8 +328,8 @@ e2e:
     - mkdir -p $GOPATH/pkg/mod && tar xJf modcache_e2e.tar.xz -C $GOPATH/pkg/mod && rm -f modcache_e2e.tar.xz
     # Install orchestrion
     - go install github.com/DataDog/orchestrion@latest
-    - export GOFLAGS="${GOFLAGS} '-toolexec=orchestrion toolexec'"
     - cd test/e2e && orchestrion pin && cd ../..
+    - export GOFLAGS="${GOFLAGS} '-toolexec=orchestrion toolexec'"
     - export DD_ENV=ci
     - export DD_SERVICE=agent-linux-install-script
     - export DD_TAGS="test.codeowners:@DataDog/agent-platform ci.job.name:e2e ci.stage.name:e2e"
