@@ -1,19 +1,19 @@
 module github.com/DataDog/agent-linux-install-script/test/e2e
 
-go 1.22.0
+go 1.22.5
 
-toolchain go1.22.6
+toolchain go1.22.8
 
 require (
 	github.com/DataDog/datadog-agent/test/new-e2e v0.56.0-devel.0.20240619155906-9b99ef437a92
-	github.com/DataDog/test-infra-definitions v0.0.0-20240823123857-8aaa61cc1c42
+	github.com/DataDog/test-infra-definitions v0.0.0-20241121181216-eefd2de87300
 	github.com/hashicorp/go-version v1.6.0
 	github.com/stretchr/testify v1.9.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
-	dario.cat/mergo v1.0.0 // indirect
+	dario.cat/mergo v1.0.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/DataDog/agent-payload/v5 v5.0.122 // indirect
@@ -33,27 +33,27 @@ require (
 	github.com/alessio/shellescape v1.4.2 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.30.4 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.2 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.27.19 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.19 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.6 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.16 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.16 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.0 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.10 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.32.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.42.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.3.12 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.12 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.17.10 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.55.2 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.32.2 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.6 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.27.40 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.38 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.14 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.21 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.21 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.1 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.19 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.36.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ecs v1.47.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.4.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.18.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.65.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.50.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.20.12 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.24.6 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.28.13 // indirect
-	github.com/aws/smithy-go v1.20.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.23.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.27.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.31.4 // indirect
+	github.com/aws/smithy-go v1.22.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
@@ -131,17 +131,18 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
-	github.com/pulumi/esc v0.9.1 // indirect
-	github.com/pulumi/pulumi-aws/sdk/v6 v6.44.0 // indirect
-	github.com/pulumi/pulumi-awsx/sdk/v2 v2.13.0 // indirect
+	github.com/pulumi/esc v0.10.0 // indirect
+	github.com/pulumi/pulumi-aws/sdk/v6 v6.56.1 // indirect
+	github.com/pulumi/pulumi-awsx/sdk/v2 v2.16.1 // indirect
 	github.com/pulumi/pulumi-command/sdk v1.0.1 // indirect
 	github.com/pulumi/pulumi-docker/sdk/v4 v4.5.5 // indirect
 	github.com/pulumi/pulumi-eks/sdk/v2 v2.7.8 // indirect
+	github.com/pulumi/pulumi-gcp/sdk/v6 v6.67.1 // indirect
 	github.com/pulumi/pulumi-kubernetes/sdk/v4 v4.17.1 // indirect
-	github.com/pulumi/pulumi-random/sdk/v4 v4.16.3 // indirect
+	github.com/pulumi/pulumi-random/sdk/v4 v4.16.6 // indirect
 	github.com/pulumi/pulumi-tls/sdk/v4 v4.11.1 // indirect
-	github.com/pulumi/pulumi/sdk/v3 v3.129.0 // indirect
-	github.com/pulumiverse/pulumi-time/sdk v0.0.17 // indirect
+	github.com/pulumi/pulumi/sdk/v3 v3.137.0 // indirect
+	github.com/pulumiverse/pulumi-time/sdk v0.1.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
@@ -155,21 +156,20 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/texttheater/golang-levenshtein v1.0.1 // indirect
 	github.com/tinylib/msgp v1.1.8 // indirect
-	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7 // indirect
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/zclconf/go-cty v1.14.4 // indirect
 	github.com/zorkian/go-datadog-api v2.30.0+incompatible // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/crypto v0.24.0 // indirect
+	golang.org/x/crypto v0.25.0 // indirect
 	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8 // indirect
 	golang.org/x/mod v0.18.0 // indirect
-	golang.org/x/net v0.26.0 // indirect
-	golang.org/x/oauth2 v0.17.0 // indirect
+	golang.org/x/net v0.27.0 // indirect
+	golang.org/x/oauth2 v0.18.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
-	golang.org/x/term v0.21.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/term v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
