@@ -118,7 +118,7 @@ testHostTagsUpdated() {
   update_hosttags "sudo" "foo:bar,titi:toto,allowedchars:a_-:./" $config_file
   yamllint -c "$yaml_config" --no-warnings $config_file
   assertEquals 0 $?
-  sudo grep -w "^tags: \['foo:bar', 'titi:toto', 'allowedchars:a_-:./'\]" $config_file | sudo tee tmp > /dev/null
+  sudo grep -w "^tags: \['foo:bar', 'titi:toto', 'allowedchars:1a_-:./'\]" $config_file | sudo tee tmp > /dev/null
   assertEquals 0 $?
   nb_match=$(sudo cat tmp | wc -l)
   assertEquals 1 "$nb_match"
