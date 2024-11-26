@@ -115,7 +115,7 @@ testNoHostname() {
 ### update_hosttags
 testHostTagsUpdated() {
   sudo cp ${config_file}.example $config_file
-  update_hosttags "sudo" "foo:bar,titi:toto,allowedchars:a_-:./" $config_file
+  update_hosttags "sudo" "foo:bar,titi:toto,allowedchars:1a_-:./" $config_file
   yamllint -c "$yaml_config" --no-warnings $config_file
   assertEquals 0 $?
   sudo grep -w "^tags: \['foo:bar', 'titi:toto', 'allowedchars:1a_-:./'\]" $config_file | sudo tee tmp > /dev/null
