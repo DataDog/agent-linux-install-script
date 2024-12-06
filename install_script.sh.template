@@ -342,7 +342,6 @@ function report_installer_telemetry() {
     local install_stdout="$6"
     local install_stderr="$7"
     local packages_to_install="$8"
-    local packages_to_install_after_installer="$9"
 
     install_stdout=$(json_escape "$install_stdout")
     install_stderr=$(json_escape "$install_stderr")
@@ -407,7 +406,6 @@ function report_installer_telemetry() {
                         "error.message": "${install_stderr}",
                         "version": "${install_script_version}",
                         "packages_to_install": "$(json_escape "${packages_to_install}")",
-                        "packages_to_install_after_installer": "$(json_escape "${packages_to_install_after_installer}")",
                         "network.gcr_io": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://gcr.io/v2/datadoghq/installer-package/manifests/latest")")",
                         "network.install_datadoghq_com_install_script": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/scripts/install_script_agent7.sh")")",
                         "network.install_datadoghq_com_index": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/index.html")")",
@@ -525,23 +523,6 @@ function is_installed_by_installer() {
     fi
 }
 
-function filter_packages_installed_by_installer() {
-    local sudo_cmd="$1"
-    local pkg_array_name=$2
-    local -a not_installed_packages=()  # Temporary array for not installed packages
-
-    for package in $(eval echo "\${${pkg_array_name}[@]}"); do
-        if ! is_installed_by_installer "$sudo_cmd" "$package"; then
-            not_installed_packages+=("$package")
-        else
-            echo -e "\033[34m\n* $package has been installed successfully by the installer\n\033[0m"
-        fi
-    done
-
-    # Copy the filtered array back to the original array
-    eval "$pkg_array_name=(\"\${not_installed_packages[@]}\")"
-}
-
 # Install the Datadog installer package
 function install_installer() {
     local sudo_cmd="$1"
@@ -573,12 +554,12 @@ function install_installer() {
     local packages_to_install_after_installer
 
     packages_to_install=("${!pkg_array_name}")
-    filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
-    packages_to_install_after_installer=("${!pkg_array_name}")
+     # Empty the array of packages to install, they will all be installed by the installer
+    eval "$pkg_array_name=(\"\${not_installed_packages[@]}\")"
 
     install_stdout=$(cat /tmp/datadog-installer-stdout.log)
     install_stderr=$(cat /tmp/datadog-installer-stderr.log)
-    (report_installer_telemetry "$trace_id" "$os" "$distribution" "$start_time" "$exit_status" "$install_stdout" "$install_stderr" "${packages_to_install[*]}" "${packages_to_install_after_installer[*]}") || true
+    (report_installer_telemetry "$trace_id" "$os" "$distribution" "$start_time" "$exit_status" "$install_stdout" "$install_stderr" "${packages_to_install[*]}") || true
     if [ $exit_status -ne 0 ] && ([ -n "$datadog_installer" ] || [ -n "$remote_updates" ]); then
         echo -e "\033[31m\n* Failed to install the Datadog installer\n\033[0m"
         echo "$install_stderr"
