@@ -335,7 +335,7 @@ e2e:
     - export DD_CIVISIBILITY_ENABLED=true
     - export DD_CIVISIBILITY_AGENTLESS_ENABLED=true
     - export DD_SERVICE=agent-linux-install-script
-    - export DD_TAGS="test.codeowners:@DataDog/agent-platform ci.job.name:e2e ci.stage.name:e2e"
+    - export DD_TAGS="test.codeowners:@DataDog/agent-delivery ci.job.name:e2e ci.stage.name:e2e"
   script:
     - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_ID}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} --scriptPath ${SCRIPT_PATH} ${EXTRA_PARAMS}
 
