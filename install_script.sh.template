@@ -286,6 +286,9 @@ function getMapData() {
              "datadog-fips-proxy")
                 DATA="Datadog FIPS Proxy"
                 ;;
+             "datadog-fips-agent")
+                DATA="Datadog FIPS Agent"
+                ;;
              "datadog-heroku-agent")
                 DATA="Datadog Heroku Agent"
                 ;;
