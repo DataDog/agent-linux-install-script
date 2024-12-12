@@ -755,7 +755,7 @@ fi
 
 nice_flavor=$(getMapData flavor_to_readable "$agent_flavor")
 
-if [ -z "$nice_flavor" ]; then
+if [ "$nice_flavor" = "Unknown" ]; then
     ERROR_MESSAGE="Unknown DD_AGENT_FLAVOR \"$agent_flavor\""
     ERROR_CODE=$INVALID_PARAMETERS_CODE
     echo -e "\033[33m$ERROR_MESSAGE\033[0m"
