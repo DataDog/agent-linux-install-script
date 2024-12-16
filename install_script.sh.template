@@ -1500,7 +1500,7 @@ function update_hosttags(){
   local config_file="$3"
   if [ -n "$host_tags" ]; then
       printf "\033[34m\n* Adding your HOST TAGS to the $nice_flavor configuration: $config_file\n\033[0m\n"
-      formatted_host_tags="['${host_tags//,/', '}']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
+      formatted_host_tags="['${host_tags//,/\', \'}']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
       $sudo_cmd sh -c "sed -i \"s|^# tags:.*$|tags: ""$formatted_host_tags""|\" $config_file"
   fi
 }
