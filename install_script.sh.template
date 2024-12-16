@@ -582,12 +582,12 @@ function install_installer() {
     install_stdout=$(cat /tmp/datadog-installer-stdout.log)
     install_stderr=$(cat /tmp/datadog-installer-stderr.log)
     (report_installer_telemetry "$trace_id" "$os" "$distribution" "$start_time" "$exit_status" "$install_stdout" "$install_stderr" "${packages_to_install[*]}" "${packages_to_install_after_installer[*]}") || true
-    if [ $exit_status -ne 0 ] && ([ -n "$datadog_installer" ] || [ -n "$remote_updates" ]); then
+    if [ "$exit_status" -ne 0 ] && { [ -n "$datadog_installer" ] || [ -n "$remote_updates" ]; } then
         echo -e "\033[31m\n* Failed to install the Datadog installer\n\033[0m"
         echo "$install_stderr"
-        exit $exit_status
+        exit "$exit_status"
     fi
-    return $exit_status
+    return "$exit_status"
 }
 
 echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
@@ -999,7 +999,7 @@ if [ "$OS" == "Red Hat" ]; then
     fi
     # NOTE: CentOS/RHEL 6 don't have /etc/os-release. /etc/centos-release and /etc/redhat-release
     # aren't necessarily on the system, so this is not 100 % reliable, but best we can do
-    release_version=$(cat /etc/redhat-release 2>/dev/null | grep -oE '[0-9]+' | head -1)
+    release_version=$(grep -oE '[0-9]+' </etc/redhat-release 2>/dev/null | head -1)
     if [ -z "$release_version" ]; then
         release_version=7
     fi
@@ -1262,7 +1262,7 @@ elif [ "$OS" == "SUSE" ]; then
 
   # Try to guess if we're installing on SUSE 11, as it needs a different flow to work
   # Note that SUSE11 doesn't have /etc/os-release file, so we have to use /etc/SuSE-release
-  if cat /etc/SuSE-release 2>/dev/null | grep VERSION | grep 11; then
+  if grep VERSION < /etc/SuSE-release 2>/dev/null | grep 11; then
     SUSE11="yes"
   fi
 
@@ -1304,7 +1304,7 @@ elif [ "$OS" == "SUSE" ]; then
   # NOTE: We use this to find out whether or not release version is >= 15, so we have to use /etc/os-release,
   # as /etc/SuSE-release has been deprecated and is no longer present everywhere, e.g. in AWS AMI.
   # See https://www.suse.com/releasenotes/x86_64/SUSE-SLES/15/#fate-324409
-  SUSE_VER=$(cat /etc/os-release 2>/dev/null | grep VERSION_ID | tr -d '"' | tr . = | cut -d = -f 2 | xargs echo)
+  SUSE_VER=$(grep VERSION_ID < /etc/os-release 2>/dev/null | tr -d '"' | tr . = | cut -d = -f 2 | xargs echo)
   gpgkeys="https://${keys_url}/DATADOG_RPM_KEY_CURRENT.public"
   if [ -n "$SUSE_VER" ] && [ "$SUSE_VER" -ge 15 ] && [ "$SUSE_VER" -ne 42 ]; then
     gpgkeys=''
@@ -1500,7 +1500,7 @@ function update_hosttags(){
   local config_file="$3"
   if [ -n "$host_tags" ]; then
       printf "\033[34m\n* Adding your HOST TAGS to the $nice_flavor configuration: $config_file\n\033[0m\n"
-      formatted_host_tags="['""$( echo "$host_tags" | sed "s/,/', '/g" )""']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
+      formatted_host_tags="['${host_tags//,/\', \'}']"  # format `env:prod,foo:bar` to yaml-compliant `['env:prod','foo:bar']`
       $sudo_cmd sh -c "sed -i \"s|^# tags:.*$|tags: ""$formatted_host_tags""|\" $config_file"
   fi
 }
