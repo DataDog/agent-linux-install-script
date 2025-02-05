@@ -5,6 +5,13 @@ Release Notes
 Unreleased
 ================
 
+1.36.1
+================
+
+- Add datadog-fips-agent to the linux install script hash as viable flavor (#306)
+- [CECO-1765] Support allowed characters in host and env tags (#302)
+- Bump test-infra image so we have go1.22.8 (#304)
+
 1.36.0
 ================
 
