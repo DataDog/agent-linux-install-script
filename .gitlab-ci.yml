@@ -327,7 +327,7 @@ e2e:
     # Retrieve common go deps
     - mkdir -p $GOPATH/pkg/mod && tar xJf modcache_e2e.tar.xz -C $GOPATH/pkg/mod && rm -f modcache_e2e.tar.xz
     # Install orchestrion
-    - go install github.com/DataDog/orchestrion@v0.9.4
+    - go install github.com/DataDog/orchestrion@v1.0.4
     - cd test/e2e && orchestrion pin && go mod tidy
     - cd ../..
     - export GOFLAGS="${GOFLAGS} '-toolexec=orchestrion toolexec'"
