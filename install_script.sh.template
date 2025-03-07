@@ -651,6 +651,11 @@ if [ -n "$DD_FIPS_MODE" ]; then
   fips_mode=$DD_FIPS_MODE
 fi
 
+error_tracking_standalone=
+if [ -n "$DD_APM_ERROR_TRACKING_STANDALONE" ]; then
+  error_tracking_standalone=$DD_APM_ERROR_TRACKING_STANDALONE
+fi
+
 dd_env=
 if [ -n "$DD_ENV" ]; then
     dd_env=$DD_ENV
@@ -1576,6 +1581,27 @@ function update_security_and_or_compliance(){
     $sudo_cmd sh -c "sed -i '/^compliance_config:/,// s/\(\s\+\)#\s*enabled:\s*false/\1enabled: true/' $local_config_file"
   fi
 }
+function update_error_tracking_standalone(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+
+  printf "\033[34m\n* Setting $nice_flavor configuration to use Error Tracking backend: $config_file\n\033[0m\n"
+  $sudo_cmd cp "$config_file" "${config_file}.orig"
+  $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+# Configuration to prevent sending metric data so that hosts don't show up in Datadog.
+enable_payloads:
+    series: false
+    events: false
+    service_checks: false
+    sketches: false
+
+# Configuration to enable the collection of errors so they show up in Error Tracking.
+apm_config:
+    enabled: true
+    error_tracking_standalone:
+      enabled: true
+EOF
+}
 function manage_security_and_system_probe_config(){
   local sudo_cmd="$1"
   local security_config_file="$2"
@@ -1657,6 +1683,9 @@ elif [ ! "$no_agent" ]; then
       update_url "$sudo_cmd" "$DD_URL" "$config_file"
     else
       update_fips "$sudo_cmd" "$config_file"
+    fi
+    if [ "$error_tracking_standalone" == "true" ]; then
+      update_error_tracking_standalone "$sudo_cmd" "$config_file"
     fi
     update_hostname "$sudo_cmd" "$hostname" "$config_file"
     update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
