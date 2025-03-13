@@ -95,7 +95,7 @@ func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...s
 	vm := s.Env().RemoteHost
 
 	installationScriptPath := "scripts/install_agent.sh"
-	scriptEnvVariable := fmt.Sprintf("DD_API_KEY=%s", apiKey)
+	scriptEnvVariable := fmt.Sprintf(`DD_API_KEY=%s`, apiKey)
 	if agentVersion != 5 {
 		scriptEnvVariable = scriptEnvVariable + fmt.Sprintf(" DD_AGENT_MAJOR_VERSION=%d DD_AGENT_FLAVOR=%s", agentVersion, flavor)
 		installationScriptPath = "scripts/install_script_agent7.sh"
@@ -110,6 +110,18 @@ func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...s
 		scriptEnvVariable = scriptEnvVariable + " " + strings.Join(extraParam[:extraParamLength-1], " ")
 		t.Log(extraParam[extraParamLength-1])
 	}
+
+	minorFound := false
+	for _, param := range extraParam {
+		if strings.Contains(param, "DD_AGENT_MINOR_VERSION") {
+			minorFound = true
+		}
+	}
+
+	if !minorFound && agentVersion == 7 {
+		scriptEnvVariable = scriptEnvVariable + ` TESTING_APT_URL=apttesting.datad0g.com TESTING_APT_REPO_VERSION="pipeline-58700690-a7-x86_64 7" TESTING_YUM_URL=yumtesting.datad0g.com TESTING_YUM_VERSION_PATH="testing/pipeline-58700690-a7/7"`
+	}
+
 	cmd := fmt.Sprintf("%s bash -c \"$(cat %s)\"", scriptEnvVariable, installationScriptPath)
 	output := vm.MustExecute(cmd)
 	t.Log(output)
