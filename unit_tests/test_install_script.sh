@@ -202,7 +202,7 @@ testSecurityConfigNoCreation() {
 }
 testSecurityConfigPreventOnBoth() {
   sudo cp ${security_agent_config_file}.example $security_agent_config_file
-  manage_security_and_system_probe_config "sudo" $security_agent_config_file true true
+  manage_security_config "sudo" $security_agent_config_file true true
   sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
   assertEquals 1 $?
   sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
@@ -210,7 +210,7 @@ testSecurityConfigPreventOnBoth() {
 }
 testSecurityConfigComplianceOnSecurity(){
   sudo rm $security_agent_config_file 2> /dev/null
-  manage_security_and_system_probe_config "sudo" $security_agent_config_file false true
+  manage_security_config "sudo" $security_agent_config_file false true
   yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
   assertEquals 0 $?
   sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
@@ -218,7 +218,7 @@ testSecurityConfigComplianceOnSecurity(){
 }
 testSecurityConfigSecOnBoth(){
   sudo rm $security_agent_config_file 2> /dev/null
-  manage_security_and_system_probe_config "sudo" $security_agent_config_file true false
+  manage_security_config "sudo" $security_agent_config_file true false
   yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
   assertEquals 0 $?
   sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
@@ -226,7 +226,7 @@ testSecurityConfigSecOnBoth(){
 }
 testSecurityConfigFullConfig(){
   sudo rm $security_agent_config_file 2> /dev/null
-  manage_security_and_system_probe_config "sudo" $security_agent_config_file true true
+  manage_security_config "sudo" $security_agent_config_file true true
   yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
   assertEquals 0 $?
   sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
