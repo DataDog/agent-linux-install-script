@@ -1610,7 +1610,7 @@ function update_discovery(){
   $sudo_cmd cp "$config_file" "${config_file}.orig"
   $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
 discovery:
-    enabled: true
+  enabled: true
 EOF
 }
 function manage_security_config(){
