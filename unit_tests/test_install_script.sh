@@ -223,6 +223,8 @@ testSecurityConfigSecOnBoth(){
   assertEquals 0 $?
   sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
   assertEquals 0 $?
+  sudo sed -e '0,/^compliance_config/d' -e '/^[^ ]/,$d' $security_agent_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 1 $?
 }
 testSecurityConfigFullConfig(){
   sudo rm $security_agent_config_file 2> /dev/null
@@ -242,12 +244,24 @@ testSystemProbeConfigNoCreation() {
   sudo test -e $system_probe_config_file
   assertEquals 1 $?
 }
-testSystemProbeConfigSecOnBoth(){
+testSystemProbeConfigSecOn(){
   sudo rm $system_probe_config_file 2> /dev/null
   manage_system_probe_config "sudo" $system_probe_config_file true false
   yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
   assertEquals 0 $?
   sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $system_probe_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 0 $?
+  sudo sed -e '0,/^discovery/d' -e '/^[^ ]/,$d' $system_probe_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 1 $?
+}
+testSystemProbeConfigDiscoveryOn(){
+  sudo rm $system_probe_config_file 2> /dev/null
+  manage_system_probe_config "sudo" $system_probe_config_file false true
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $system_probe_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 1 $?
+  sudo sed -e '0,/^discovery/d' -e '/^[^ ]/,$d' $system_probe_config_file | grep -v "#" | grep -q "enabled: true"
   assertEquals 0 $?
 }
 testSystemProbeConfigFullConfig(){
@@ -256,6 +270,8 @@ testSystemProbeConfigFullConfig(){
   yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
   assertEquals 0 $?
   sudo sed -e '0,/^runtime_security_config/d' -e '/^[^ ]/,$d' $system_probe_config_file | grep -v "#" | grep -q "enabled: true"
+  assertEquals 0 $?
+  sudo sed -e '0,/^discovery/d' -e '/^[^ ]/,$d' $system_probe_config_file | grep -v "#" | grep -q "enabled: true"
   assertEquals 0 $?
 }
 
