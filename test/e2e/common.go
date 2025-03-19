@@ -129,7 +129,9 @@ func (s *linuxInstallerTestSuite) SetupSuite() {
 	s.baseName = baseNameByFlavor[flavor]
 	s.configFile = configFileByFlavor[flavor]
 	fmt.Println("SetupSuite2")
-	s.Env().RemoteHost.CopyFolder(scriptPath, "scripts")
+	fmt.Printf("Copying scripts from %s to %s\n", scriptPath, s.Env().RemoteHost.Address)
+	err := s.Env().RemoteHost.CopyFolder(scriptPath, "scripts")
+	require.NoError(s.T(), err, "failed to copy scripts")
 	fmt.Println("SetupSuite3")
 }
 
