@@ -367,6 +367,7 @@ e2e:
           - --run TestInstallSuite
           - --run TestUpgrade6Suite
           - --run TestUpgrade7Suite
+          - --run TestInstallDiscoverySuite
           - --run TestInstallMaximalAndRetrySuite
           - --run TestInstallSecurityAgentSuite
           - --run TestInstallSystemProbeSuite
