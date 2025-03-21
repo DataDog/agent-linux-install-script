@@ -7,6 +7,7 @@ toolchain go1.22.8
 require (
 	github.com/DataDog/datadog-agent/test/new-e2e v0.56.0-devel.0.20240619155906-9b99ef437a92
 	github.com/DataDog/test-infra-definitions v0.0.0-20241121181216-eefd2de87300
+	github.com/hashicorp/go-envparse v0.1.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/stretchr/testify v1.9.0
 	gopkg.in/yaml.v2 v2.4.0
