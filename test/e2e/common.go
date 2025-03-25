@@ -19,6 +19,7 @@ import (
 	componentsos "github.com/DataDog/test-infra-definitions/components/os"
 	"github.com/DataDog/test-infra-definitions/scenarios/aws/ec2"
 
+	envparse "github.com/hashicorp/go-envparse"
 	version "github.com/hashicorp/go-version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,6 +58,7 @@ var (
 		agentFlavorDatadogDogstatsd: "dogstatsd.yaml",
 		agentFlavorDatadogIOTAgent:  "datadog.yaml",
 	}
+	envFile            = "/etc/environment"
 	osConfigByPlatform = map[string]osConfig{
 		"Debian_11":         {osDescriptor: componentsos.NewDescriptor(componentsos.Debian, "11")},
 		"Ubuntu_22_04":      {osDescriptor: componentsos.UbuntuDefault},
@@ -365,5 +367,14 @@ func unmarshalConfigFile(t *testing.T, vm *components.RemoteHost, configFilePath
 	config := map[string]any{}
 	err := yaml.Unmarshal([]byte(configContent), &config)
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v, raw content:\n%s\n\n", err, configContent))
+	return config
+}
+
+func unmarshallEnvFile(t *testing.T, vm *components.RemoteHost, envFilePath string) map[string]string {
+	t.Helper()
+	configContent := vm.MustExecute(fmt.Sprintf("sudo cat /%s", envFilePath))
+	reader := strings.NewReader(configContent)
+	config, err := envparse.Parse(reader)
+	require.NoError(t, err, fmt.Sprintf("unexpected error on env parse %v, raw content:\n%s\n\n", err, configContent))
 	return config
 }
