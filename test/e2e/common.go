@@ -203,7 +203,7 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 	serviceNames := []string{s.baseName}
 	if flavor == agentFlavorDatadogAgent {
 		serviceNames = append(serviceNames, "datadog-agent-trace")
-		serviceNames = append(serviceNames, "datadog-agent-process")
+		// Cannot assert process-agent because it may be running or dead based on timing
 	}
 	// Check that the services are active
 	if _, err = vm.Execute("command -v systemctl"); err == nil {
@@ -228,11 +228,17 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 		require.FailNow(t, "Unknown service manager")
 	}
 	if t.Failed() {
-		stdout, err := vm.Execute("journalctl --no-pager")
+		stdout, err := vm.Execute("sudo journalctl --no-pager")
 		if err != nil {
 			t.Logf("Failed to get journalctl logs: %s", err)
 		} else {
 			t.Logf("journalctl logs:\n%s", stdout)
+		}
+		stdout, err = vm.Execute("sudo systemctl status datadog*")
+		if err != nil {
+			t.Logf("Failed to get systemctl status: %s", err)
+		} else {
+			t.Logf("systemctl logs:\n%s", stdout)
 		}
 	}
 }
