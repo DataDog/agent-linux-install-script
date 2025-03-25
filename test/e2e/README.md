@@ -19,7 +19,9 @@ Use `go test` to run tests locally, from a shell wrapped in a valid aws session.
 ### Example: run install test, flavor datadog-agent, platform Amazon 2023
 
 ```shell
-cd test/e2e && go test -timeout 0s . -v --run TestInstallSuite --flavor datadog-agent --platform Amazon_Linux_2023
+make
+export DD_API_KEY=...
+cd test/e2e && go test -timeout 0s . -v --run TestInstallSuite --flavor datadog-agent --platform Amazon_Linux_2023 -scriptPath=$PWD/../../
 ```
 
 ## Run on CI

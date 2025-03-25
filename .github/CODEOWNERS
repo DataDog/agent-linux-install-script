@@ -9,4 +9,4 @@
 # Rules are matched bottom-to-top, so one team can own subdirectories
 # and another the rest of the directory.
 
-*  @DataDog/container-ecosystems @DataDog/agent-delivery
+*  @DataDog/container-ecosystems

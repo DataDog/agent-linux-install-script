@@ -52,7 +52,7 @@ func (s *installErrorTrackingStandaloneTestSuite) assertInstallErrorTrackingStan
 	s.assertInstallScript(true)
 
 	t.Log("assert install output contains expected lines")
-	assert.Contains(t, installCommandOutput, "* Setting Datadog Agent configuration to use configuration to use Error Tracking backend: /etc/datadog-agent/datadog.yaml", "Missing installer log line for Error Tracking backend")
+	assert.Contains(t, installCommandOutput, "* Setting Datadog Agent configuration to use Error Tracking backend: /etc/datadog-agent/datadog.yaml", "Missing installer log line for Error Tracking backend")
 
 	t.Log("assert agent configuration contains expected properties")
 	config := unmarshalConfigFile(t, vm, fmt.Sprintf("etc/%s/%s", s.baseName, s.configFile))
@@ -64,4 +64,11 @@ func (s *installErrorTrackingStandaloneTestSuite) assertInstallErrorTrackingStan
 	etStandaloneConfig, ok := apmConfig["error_tracking_standalone"].(map[any]any)
 	assert.True(t, ok, fmt.Sprintf("failed parsing apmConfig[error_tracking_standalone] to map \n%v\n\n", apmConfig["error_tracking_standalone"]))
 	assert.Equal(t, true, etStandaloneConfig["enabled"], fmt.Sprintf("apm_config.error_tracking_standalone.enabled should be true, content:\n%v\n\n", etStandaloneConfig))
+
+	t.Log("assert agent configuration contains expected properties")
+	env := unmarshallEnvFile(t, vm, envFile)
+	assert.Contains(t, env, "DD_APM_ERROR_TRACKING_STANDALONE_ENABLED")
+	assert.Contains(t, env, "DD_CORE_AGENT_ENABLED")
+	assert.Equal(t, "true", env["DD_APM_ERROR_TRACKING_STANDALONE_ENABLED"])
+	assert.Equal(t, "false", env["DD_CORE_AGENT_ENABLED"])
 }

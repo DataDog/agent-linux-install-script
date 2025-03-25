@@ -1691,6 +1691,18 @@ function manage_client_libraries_profiling_config(){
     fi
   fi
 }
+function manage_error_tracking_standalone_config(){
+  local sudo_cmd="$1"
+  local etc_environment="$2"
+  if [ "$error_tracking_standalone" == "true" ]; then
+    printf "\033[34m\n* Setting system environment to use Error Tracking backend: $etc_environment\n\033[0m\n"
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_APM_ERROR_TRACKING_STANDALONE_ENABLED "true"
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_CORE_AGENT_ENABLED "false"
+  elif [ "$error_tracking_standalone" == "false" ]; then
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_APM_ERROR_TRACKING_STANDALONE_ENABLED "false"
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_CORE_AGENT_ENABLED "true"
+  fi
+}
 # "Main" configuration update
 if [ -e "$config_file" ] && [ -z "$upgrade" ]; then
   printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
@@ -1719,6 +1731,7 @@ manage_client_libraries_profiling_config "$sudo_cmd" "$environment_file" "$DD_PR
 if [ -e "$(dirname $dd_environment_file)" ]; then
   manage_infrastructure_vulnerabilities_config "$sudo_cmd" "$dd_environment_file" "$DD_SBOM_CONTAINER_IMAGE_ENABLED" "$DD_SBOM_HOST_ENABLED"
 fi
+manage_error_tracking_standalone_config "$sudo_cmd" "$environment_file"
 
 update_fleet_automation "$sudo_cmd" "$remote_updates" "$remote_policies" "$fips_mode" "$site" "$config_file"
 update_installer_registry "$sudo_cmd" "$installer_registry_url" "$installer_registry_auth" "$config_file"
