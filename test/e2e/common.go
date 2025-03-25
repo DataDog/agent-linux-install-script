@@ -208,7 +208,7 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 	// Check that the services are active
 	if _, err = vm.Execute("command -v systemctl"); err == nil {
 		for _, serviceName := range serviceNames {
-			_, err = vm.Execute(fmt.Sprintf("systemctl is-active %s", serviceName))
+			_, err = vm.Execute(fmt.Sprintf("sudo systemctl is-active %s", serviceName))
 			if active {
 				assert.NoError(t, err, fmt.Sprintf("%s not running after Agent install", serviceName))
 			} else {
