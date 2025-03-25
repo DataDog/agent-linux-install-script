@@ -228,7 +228,7 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 		require.FailNow(t, "Unknown service manager")
 	}
 	if t.Failed() {
-		stdout, err := vm.Execute("journalctl --no-pager")
+		stdout, err := vm.Execute("sudo journalctl --no-pager")
 		if err != nil {
 			t.Logf("Failed to get journalctl logs: %s", err)
 		} else {
