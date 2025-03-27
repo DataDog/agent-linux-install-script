@@ -279,21 +279,24 @@ testSystemProbeConfigFullConfig(){
 testManageClientLibrariesSecurityConfig() {
   rm $environment_file
   echo 'PATH="/usr/local/sbin"' > $environment_file
-  manage_client_libraries_security_config "sudo" $environment_file "" "" ""
+  manage_client_libraries_security_config "sudo" $environment_file "" "" "" ""
   grep -q "DD_APPSEC_ENABLED" $environment_file
   assertEquals 1 $?
   grep -q "DD_IAST_ENABLED" $environment_file
   assertEquals 1 $?
   grep -q "DD_APPSEC_SCA_ENABLED" $environment_file
   assertEquals 1 $?
-  manage_client_libraries_security_config "sudo" $environment_file true "" ""
+  manage_client_libraries_security_config "sudo" $environment_file true "" "" ""
   grep -q "DD_APPSEC_ENABLED=true" $environment_file
   assertEquals 0 $?
-  manage_client_libraries_security_config "sudo" $environment_file "" true ""
+  manage_client_libraries_security_config "sudo" $environment_file "" true "" ""
   grep -q "DD_IAST_ENABLED=true" $environment_file
   assertEquals 0 $?
-  manage_client_libraries_security_config "sudo" $environment_file "" "" false
+  manage_client_libraries_security_config "sudo" $environment_file "" "" false ""
   grep -q "DD_APPSEC_SCA_ENABLED=false" $environment_file
+  assertEquals 0 $?
+  manage_client_libraries_security_config "sudo" $environment_file "" "" "" true
+  grep -q "DD_EXPERIMENTAL_APPSEC_STANDALONE_ENABLED=true" $environment_file
   assertEquals 0 $?
 }
 
