@@ -78,10 +78,23 @@ func (s *installUpdaterTestSuite) TestPackagesInstalledByInstallerAreNotInstalle
 	s.assertPackageNotInstalledByPackageManager("datadog-apm-library-python")
 }
 
+func (s *installUpdaterTestSuite) TestInstallWithRemoteUpdates() {
+	t := s.T()
+	vm := s.Env().RemoteHost
+	cmd := fmt.Sprintf("DD_REMOTE_UPDATES=true DD_API_KEY=%s DD_SITE=\"datad0g.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
+	output := vm.MustExecute(cmd)
+	t.Log(output)
+	defer s.purge()
+
+	s.assertInstallScript(true)
+	s.assertValidTraceGenerated()
+}
+
 func (s *installUpdaterTestSuite) purge() {
 	t := s.T()
 	vm := s.Env().RemoteHost
 	t.Helper()
+	vm.Execute("sudo datadog-installer purge")
 	if _, err := vm.Execute("command -v apt"); err == nil {
 		t.Log("Uninstall with apt")
 		// remove all datadog packages
