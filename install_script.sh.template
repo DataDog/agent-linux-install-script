@@ -592,7 +592,7 @@ function install_installer() {
 
 # install_managed_agent installs the agent with Fleet Automation's agent management (preview feature).
 function install_managed_agent() {
-  echo "Installing the Datadog Agent with Fleet Management"
+  echo "Installing the Datadog Agent with Remote Agent Management"
   installer_domain=${DD_INSTALLER_REGISTRY_URL_INSTALLER_PACKAGE:-$([[ "$DD_SITE" == "datad0g.com" ]] && echo "install.datad0g.com" || echo "install.datadoghq.com")}
   installer_url="https://${installer_domain}/scripts/install.sh"
   if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
@@ -617,7 +617,7 @@ function install_managed_agent() {
       exit 1
     fi
   else
-    echo "Error: Curl or wget is required to install the agent with Fleet Management."
+    echo "Error: Curl or wget is required to install the agent with Remote Agent Management."
     exit 1
   fi
   exit 0
