@@ -81,7 +81,7 @@ func (s *installUpdaterTestSuite) TestPackagesInstalledByInstallerAreNotInstalle
 func (s *installUpdaterTestSuite) TestInstallWithRemoteUpdates() {
 	t := s.T()
 	vm := s.Env().RemoteHost
-	cmd := fmt.Sprintf("DD_REMOTE_UPDATES=true DD_API_KEY=%s DD_SITE=\"datad0g.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
+	cmd := fmt.Sprintf("DD_AGENT_MINOR_VERSION=66.0~devel.git.413.5e29099 DD_REMOTE_UPDATES=true DD_API_KEY=%s DD_SITE=\"datad0g.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
 	output := vm.MustExecute(cmd)
 	t.Log(output)
 	defer s.purge()
