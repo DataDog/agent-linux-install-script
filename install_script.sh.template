@@ -283,9 +283,6 @@ function getMapData() {
              "datadog-dogstatsd")
                 DATA="Datadog Dogstatsd"
                 ;;
-             "datadog-fips-proxy")
-                DATA="Datadog FIPS Proxy"
-                ;;
              "datadog-fips-agent")
                 DATA="Datadog FIPS Agent"
                 ;;
@@ -646,11 +643,6 @@ if [ -n "$DD_UPGRADE" ]; then
   upgrade=$DD_UPGRADE
 fi
 
-fips_mode=
-if [ -n "$DD_FIPS_MODE" ]; then
-  fips_mode=$DD_FIPS_MODE
-fi
-
 error_tracking_standalone=
 if [ -n "$DD_APM_ERROR_TRACKING_STANDALONE" ]; then
   error_tracking_standalone=$DD_APM_ERROR_TRACKING_STANDALONE
@@ -669,6 +661,21 @@ fi
 agent_flavor="datadog-agent"
 if [ -n "$DD_AGENT_FLAVOR" ]; then
     agent_flavor=$DD_AGENT_FLAVOR #Eg: datadog-iot-agent
+fi
+
+fips_mode=
+if [ -n "$DD_FIPS_MODE" ]; then
+  fips_mode=$DD_FIPS_MODE
+  if [ -n "$DD_AGENT_FLAVOR" ] && [ "$DD_AGENT_FLAVOR" != "datadog-fips-agent" ] 
+    # return error message
+    ERROR_MESSAGE="DD_FIPS_MODE sets the DD_AGENT_FLAVOR to the datadog-fips-agent but it is currently set to: $DD_AGENT_FLAVOR"
+    ERROR_CODE=$INVALID_PARAMETERS_CODE
+    echo "$ERROR_MESSAGE"
+    report_telemetry
+    exit 1;
+  else
+    agent_flavor="datadog-fips-agent"
+  fi
 fi
 
 datadog_installer=
@@ -788,10 +795,6 @@ else
   services=("$system_service")
 fi
 
-if [ -n "$fips_mode" ]; then
-  services+=("datadog-fips-proxy")
-fi
-
 if [ -n "$remote_updates" ]; then
   services+=("datadog-installer")
 fi
@@ -817,13 +820,10 @@ if [ -z "$etcdir" ]; then
     etcdir="/etc/datadog-agent"
 fi
 
-etcdirfips=/etc/datadog-fips-proxy
-
 if [ -z "$config_file" ]; then
     config_file="$etcdir/datadog.yaml"
 fi
 
-config_file_fips=$etcdirfips/datadog-fips-proxy.cfg
 system_probe_config_file=$etcdir/system-probe.yaml
 security_agent_config_file=$etcdir/security-agent.yaml
 environment_file=/etc/environment
@@ -966,16 +966,8 @@ if [[ "$agent_flavor" == "datadog-dogstatsd" ]]; then
 fi
 
 if [ -n "$fips_mode" ]; then
-    UNAME_M=$(uname -m)
-    if [[ ${UNAME_M} != "x86_64" ]] && [[ ${UNAME_M} != "aarch64" ]]; then
-        ERROR_MESSAGE="FIPS mode isn't available for your architecture"
-        ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
-        printf "\033[31m$ERROR_MESSAGE\033[0m\n"
-        report_telemetry
-        exit 1;
-    fi
-    if [[ -n "$agent_minor_version_without_patch" ]] && [[ "${agent_minor_version_without_patch}" -lt 41 ]]; then
-        ERROR_MESSAGE="FIPS mode is only available since version AGENT_MAJOR_VERSION_PLACEHOLDER.41.0 and requested minor version is $agent_minor_version"
+    if [[ -n "$agent_minor_version_without_patch" ]] && [[ "${agent_minor_version_without_patch}" -lt 64 ]]; then
+        ERROR_MESSAGE="The datadog-fips-agent is only available since version 7.64.x and requested minor version is $agent_minor_version"
         ERROR_CODE=$INVALID_PARAMETERS_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
         report_telemetry
@@ -1080,10 +1072,6 @@ if [ "$OS" == "Red Hat" ]; then
       packages=()
     else
       packages=("$agent_flavor")
-    fi
-
-    if [ -n "$fips_mode" ]; then
-      packages+=("datadog-fips-proxy")
     fi
 
     # Install the installer
@@ -1223,10 +1211,6 @@ If the cause is unclear, please contact Datadog support.
       packages=("datadog-signing-keys")
     else
       packages=("$agent_flavor" "datadog-signing-keys")
-    fi
-
-    if [ -n "$fips_mode" ]; then
-     packages+=("datadog-fips-proxy")
     fi
 
     # Install the installer
@@ -1374,9 +1358,6 @@ elif [ "$OS" == "SUSE" ]; then
     packages=()
   else
     packages=("$agent_flavor")
-  fi
-  if [ -n "$fips_mode" ]; then
-    packages+=("datadog-fips-proxy")
   fi
 
     # Install the installer
@@ -1741,12 +1722,6 @@ if [ ! "$no_agent" ]; then
   $sudo_cmd chmod 640 "$config_file"
 fi
 
-# set the FIPS configuration
-if [ -n "$fips_mode" ]; then
-  ensure_config_file_exists "$sudo_cmd" "$config_file_fips" "dd-agent"
-  # TODO: set port range in file, or environment variable
-fi
-
 # set the system-probe configuration
 if [ -n "$system_probe_ensure_config" ]; then
   ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
@@ -1803,11 +1778,6 @@ if [ ! "$no_agent" ] && ! is_installed_by_installer "$sudo_cmd" "datadog-agent";
   $sudo_cmd sh -c "exec cat > $etcdir/install_info " <<EOF
 $install_info_content
 EOF
-fi
-
-if [ -n "$fips_mode" ]; then
-  # Creating or overriding the install information
-  $sudo_cmd sh -c "echo '$install_info_content' > $etcdirfips/install_info"
 fi
 
 # On SUSE 11, sudo service datadog-agent start fails (because /sbin is not in a base user's path)

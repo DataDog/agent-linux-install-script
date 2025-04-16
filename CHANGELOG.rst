@@ -5,6 +5,8 @@ Release Notes
 Unreleased
 ================
 
+- Change DD_FIPS_MODE behavior to install the `datadog-fips-agent` instead of the `datadog-fips-proxy`
+
 1.37.0
 ================
 

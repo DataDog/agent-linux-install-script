@@ -20,7 +20,7 @@ The install script allows installation of different flavors of the Agent binarie
 
 | Variable | Description|
 |-|-|
-|`DD_AGENT_FLAVOR`|The Agent binary to install. Possible values are `datadog-agent`(default), `datadog-iot-agent`, `datadog-dogstatsd`, `datadog-fips-proxy`, `datadog-heroku-agent`.|
+|`DD_AGENT_FLAVOR`|The Agent binary to install. Possible values are `datadog-agent`(default), `datadog-iot-agent`, `datadog-dogstatsd`, `datadog-fips-agent`, `datadog-heroku-agent`.|
 |`DD_API_KEY`|The application key to access Datadog's programatic API.|
 |`DD_SITE`|The site of the Datadog intake to send Agent data to. For example, `datadoghq.com`. For more information on Datadog sites, see [Getting Started with Datadog Sites](https://docs.datadoghq.com/getting_started/site/).|
 |`DD_URL`|The host of the Datadog intake server to send metrics to. For example, `https://app.datadoghq.com`. Only set this option if you need the Agent to send metrics to a custom URL: it overrides the site setting defined in `site`. It does not affect APM, Logs or Live Process intake which have their own `*_dd_url` settings.|
@@ -28,7 +28,7 @@ The install script allows installation of different flavors of the Agent binarie
 |`DD_TAGS`|List of host tags, defined as a comma-separated list of `key:value` strings. For example, `team:infra,env:prod`. Host tags are attached in-app to every metric, event, log, trace, and service check emitted by this Agent.|
 |`DD_HOST_TAGS`|Deprecated, use `DD_TAGS` instead.|
 |`DD_UPGRADE`|Set to any value to trigger a version upgrade from datadog-agent 5. Imports configuration files from `/etc/dd-agent/datadog.conf`. Not compatible with `DD_AGENT_FLAVOR=datadog-dogstatsd`.|
-|`DD_FIPS_MODE`|Set to any value to enable the use of the FIPS proxy to send data to the DataDog backend. Enabling this option forces all outgoing traffic from the Agent to the local proxy. It's important to note that enabling this will not make the Datadog Agent FIPS compliant, but will force all outgoing traffic to a local FIPS compliant proxy. By-pass `DD_SITE` and `DD_URL` when enabled. For more information on FIPS compliance, see [FIPS Compliance](https://docs.datadoghq.com/agent/configuration/agent-fips-proxy/).|
+|`DD_FIPS_MODE`|Set to any value to install the `datadog-fips-agent` binary which installs the OpenSSL FIPS provider and utilizes OpenSSL bindings for FIPS compliant cryptography primatives and encryption algorithms, see [Datadog FIPS Agent](https://docs.datadoghq.com/agent/guide/fips-agent/?tab=linux#installation).|
 |`DD_ENV`|The environment name where the Agent is running. The environment name is attached in-app to every metric, event, log, trace, and service check emitted by this Agent.|
 |`DD_APM_INSTRUMENTATION_ENABLED`|Automatically instrument all your application processes alongside Agent installation. Possible values are `host`, `docker` or `all` (`all` is both `host` and `docker`). The `docker` value checks if Docker is installed and sets `DD_NO_INSTALL` to `true`. If `DD_APM_INSTRUMENTATION_LIBRARIES` is not set, it enables all libraries: `java`, `js`, `python`, `dotnet` and `ruby`. `host` injection is not compatible with the `DD_NO_AGENT_INSTALL` option. Only supported on Agent v7. Not supported on SUSE.|
 |`DD_APM_INSTRUMENTATION_LIBRARIES`|Specify the APM library to be installed. Possible values are `all`, `java`, `js`, `python`, `dotnet` and `ruby`. Does not run the APM injection script, which is triggered by `DD_APM_INSTRUMENTATION_ENABLED`.|
