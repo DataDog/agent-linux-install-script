@@ -1133,6 +1133,10 @@ if [ "$OS" == "Red Hat" ]; then
       packages=("$agent_flavor")
     fi
 
+    if [ -n "$fips_mode" ]; then
+      packages+=("datadog-fips-proxy")
+    fi
+
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
     install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
@@ -1274,6 +1278,10 @@ If the cause is unclear, please contact Datadog support.
       packages=("datadog-signing-keys")
     else
       packages=("$agent_flavor" "datadog-signing-keys")
+    fi
+
+    if [ -n "$fips_mode" ]; then
+      packages+=("datadog-fips-proxy")
     fi
 
     # Install the installer
@@ -1425,6 +1433,9 @@ elif [ "$OS" == "SUSE" ]; then
     packages=()
   else
     packages=("$agent_flavor")
+  fi
+  if [ -n "$fips_mode" ]; then
+    packages+=("datadog-fips-proxy")
   fi
 
     # Install the installer
