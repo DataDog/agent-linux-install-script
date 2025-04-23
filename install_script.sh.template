@@ -1142,7 +1142,7 @@ if [ "$OS" == "Red Hat" ]; then
     install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
 
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
-        remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS" "$DISTRIBUTION"
+        remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
     fi
 
     # packages can be empty if no_agent is set
@@ -1289,7 +1289,7 @@ If the cause is unclear, please contact Datadog support.
     install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
 
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
-        remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS" "$DISTRIBUTION"
+        remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
     fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
@@ -1443,7 +1443,7 @@ elif [ "$OS" == "SUSE" ]; then
     install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
 
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
-        remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS" "$DISTRIBUTION"
+        remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
     fi
 
   if [ ${#packages[@]} -ne 0 ]; then
