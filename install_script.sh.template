@@ -606,16 +606,7 @@ function remove_existing_packages_for_fips_flavor() {
         return 0
     fi
 
-    if [ "$exit_status" -eq 0 ]; then
-        read -p "Found existing datadog-agent or datadog-fips-proxy installation. These packages will be removed for the datadog-fips-agent to be installed. Do you wish to continue? [y/N]: " -n 1 -r
-        if ! [[ $REPLY =~ ^[Yy]$ ]]; then
-            ERROR_MESSAGE="Unable to install datadog-fips-agent when existing datadog-agent or datadog-fips-proxy installed. Exiting."
-            ERROR_CODE=$INVALID_PARAMETERS_CODE
-            echo "$ERROR_MESSAGE"
-            report_telemetry
-            exit 1;
-        fi
-    else
+    if [ "$exit_status" -ne 0 ]; then
         return 0
     fi
 
@@ -1025,6 +1016,13 @@ if [ -n "$fips_mode" ]; then
 fi
 
 if [[ "$agent_flavor" == "datadog-fips-agent" ]]; then
+    if [[ -n $"fips_mode" ]]; then
+        ERROR_MESSAGE="The datadog-fips-agent cannot be used with the fips-proxy installed. Please install without DD_FIPS_MODE set"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
+        printf "\033[31m$ERROR_MESSAGE\033[0m\n"
+        report_telemetry
+        exit 1;
+    fi
     if [[ -n "$agent_minor_version_without_patch" ]] && [[ "${agent_minor_version_without_patch}" -lt 64 ]]; then
         ERROR_MESSAGE="The datadog-fips-agent is only available since version AGENT_MAJOR_VERSION_PLACEHOLDER.64.x and requested minor version is $agent_minor_version"
         ERROR_CODE=$INVALID_PARAMETERS_CODE
