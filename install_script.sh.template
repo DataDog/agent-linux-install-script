@@ -1016,7 +1016,7 @@ if [ -n "$fips_mode" ]; then
 fi
 
 if [[ "$agent_flavor" == "datadog-fips-agent" ]]; then
-    if [[ -n $"fips_mode" ]]; then
+    if [[ -n "$fips_mode" ]]; then
         ERROR_MESSAGE="The datadog-fips-agent cannot be used with the fips-proxy installed. Please install without DD_FIPS_MODE set"
         ERROR_CODE=$INVALID_PARAMETERS_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
