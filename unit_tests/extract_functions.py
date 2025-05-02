@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-
+# test
 def main():
     file_path = Path(os.path.abspath(__file__))
     install_script = file_path.parent / ".." / "install_script.sh.template"
