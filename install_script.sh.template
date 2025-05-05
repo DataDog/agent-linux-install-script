@@ -611,15 +611,22 @@ function remove_existing_packages_for_fips_flavor() {
     fi
 
     echo -e "\033[34m\n* Removing the datadog-fips-proxy and existing datadog-agent packages\n\033[0m"
+    exit_status=0
     if [ "$os" == "Debian" ]; then
-        $sudo_cmd apt-get remove -y --force-yes "datadog-fips-proxy" "datadog-agent" || return $?
+        $sudo_cmd apt-get remove -y --force-yes "datadog-fips-proxy" "datadog-agent" || exit_status=$?
     elif [ "$os" == "Red Hat" ]; then
-        $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' remove "datadog-fips-proxy" "datadog-agent" || $sudo_cmd yum -y remove "datadog-fips-proxy" "datadog-agent" || return $?
+        $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' remove "datadog-fips-proxy" "datadog-agent" || $sudo_cmd yum -y remove "datadog-fips-proxy" "datadog-agent" || exit_status=$?
     elif [ "$os" == "SUSE" ]; then
-        $sudo_cmd zypper --non-interactive --no-refresh remove "datadog-fips-proxy" "datadog-agent" || return $?
+        $sudo_cmd zypper --non-interactive --no-refresh remove "datadog-fips-proxy" "datadog-agent" || exit_status=$?
     else
         return 0
     fi
+
+    if [ "$exit_status" -ne 0 ]; then
+        echo -e "\033[31m\n* Failed to remove existing packages before installing datadog-fips-agent. Please manually remove them and try again\n\033[0m"
+        exit "$exit_status"
+    fi
+    return "$exit_status"
 }
 
 echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
