@@ -20,7 +20,7 @@ The install script allows installation of different flavors of the Agent binarie
 
 | Variable | Description|
 |-|-|
-|`DD_AGENT_FLAVOR`|The Agent binary to install. Possible values are `datadog-agent`(default), `datadog-iot-agent`, `datadog-dogstatsd`, `datadog-fips-proxy`, `datadog-heroku-agent`.|
+|`DD_AGENT_FLAVOR`|The Agent binary to install. Possible values are `datadog-agent`(default), `datadog-iot-agent`, `datadog-dogstatsd`, `datadog-fips-proxy`, `datadog-fips-agent`, `datadog-heroku-agent`.|
 |`DD_API_KEY`|The application key to access Datadog's programatic API.|
 |`DD_SITE`|The site of the Datadog intake to send Agent data to. For example, `datadoghq.com`. For more information on Datadog sites, see [Getting Started with Datadog Sites](https://docs.datadoghq.com/getting_started/site/).|
 |`DD_URL`|The host of the Datadog intake server to send metrics to. For example, `https://app.datadoghq.com`. Only set this option if you need the Agent to send metrics to a custom URL: it overrides the site setting defined in `site`. It does not affect APM, Logs or Live Process intake which have their own `*_dd_url` settings.|
