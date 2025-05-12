@@ -121,7 +121,7 @@ func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...s
 	}
 
 	if !minorFound && agentVersion == 7 {
-		scriptEnvVariable = scriptEnvVariable + ` TESTING_APT_URL=apttesting.datad0g.com TESTING_APT_REPO_VERSION="pipeline-58700690-a7-x86_64 7" TESTING_YUM_URL=yumtesting.datad0g.com TESTING_YUM_VERSION_PATH="testing/pipeline-58700690-a7/7"`
+		scriptEnvVariable = scriptEnvVariable + ` TESTING_APT_URL=apttesting.datad0g.com TESTING_APT_REPO_VERSION="pipeline-64725868-a7-x86_64 7" TESTING_YUM_URL=yumtesting.datad0g.com TESTING_YUM_VERSION_PATH="testing/pipeline-64725868-a7/7"`
 	}
 
 	cmd := fmt.Sprintf("%s bash -c \"$(cat %s)\"", scriptEnvVariable, installationScriptPath)
