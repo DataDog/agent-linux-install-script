@@ -39,9 +39,6 @@ func (s *installUpdaterTestSuite) TestInstallUpdater() {
 	t := s.T()
 	vm := s.Env().RemoteHost
 	cmd := fmt.Sprintf("DD_INSTALLER=true DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
-	if _, err := vm.Execute("command -v zypper"); err == nil {
-		cmd = fmt.Sprintf("%s %s", "REPO_URL=datad0g.com DD_AGENT_DIST_CHANNEL=beta", cmd)
-	}
 	output := vm.MustExecute(cmd)
 	t.Log(output)
 	defer s.purge()

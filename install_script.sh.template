@@ -9,7 +9,7 @@ set -e
 
 DEPRECATION_MESSAGE_PLACEHOLDER
 
-install_script_version=1.36.1.post
+install_script_version=1.37.0.post
 logfile="ddagent-install.log"
 support_email=support@datadoghq.com
 variant=install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
@@ -590,6 +590,45 @@ function install_installer() {
     return "$exit_status"
 }
 
+function remove_existing_packages_for_fips_flavor() {
+    local sudo_cmd="$1"
+    local os="$2"
+
+    local exit_status=0
+    # find if fips-proxy or existing agent is installed
+    if [ "$os" == "Debian" ]; then
+        $sudo_cmd apt list --installed "datadog-agent" "datadog-fips-proxy" 2>/dev/null | grep -q "datadog" || exit_status=$?
+    elif [ "$os" == "Red Hat" ]; then
+        $sudo_cmd yum list installed "datadog-agent" "datadog-fips-proxy" || exit_status=$?
+    elif [ "$os" == "SUSE" ]; then
+        $sudo_cmd zypper search -i "datadog-agent" "datadog-fips-proxy" || exit_status=$?
+    else
+        return 0
+    fi
+
+    if [ "$exit_status" -ne 0 ]; then
+        return 0
+    fi
+
+    echo -e "\033[34m\n* Removing the datadog-fips-proxy and existing datadog-agent packages\n\033[0m"
+    exit_status=0
+    if [ "$os" == "Debian" ]; then
+        $sudo_cmd apt-get remove -y --force-yes "datadog-fips-proxy" "datadog-agent" || exit_status=$?
+    elif [ "$os" == "Red Hat" ]; then
+        $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' remove "datadog-fips-proxy" "datadog-agent" || $sudo_cmd yum -y remove "datadog-fips-proxy" "datadog-agent" || exit_status=$?
+    elif [ "$os" == "SUSE" ]; then
+        $sudo_cmd zypper --non-interactive --no-refresh remove "datadog-fips-proxy" "datadog-agent" || exit_status=$?
+    else
+        return 0
+    fi
+
+    if [ "$exit_status" -ne 0 ]; then
+        echo -e "\033[31m\n* Failed to remove existing packages before installing datadog-fips-agent. Please manually remove them and try again\n\033[0m"
+        exit "$exit_status"
+    fi
+    return "$exit_status"
+}
+
 echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
 
 ##
@@ -983,6 +1022,23 @@ if [ -n "$fips_mode" ]; then
     fi
 fi
 
+if [[ "$agent_flavor" == "datadog-fips-agent" ]]; then
+    if [[ -n "$fips_mode" ]]; then
+        ERROR_MESSAGE="The datadog-fips-agent cannot be used with the fips-proxy installed. Please install without DD_FIPS_MODE set"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
+        printf "\033[31m$ERROR_MESSAGE\033[0m\n"
+        report_telemetry
+        exit 1;
+    fi
+    if [[ -n "$agent_minor_version_without_patch" ]] && [[ "${agent_minor_version_without_patch}" -lt 64 ]]; then
+        ERROR_MESSAGE="The datadog-fips-agent is only available since version AGENT_MAJOR_VERSION_PLACEHOLDER.64.x and requested minor version is $agent_minor_version"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
+        printf "\033[31m$ERROR_MESSAGE\033[0m\n"
+        report_telemetry
+        exit 1;
+    fi
+fi
+
 # Root user detection
 if [ "$UID" == "0" ]; then
     sudo_cmd=''
@@ -1089,6 +1145,10 @@ if [ "$OS" == "Red Hat" ]; then
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
     install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+
+    if [ "$agent_flavor" == "datadog-fips-agent" ]; then
+        remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
+    fi
 
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
@@ -1226,12 +1286,16 @@ If the cause is unclear, please contact Datadog support.
     fi
 
     if [ -n "$fips_mode" ]; then
-     packages+=("datadog-fips-proxy")
+      packages+=("datadog-fips-proxy")
     fi
 
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
     install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+
+    if [ "$agent_flavor" == "datadog-fips-agent" ]; then
+        remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
+    fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
@@ -1382,6 +1446,10 @@ elif [ "$OS" == "SUSE" ]; then
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
     install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+
+    if [ "$agent_flavor" == "datadog-fips-agent" ]; then
+        remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
+    fi
 
   if [ ${#packages[@]} -ne 0 ]; then
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
@@ -1602,19 +1670,38 @@ apm_config:
       enabled: true
 EOF
 }
-function manage_security_and_system_probe_config(){
+function update_discovery(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+
+  printf "\033[34m\n* Setting $nice_flavor configuration to enable Service Discovery: $config_file\n\033[0m\n"
+  $sudo_cmd cp "$config_file" "${config_file}.orig"
+  $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+discovery:
+  enabled: true
+EOF
+}
+function manage_security_config(){
   local sudo_cmd="$1"
   local security_config_file="$2"
-  local probe_config_file="$3"
-  local enable_security="$4"
-  local enable_compliance="$5"
+  local enable_security="$3"
+  local enable_compliance="$4"
   if [ "$enable_security" == "true" ] || [ "$enable_compliance" == "true" ]; then
     if ensure_config_file_exists "$sudo_cmd" "$security_config_file" "root"; then
       update_security_and_or_compliance "$sudo_cmd" "$security_config_file" "$enable_security" "$enable_compliance"
     fi
-    if [ "$enable_security" == "true" ]; then
-      if ensure_config_file_exists "$sudo_cmd" "$probe_config_file" "root"; then
-        update_security_and_or_compliance "$sudo_cmd" "$probe_config_file" "$enable_security" "false"
+  fi
+}
+function manage_system_probe_config(){
+  local sudo_cmd="$1"
+  local probe_config_file="$2"
+  local enable_security="$3"
+  local enable_discovery="$4"
+  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ]; then
+    if ensure_config_file_exists "$sudo_cmd" "$probe_config_file" "root"; then
+      update_security_and_or_compliance "$sudo_cmd" "$probe_config_file" "$enable_security" "false"
+      if [ "$enable_discovery" == "true" ]; then
+        update_discovery "$sudo_cmd" "$probe_config_file"
       fi
     fi
   fi
@@ -1672,6 +1759,18 @@ function manage_client_libraries_profiling_config(){
     fi
   fi
 }
+function manage_error_tracking_standalone_config(){
+  local sudo_cmd="$1"
+  local etc_environment="$2"
+  if [ "$error_tracking_standalone" == "true" ]; then
+    printf "\033[34m\n* Setting system environment to use Error Tracking backend: $etc_environment\n\033[0m\n"
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_APM_ERROR_TRACKING_STANDALONE_ENABLED "true"
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_CORE_AGENT_ENABLED "false"
+  elif [ "$error_tracking_standalone" == "false" ]; then
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_APM_ERROR_TRACKING_STANDALONE_ENABLED "false"
+    set_in_env_file "$sudo_cmd" "$etc_environment" DD_CORE_AGENT_ENABLED "true"
+  fi
+}
 # "Main" configuration update
 if [ -e "$config_file" ] && [ -z "$upgrade" ]; then
   printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
@@ -1691,7 +1790,8 @@ elif [ ! "$no_agent" ]; then
     update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
     update_env "$sudo_cmd" "$dd_env" "$config_file"
   fi
-  manage_security_and_system_probe_config "$sudo_cmd" "$security_agent_config_file" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
+  manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
+  manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED"
 fi
 
 manage_client_libraries_security_config "$sudo_cmd" "$environment_file" "$DD_APPSEC_ENABLED" "$DD_IAST_ENABLED" "$DD_APPSEC_SCA_ENABLED"
@@ -1699,6 +1799,7 @@ manage_client_libraries_profiling_config "$sudo_cmd" "$environment_file" "$DD_PR
 if [ -e "$(dirname $dd_environment_file)" ]; then
   manage_infrastructure_vulnerabilities_config "$sudo_cmd" "$dd_environment_file" "$DD_SBOM_CONTAINER_IMAGE_ENABLED" "$DD_SBOM_HOST_ENABLED"
 fi
+manage_error_tracking_standalone_config "$sudo_cmd" "$environment_file"
 
 update_fleet_automation "$sudo_cmd" "$remote_updates" "$remote_policies" "$fips_mode" "$site" "$config_file"
 update_installer_registry "$sudo_cmd" "$installer_registry_url" "$installer_registry_auth" "$config_file"

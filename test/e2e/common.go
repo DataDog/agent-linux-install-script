@@ -19,6 +19,7 @@ import (
 	componentsos "github.com/DataDog/test-infra-definitions/components/os"
 	"github.com/DataDog/test-infra-definitions/scenarios/aws/ec2"
 
+	envparse "github.com/hashicorp/go-envparse"
 	version "github.com/hashicorp/go-version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,6 +58,7 @@ var (
 		agentFlavorDatadogDogstatsd: "dogstatsd.yaml",
 		agentFlavorDatadogIOTAgent:  "datadog.yaml",
 	}
+	envFile            = "/etc/environment"
 	osConfigByPlatform = map[string]osConfig{
 		"Debian_11":         {osDescriptor: componentsos.NewDescriptor(componentsos.Debian, "11")},
 		"Ubuntu_22_04":      {osDescriptor: componentsos.UbuntuDefault},
@@ -141,7 +143,9 @@ func (s *linuxInstallerTestSuite) SetupSuite() {
 	s.baseName = baseNameByFlavor[flavor]
 	s.configFile = configFileByFlavor[flavor]
 	fmt.Println("SetupSuite2")
-	s.Env().RemoteHost.CopyFolder(scriptPath, "scripts")
+	fmt.Printf("Copying scripts from %s to %s\n", scriptPath, s.Env().RemoteHost.Address)
+	err := s.Env().RemoteHost.CopyFolder(scriptPath, "scripts")
+	require.NoError(s.T(), err, "failed to copy scripts")
 	fmt.Println("SetupSuite3")
 }
 
@@ -213,7 +217,7 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 	serviceNames := []string{s.baseName}
 	if flavor == agentFlavorDatadogAgent {
 		serviceNames = append(serviceNames, "datadog-agent-trace")
-		serviceNames = append(serviceNames, "datadog-agent-process")
+		// Cannot assert process-agent because it may be running or dead based on timing
 	}
 	// Check that the services are active
 	if _, err = vm.Execute("command -v systemctl"); err == nil {
@@ -238,11 +242,17 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 		require.FailNow(t, "Unknown service manager")
 	}
 	if t.Failed() {
-		stdout, err := vm.Execute("journalctl --no-pager")
+		stdout, err := vm.Execute("sudo journalctl --no-pager")
 		if err != nil {
 			t.Logf("Failed to get journalctl logs: %s", err)
 		} else {
 			t.Logf("journalctl logs:\n%s", stdout)
+		}
+		stdout, err = vm.Execute("sudo systemctl status datadog*")
+		if err != nil {
+			t.Logf("Failed to get systemctl status: %s", err)
+		} else {
+			t.Logf("systemctl logs:\n%s", stdout)
 		}
 	}
 }
@@ -369,5 +379,14 @@ func unmarshalConfigFile(t *testing.T, vm *components.RemoteHost, configFilePath
 	config := map[string]any{}
 	err := yaml.Unmarshal([]byte(configContent), &config)
 	require.NoError(t, err, fmt.Sprintf("unexpected error on yaml parse %v, raw content:\n%s\n\n", err, configContent))
+	return config
+}
+
+func unmarshallEnvFile(t *testing.T, vm *components.RemoteHost, envFilePath string) map[string]string {
+	t.Helper()
+	configContent := vm.MustExecute(fmt.Sprintf("sudo cat /%s", envFilePath))
+	reader := strings.NewReader(configContent)
+	config, err := envparse.Parse(reader)
+	require.NoError(t, err, fmt.Sprintf("unexpected error on env parse %v, raw content:\n%s\n\n", err, configContent))
 	return config
 }

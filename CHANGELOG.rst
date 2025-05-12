@@ -5,6 +5,20 @@ Release Notes
 Unreleased
 ================
 
+- Installing the datadog-fips-agent will remove fips-proxy and datadog-agent packages
+
+1.37.0
+================
+
+- Add option to enable Service Discovery (#315)
+- e2e: remove leftover SUSE specific code (#322)
+- use environment variables for setting standalone (#319)
+- remove agent-delivery from CODEOWNERS (#320)
+- [e2e] Check for errors while copying scripts (#318)
+- [e2e] Correct example command in README (#317)
+- Add error tracking standalone variable (#314)
+- cleanup dead variable (#313)
+
 1.36.1
 ================
 
