@@ -2,10 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.37.1
 ================
 
-- Installing the datadog-fips-agent will remove fips-proxy and datadog-agent packages
+- [AGENTRUN-224] Remove existing installation packages when installing datadog-fips-agent (#327)
 
 1.37.0
 ================
