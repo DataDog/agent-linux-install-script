@@ -5,6 +5,11 @@ Release Notes
 Unreleased
 ================
 
+1.37.1
+================
+
+- [AGENTRUN-224] Remove existing installation packages when installing datadog-fips-agent (#327)
+
 1.37.0
 ================
 

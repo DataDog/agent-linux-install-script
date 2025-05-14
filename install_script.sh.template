@@ -9,7 +9,7 @@ set -e
 
 DEPRECATION_MESSAGE_PLACEHOLDER
 
-install_script_version=1.37.0.post
+install_script_version=1.37.1.post
 logfile="ddagent-install.log"
 support_email=support@datadoghq.com
 variant=install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
@@ -590,6 +590,45 @@ function install_installer() {
     return "$exit_status"
 }
 
+function remove_existing_packages_for_fips_flavor() {
+    local sudo_cmd="$1"
+    local os="$2"
+
+    local exit_status=0
+    # find if fips-proxy or existing agent is installed
+    if [ "$os" == "Debian" ]; then
+        $sudo_cmd apt list --installed "datadog-agent" "datadog-fips-proxy" 2>/dev/null | grep -q "datadog" || exit_status=$?
+    elif [ "$os" == "Red Hat" ]; then
+        $sudo_cmd yum list installed "datadog-agent" "datadog-fips-proxy" || exit_status=$?
+    elif [ "$os" == "SUSE" ]; then
+        $sudo_cmd zypper search -i "datadog-agent" "datadog-fips-proxy" || exit_status=$?
+    else
+        return 0
+    fi
+
+    if [ "$exit_status" -ne 0 ]; then
+        return 0
+    fi
+
+    echo -e "\033[34m\n* Removing the datadog-fips-proxy and existing datadog-agent packages\n\033[0m"
+    exit_status=0
+    if [ "$os" == "Debian" ]; then
+        $sudo_cmd apt-get remove -y --force-yes "datadog-fips-proxy" "datadog-agent" || exit_status=$?
+    elif [ "$os" == "Red Hat" ]; then
+        $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' remove "datadog-fips-proxy" "datadog-agent" || $sudo_cmd yum -y remove "datadog-fips-proxy" "datadog-agent" || exit_status=$?
+    elif [ "$os" == "SUSE" ]; then
+        $sudo_cmd zypper --non-interactive --no-refresh remove "datadog-fips-proxy" "datadog-agent" || exit_status=$?
+    else
+        return 0
+    fi
+
+    if [ "$exit_status" -ne 0 ]; then
+        echo -e "\033[31m\n* Failed to remove existing packages before installing datadog-fips-agent. Please manually remove them and try again\n\033[0m"
+        exit "$exit_status"
+    fi
+    return "$exit_status"
+}
+
 # install_managed_agent installs the agent with Fleet Automation's agent management (preview feature).
 function install_managed_agent() {
   echo "Installing the Datadog Agent with Remote Agent Management"
@@ -1015,6 +1054,23 @@ if [ -n "$fips_mode" ]; then
     fi
 fi
 
+if [[ "$agent_flavor" == "datadog-fips-agent" ]]; then
+    if [[ -n "$fips_mode" ]]; then
+        ERROR_MESSAGE="The datadog-fips-agent cannot be used with the fips-proxy installed. Please install without DD_FIPS_MODE set"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
+        printf "\033[31m$ERROR_MESSAGE\033[0m\n"
+        report_telemetry
+        exit 1;
+    fi
+    if [[ -n "$agent_minor_version_without_patch" ]] && [[ "${agent_minor_version_without_patch}" -lt 64 ]]; then
+        ERROR_MESSAGE="The datadog-fips-agent is only available since version AGENT_MAJOR_VERSION_PLACEHOLDER.64.x and requested minor version is $agent_minor_version"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
+        printf "\033[31m$ERROR_MESSAGE\033[0m\n"
+        report_telemetry
+        exit 1;
+    fi
+fi
+
 # Root user detection
 if [ "$UID" == "0" ]; then
     sudo_cmd=''
@@ -1121,6 +1177,10 @@ if [ "$OS" == "Red Hat" ]; then
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
     install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+
+    if [ "$agent_flavor" == "datadog-fips-agent" ]; then
+        remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
+    fi
 
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
@@ -1258,12 +1318,16 @@ If the cause is unclear, please contact Datadog support.
     fi
 
     if [ -n "$fips_mode" ]; then
-     packages+=("datadog-fips-proxy")
+      packages+=("datadog-fips-proxy")
     fi
 
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
     install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+
+    if [ "$agent_flavor" == "datadog-fips-agent" ]; then
+        remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
+    fi
 
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
 
@@ -1414,6 +1478,10 @@ elif [ "$OS" == "SUSE" ]; then
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
     install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+
+    if [ "$agent_flavor" == "datadog-fips-agent" ]; then
+        remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
+    fi
 
   if [ ${#packages[@]} -ne 0 ]; then
     echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
