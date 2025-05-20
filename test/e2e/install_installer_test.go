@@ -8,6 +8,7 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/DataDog/datadog-agent/test/new-e2e/pkg/e2e"
@@ -81,13 +82,66 @@ func (s *installUpdaterTestSuite) TestPackagesInstalledByInstallerAreNotInstalle
 func (s *installUpdaterTestSuite) TestInstallWithRemoteUpdates() {
 	t := s.T()
 	vm := s.Env().RemoteHost
+	s.optPathOverride = "/opt/datadog-packages/%s/stable" // override the path to use the latest version
+	defer func() {
+		s.optPathOverride = ""
+	}()
 	cmd := fmt.Sprintf("DD_REMOTE_UPDATES=true DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
 	output := vm.MustExecute(cmd)
 	t.Log(output)
 	defer s.purge()
 
-	s.assertInstallScript(true)
+	s.assertInstallScriptWithRemoteUpdates(true)
 	s.assertValidTraceGenerated()
+}
+
+func (s *installUpdaterTestSuite) assertInstallScriptWithRemoteUpdates(active bool) {
+	t := s.T()
+	vm := s.Env().RemoteHost
+	t.Helper()
+	t.Log("Check user, config file and service")
+	// check presence of the dd-agent user
+	_, err := vm.Execute("id dd-agent")
+	assert.NoError(t, err, "user dd-agent does not exist after install")
+	// Check presence of the config file - the file is added by the install script, so this should always be okay
+	// if the install succeeds
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
+	// Check presence and ownership of the config and main directories
+	owner := strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("stat -c \"%%U\" /etc/%s/", s.baseName)), "\n")
+	assert.Equal(t, "dd-agent", owner, fmt.Sprintf("dd-agent does not own /etc/%s", s.baseName))
+
+	serviceNames := []string{s.baseName}
+	if flavor == agentFlavorDatadogAgent {
+		serviceNames = append(serviceNames, "datadog-agent-trace")
+		// Cannot assert process-agent because it may be running or dead based on timing
+	}
+
+	// Check that the services are active
+	if _, err = vm.Execute("command -v systemctl"); err == nil {
+		for _, serviceName := range serviceNames {
+			_, err = vm.Execute(fmt.Sprintf("systemctl is-active %s", serviceName))
+			if active {
+				assert.NoError(t, err, fmt.Sprintf("%s not running after Agent install", serviceName))
+			} else {
+				assert.Error(t, err, fmt.Sprintf("%s running after Agent install", serviceName))
+			}
+		}
+	}
+
+	if t.Failed() {
+		stdout, err := vm.Execute("sudo journalctl --no-pager")
+		if err != nil {
+			t.Logf("Failed to get journalctl logs: %s", err)
+		} else {
+			t.Logf("journalctl logs:\n%s", stdout)
+		}
+		stdout, err = vm.Execute("sudo systemctl status datadog*")
+		if err != nil {
+			t.Logf("Failed to get systemctl status: %s", err)
+		} else {
+			t.Logf("systemctl logs:\n%s", stdout)
+		}
+	}
 }
 
 func (s *installUpdaterTestSuite) purge() {
