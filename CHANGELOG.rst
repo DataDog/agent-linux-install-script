@@ -2,8 +2,11 @@
 Release Notes
 =============
 
-Unreleased
+1.38.0
 ================
+
+- Remove usage of `/etc/environment` for App sec and profiling as it's handled by the installer
+- Upgrade(installer): Use installer install script when DD_REMOTE_UPDATES=true (#326)
 
 1.37.1
 ================
