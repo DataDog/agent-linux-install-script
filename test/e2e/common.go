@@ -88,8 +88,9 @@ func getenv(key, fallback string) string {
 
 type linuxInstallerTestSuite struct {
 	e2e.BaseSuite[environments.Host]
-	baseName   string
-	configFile string
+	baseName        string
+	optPathOverride string
+	configFile      string
 }
 
 func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...string) string {
@@ -200,6 +201,7 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 	// Check presence and ownership of the config and main directories
 	owner := strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("stat -c \"%%U\" /etc/%s/", s.baseName)), "\n")
 	assert.Equal(t, "dd-agent", owner, fmt.Sprintf("dd-agent does not own /etc/%s", s.baseName))
+
 	owner = strings.TrimSuffix(vm.MustExecute(fmt.Sprintf("stat -c \"%%U\" /opt/%s/", s.baseName)), "\n")
 	assert.Equal(t, "dd-agent", owner, fmt.Sprintf("dd-agent does not own /opt/%s", s.baseName))
 	serviceNames := []string{s.baseName}
