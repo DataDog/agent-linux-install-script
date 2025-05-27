@@ -638,7 +638,7 @@ function install_managed_agent() {
     minor_version=${DD_AGENT_MINOR_VERSION}
     minor_version_without_patch=${minor_version%%[.~]*}
     if [ "$minor_version_without_patch" -lt 65 ]; then
-      echo "Warning: Remote Agent Management is not supported for agent versions less than 7.65. Switching to 7.65."
+      echo -e "\033[33mWarning: Remote Agent Management is not supported for Agent versions less than 7.65. Installing 7.65.2 now.\n\033[0m"
       minor_version="65.2"
     fi
     installer_url="https://${installer_domain}/scripts/install-7.${minor_version}.sh"
