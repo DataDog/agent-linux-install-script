@@ -507,30 +507,6 @@ END
     echo "$telemetry_trace" | $sudo_cmd tee /tmp/datadog-installer-trace.json > /dev/null
 }
 
-function _install_installer() {
-    local sudo_cmd="$1"
-    local os="$2"
-    local distribution="$3"
-
-    local command_prefix
-
-    if [ "$os" == "Debian" ]; then
-        echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
-        $sudo_cmd apt-get install -o Acquire::Retries="5" -y --force-yes "datadog-installer" || return $?
-    elif [ "$os" == "Red Hat" ]; then
-        echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
-        $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' install "datadog-installer" || $sudo_cmd yum -y install "datadog-installer" || return $?
-    elif [ "$os" == "SUSE" ]; then
-        echo -e "\033[34m\n* Installing the Datadog installer\n\033[0m"
-	$sudo_cmd zypper --non-interactive --no-refresh install "datadog-installer" || return $?
-    else
-        return 0
-    fi
-    command_prefix="${sudo_cmd:+$sudo_cmd -E}"
-    $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DATADOG_TRACE_ID=\"${DATADOG_TRACE_ID}\" DATADOG_PARENT_ID=\"${DATADOG_TRACE_ID}\" /usr/bin/datadog-bootstrap bootstrap"
-    return $?
-}
-
 function is_installed_by_installer() {
     local sudo_cmd="$1"
     local package="$2"
@@ -566,39 +542,6 @@ function filter_packages_installed_by_installer() {
 
     # Copy the filtered array back to the original array
     eval "$pkg_array_name=(\"\${not_installed_packages[@]}\")"
-}
-
-# Install the Datadog installer package
-function install_installer() {
-    local sudo_cmd="$1"
-    local os="$2"
-    local distribution="$3"
-    local datadog_installer="$4"
-    local remote_updates="$5"
-    local apm_instrumentation_enabled="$6"
-    local pkg_array_name="$7"
-
-    local trace_id
-    local start_time
-    local exit_status
-
-    # The installer is currently only being rolled out to APM instrumentation users
-    if [ -z "$apm_instrumentation_enabled" ] && [ -z "$datadog_installer" ] && [ -z "$remote_updates" ]; then
-        return 0
-    fi
-
-    start_time=$(date +%s%N)
-
-    (_install_installer "$sudo_cmd" "$os" "$distribution" > /tmp/datadog-installer-stdout.log 2> /tmp/datadog-installer-stderr.log) || exit_status=$?
-    exit_status=${exit_status:-0}
-
-    filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
-
-    if [ "$exit_status" -ne 0 ] && { [ -n "$datadog_installer" ] || [ -n "$remote_updates" ]; } then
-        echo -e "\033[31m\n* Failed to install the Datadog installer\n\033[0m"
-        exit "$exit_status"
-    fi
-    return "$exit_status"
 }
 
 function remove_existing_packages_for_fips_flavor() {
@@ -640,6 +583,34 @@ function remove_existing_packages_for_fips_flavor() {
     return "$exit_status"
 }
 
+function _install_installer_script() {
+  local installer_url="$1"
+
+  if command -v curl >/dev/null; then
+    http_code=$(curl -ILsf --retry 3 -w "%{http_code}" -o /dev/null "$installer_url" || true)
+    if [ "$http_code" -ne "200" ]; then
+      echo "Error: Unable to download the installer script from $installer_url. HTTP status code: $http_code"
+      return 1
+    fi
+    if ! bash <(curl -L -s -f --retry 3 "$installer_url"); then
+      return 1
+    fi
+  elif command -v wget >/dev/null; then
+    http_code=$(wget -q --tries=3 --server-response --spider --tries=3 "$installer_url" 2>&1 | awk '/^  HTTP/{print $2}' | tail -n1 | tr -d '\n')
+    if [ "$http_code" -ne 200 ]; then
+      echo "Error: Unable to download the installer script from $installer_url. HTTP status code: $http_code"
+      return 1
+    fi
+    if ! bash <(wget -q --tries=3 -O - "$installer_url"); then
+      return 1
+    fi
+  else
+    echo "Error: Curl or wget is required to install the agent with Remote Agent Management."
+    return 1
+  fi
+  return 0
+}
+
 # install_managed_agent installs the agent with Fleet Automation's agent management (preview feature).
 function install_managed_agent() {
   echo "Installing the Datadog Agent with Remote Agent Management"
@@ -648,29 +619,21 @@ function install_managed_agent() {
   if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
     installer_url="https://${installer_domain}/scripts/install-7.${DD_AGENT_MINOR_VERSION}.sh"
   fi
-  if command -v curl >/dev/null; then
-    http_code=$(curl -ILsf --retry 3 -w "%{http_code}" -o /dev/null "$installer_url" || true)
-    if [ "$http_code" -ne "200" ]; then
-      echo "Error: Unable to download the installer script from $installer_url. HTTP status code: $http_code"
-      exit 1
-    fi
-    if ! bash <(curl -L -s -f --retry 3 "$installer_url"); then
-      exit 1
-    fi
-  elif command -v wget >/dev/null; then
-    http_code=$(wget -q --tries=3 --server-response --spider --tries=3 "$installer_url" 2>&1 | awk '/^  HTTP/{print $2}' | tail -n1 | tr -d '\n')
-    if [ "$http_code" -ne 200 ]; then
-      echo "Error: Unable to download the installer script from $installer_url. HTTP status code: $http_code"
-      exit 1
-    fi
-    if ! bash <(wget -q --tries=3 -O - "$installer_url"); then
-      exit 1
-    fi
-  else
-    echo "Error: Curl or wget is required to install the agent with Remote Agent Management."
-    exit 1
-  fi
-  exit 0
+  
+  _install_installer_script "$installer_url"
+  exit $?
+}
+
+# install_apm_ssi installs APM Single Step Instrumentation.
+function install_apm_ssi() {
+  local sudo_cmd="$1"
+  local pkg_array_name="$2"
+
+  installer_domain=${DD_INSTALLER_REGISTRY_URL_INSTALLER_PACKAGE:-$([[ "$DD_SITE" == "datad0g.com" ]] && echo "install.datad0g.com" || echo "install.datadoghq.com")}
+  installer_url="https://${installer_domain}/scripts/install-ssi.sh" # TODO: support pinning?
+  
+  _install_installer_script "$installer_url" || true
+  filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
 }
 
 ##
@@ -762,22 +725,6 @@ if [ -n "$DD_AGENT_FLAVOR" ]; then
     agent_flavor=$DD_AGENT_FLAVOR #Eg: datadog-iot-agent
 fi
 
-datadog_installer=
-if [ -n "$DD_INSTALLER" ]; then
-    datadog_installer=true
-fi
-
-
-installer_registry_url=
-if [ -n "$DD_INSTALLER_REGISTRY_URL" ]; then
-    installer_registry_url=$DD_INSTALLER_REGISTRY_URL
-fi
-
-installer_registry_auth=
-if [ -n "$DD_INSTALLER_REGISTRY_AUTH" ]; then
-    installer_registry_auth=$DD_INSTALLER_REGISTRY_AUTH
-fi
-
 ##
 # INSTALL SCRIPT CONFIGURATION OPTIONS
 # Technical options to test with non-production values for signature keys, packages or reporting telemetry.
@@ -867,10 +814,6 @@ fi
 
 if [ -n "$fips_mode" ]; then
   services+=("datadog-fips-proxy")
-fi
-
-if [ -n "$remote_updates" ]; then
-  services+=("datadog-installer")
 fi
 
 # Track running services to avoid stopping them if they were already running
@@ -1175,7 +1118,7 @@ if [ "$OS" == "Red Hat" ]; then
 
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
-    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+    install_apm_ssi "$sudo_cmd" "packages" || true
 
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
@@ -1322,7 +1265,7 @@ If the cause is unclear, please contact Datadog support.
 
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
-    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+    install_apm_ssi "$sudo_cmd" "packages" || true
 
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
@@ -1476,7 +1419,7 @@ elif [ "$OS" == "SUSE" ]; then
 
     # Install the installer
     # Note: this function will remove installed packages from the "packages" array
-    install_installer "$sudo_cmd" "$OS" "$DISTRIBUTION" "$DD_INSTALLER" "$DD_REMOTE_UPDATES" "$DD_APM_INSTRUMENTATION_ENABLED" "packages" || true
+    install_apm_ssi "$sudo_cmd" "packages" || true
 
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
@@ -1617,20 +1560,6 @@ function update_env(){
     $sudo_cmd sh -c "sed -i 's|^# env:.*|env: $dd_env|' $config_file"
   fi
 }
-function update_installer_registry(){
-  local sudo_cmd="$1"
-  local registry_url="$2"
-  local registry_auth="$3"
-  local config_file="$4"
-  if [ -n "$registry_url" ] || [ -n "$registry_auth" ]; then
-    printf "\033[34m\n* Adding your DD_INSTALLER_REGISTRY_URL and DD_INSTALLER_REGISTRY_AUTH to the $nice_flavor configuration: $config_file\n\033[0m\n"
-    if ! $sudo_cmd grep -q "^installer:" "$config_file"; then
-      $sudo_cmd sh -c "echo 'installer: {registry: {url: \"$registry_url\", auth: \"$registry_auth\" }}' >> $config_file"
-    else
-      printf "\033[31mInstaller configuration already exists in $config_file, skipping the update.\033[0m\n"
-    fi
-  fi
-}
 function update_security_and_or_compliance(){
   local sudo_cmd="$1"
   local local_config_file="$2"
@@ -1767,8 +1696,6 @@ if [ -e "$(dirname $dd_environment_file)" ]; then
   manage_infrastructure_vulnerabilities_config "$sudo_cmd" "$dd_environment_file" "$DD_SBOM_CONTAINER_IMAGE_ENABLED" "$DD_SBOM_HOST_ENABLED"
 fi
 manage_error_tracking_standalone_config "$sudo_cmd" "$environment_file"
-
-update_installer_registry "$sudo_cmd" "$installer_registry_url" "$installer_registry_auth" "$config_file"
 
 if [ ! "$no_agent" ]; then
   $sudo_cmd chown dd-agent:dd-agent "$config_file"
