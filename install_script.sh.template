@@ -561,8 +561,6 @@ function install_installer() {
 
     local trace_id
     local start_time
-    local install_stdout
-    local install_stderr
     local exit_status
 
     # The installer is currently only being rolled out to APM instrumentation users
@@ -583,8 +581,6 @@ function install_installer() {
     filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
     packages_to_install_after_installer=("${!pkg_array_name}")
 
-    install_stdout=$(cat /tmp/datadog-installer-stdout.log)
-    install_stderr=$(cat /tmp/datadog-installer-stderr.log)
     if [ "$exit_status" -ne 0 ] && { [ -n "$datadog_installer" ] || [ -n "$remote_updates" ]; } then
         echo -e "\033[31m\n* Failed to install the Datadog installer\n\033[0m"
         echo "$install_stderr"
