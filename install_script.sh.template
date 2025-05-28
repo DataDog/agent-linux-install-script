@@ -467,7 +467,7 @@ END
         "host": {
             "hostname": "$(json_escape "$(uname -n)")",
             "os": "$(json_escape "$(uname -o)")",
-            "distribution": "$(json_escape "$(lsb_release -ds)")",
+            "distribution": "$(json_escape "$(lsb_release -ds || echo "Unknown")")",
             "architecture": "$(json_escape "$(uname -m)")",
             "kernel_version": "$(json_escape "$(uname -v)")",
             "kernel_name": "$(json_escape "$(uname -s)")",
