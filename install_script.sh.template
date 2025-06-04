@@ -43,6 +43,19 @@ UNSUPPORTED_PLATFORM_CODE=5
 INVALID_PARAMETERS_CODE=6
 UNABLE_TO_INSTALL_DEPENDENCY_CODE=7
 
+# Root user detection
+if [ "$UID" == "0" ]; then
+    sudo_cmd=''
+else
+    sudo_cmd='sudo'
+fi
+
+# Trace creation
+trace_id=$(od -An -N8 -tu8 < /dev/urandom | tr -d ' ')
+start_time=$(date +%s%N)
+export DATADOG_TRACE_ID=$trace_id
+export DATADOG_PARENT_ID=$trace_id
+
 # Set up a named pipe for logging
 npipe=/tmp/$$.tmp
 mknod $npipe p
@@ -51,7 +64,19 @@ mknod $npipe p
 tee <$npipe $logfile &
 exec 1>&-
 exec 1>$npipe 2>&1
-trap 'rm -f $npipe' EXIT
+
+# Set telemetry URL
+telemetry_url="https://instrumentation-telemetry-intake.datadoghq.com/api/v2/apmtelemetry"
+if [ -n "$DD_SITE" ]; then
+    telemetry_url="https://instrumentation-telemetry-intake.${DD_SITE}/api/v2/apmtelemetry"
+fi
+
+function on_exit() {
+    exit_code=$?
+    rm -f $npipe
+    report_installer_telemetry "$sudo_cmd" "$DD_API_KEY" "$DD_SITE" "$telemetry_url" "$trace_id" "$logfile" "$start_time" "$exit_code" "$install_script_version" || true
+}
+trap on_exit EXIT
 
 ##
 # REPORTING AND COMMON METHODS
@@ -337,18 +362,20 @@ function json_escape() {
 }
 
 function report_installer_telemetry() {
-    local trace_id="$1"
-    local os="$2"
-    local distribution="$3"
-    local start_time="$4"
-    local exit_code="$5"
-    local install_stdout="$6"
-    local install_stderr="$7"
-    local packages_to_install="$8"
-    local packages_to_install_after_installer="$9"
+    # Note: do not use local variables from the rest of the script.
+    # The `trap` method will call this function with the local variables evaluated at the time of the trap.
+    # You should be able to use environment variables or global variables.
+    local sudo_cmd="$1"
+    local apikey="$2"
+    local site="$3"
+    local telemetry_url="$4"
+    local trace_id="$5"
+    local logfile="$6"
+    local start_time="$7"
+    local exit_code="$8"
+    local install_script_version="$9"
 
-    install_stdout=$(json_escape "$install_stdout")
-    install_stderr=$(json_escape "$install_stderr")
+    logs=$(json_escape "$(cat "$logfile")")
 
     local time_now_seconds
     local time_now
@@ -378,8 +405,8 @@ function report_installer_telemetry() {
         "origin": "linux-install-script",
         "host": {
             "hostname": "$(json_escape "$(uname -n)")",
-            "os": "$(json_escape "${os}")",
-            "distribution": "$(json_escape "${distribution}")",
+            "os": "$(json_escape "$(uname -o)")",
+            "distribution": "$(json_escape "$(lsb_release -ds || echo "Unknown")")",
             "architecture": "$(json_escape "$(uname -m)")",
             "kernel_version": "$(json_escape "$(uname -v)")",
             "kernel_name": "$(json_escape "$(uname -s)")",
@@ -396,8 +423,8 @@ function report_installer_telemetry() {
             "traces": [[
                 {
                     "service": "datadog-linux-install-script",
-                    "name": "install_installer",
-                    "resource": "install_installer",
+                    "name": "install_script",
+                    "resource": "install_script",
                     "trace_id": ${trace_id},
                     "span_id": ${trace_id},
                     "parent_id": 0,
@@ -407,10 +434,7 @@ function report_installer_telemetry() {
                     "meta": {
                         "language": "shell",
                         "exit_code": ${exit_code},
-                        "error.message": "${install_stderr}",
                         "version": "${install_script_version}",
-                        "packages_to_install": "$(json_escape "${packages_to_install}")",
-                        "packages_to_install_after_installer": "$(json_escape "${packages_to_install_after_installer}")",
                         "network.gcr_io": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://gcr.io/v2/datadoghq/installer-package/manifests/latest")")",
                         "network.install_datadoghq_com_install_script": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/scripts/install_script_agent7.sh")")",
                         "network.install_datadoghq_com_index": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/index.html")")",
@@ -431,7 +455,7 @@ function report_installer_telemetry() {
 END
 )
 
-    json_logs="[{\"message\": \"$install_stdout\", \"level\": \"DEBUG\", \"trace_id\": \"${trace_id}\", \"span_id\": \"${trace_id}\"}, {\"message\": \"$install_stderr\", \"level\": \"ERROR\", \"trace_id\": \"${trace_id}\", \"span_id\": \"${trace_id}\"}]"
+    json_logs="[{\"message\": \"$logs\", \"level\": \"DEBUG\", \"trace_id\": \"${trace_id}\", \"span_id\": \"${trace_id}\"}]"
 
     telemetry_logs=$(cat <<-END
     {
@@ -443,8 +467,8 @@ END
         "origin": "linux-install-script",
         "host": {
             "hostname": "$(json_escape "$(uname -n)")",
-            "os": "$(json_escape "${os}")",
-            "distribution": "$(json_escape "${distribution}")",
+            "os": "$(json_escape "$(uname -o)")",
+            "distribution": "$(json_escape "$(lsb_release -ds || echo "Unknown")")",
             "architecture": "$(json_escape "$(uname -m)")",
             "kernel_version": "$(json_escape "$(uname -v)")",
             "kernel_name": "$(json_escape "$(uname -s)")",
@@ -504,7 +528,7 @@ function _install_installer() {
         return 0
     fi
     command_prefix="${sudo_cmd:+$sudo_cmd -E}"
-    $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DATADOG_TRACE_ID=\"${trace_id}\" DATADOG_PARENT_ID=\"${trace_id}\" /usr/bin/datadog-bootstrap bootstrap"
+    $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DATADOG_TRACE_ID=\"${DATADOG_TRACE_ID}\" DATADOG_PARENT_ID=\"${DATADOG_TRACE_ID}\" /usr/bin/datadog-bootstrap bootstrap"
     return $?
 }
 
@@ -514,7 +538,7 @@ function is_installed_by_installer() {
     local command_prefix
     if command -v datadog-installer >/dev/null 2>&1; then
         command_prefix="${sudo_cmd:+$sudo_cmd -E}"
-        $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DATADOG_TRACE_ID=\"${trace_id}\" DATADOG_PARENT_ID=\"${trace_id}\" datadog-installer is-installed \"${package}\""
+        $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DATADOG_TRACE_ID=\"${DATADOG_TRACE_ID}\" DATADOG_PARENT_ID=\"${DATADOG_TRACE_ID}\" datadog-installer is-installed \"${package}\""
         local status=$?
         if [ $status -eq 0 ]; then
             return 0
@@ -557,8 +581,6 @@ function install_installer() {
 
     local trace_id
     local start_time
-    local install_stdout
-    local install_stderr
     local exit_status
 
     # The installer is currently only being rolled out to APM instrumentation users
@@ -566,25 +588,15 @@ function install_installer() {
         return 0
     fi
 
-    trace_id=$(od -An -N8 -tu8 < /dev/urandom | tr -d ' ')
     start_time=$(date +%s%N)
 
     (_install_installer "$sudo_cmd" "$os" "$distribution" > /tmp/datadog-installer-stdout.log 2> /tmp/datadog-installer-stderr.log) || exit_status=$?
     exit_status=${exit_status:-0}
 
-    local packages_to_install
-    local packages_to_install_after_installer
-
-    packages_to_install=("${!pkg_array_name}")
     filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
-    packages_to_install_after_installer=("${!pkg_array_name}")
 
-    install_stdout=$(cat /tmp/datadog-installer-stdout.log)
-    install_stderr=$(cat /tmp/datadog-installer-stderr.log)
-    (report_installer_telemetry "$trace_id" "$os" "$distribution" "$start_time" "$exit_status" "$install_stdout" "$install_stderr" "${packages_to_install[*]}" "${packages_to_install_after_installer[*]}") || true
     if [ "$exit_status" -ne 0 ] && { [ -n "$datadog_installer" ] || [ -n "$remote_updates" ]; } then
         echo -e "\033[31m\n* Failed to install the Datadog installer\n\033[0m"
-        echo "$install_stderr"
         exit "$exit_status"
     fi
     return "$exit_status"
@@ -810,11 +822,6 @@ fi
 report_failure_url="https://api.datadoghq.com/agent_stats/report_failure"
 if [ -n "$DD_SITE" ]; then
     report_failure_url="https://api.${DD_SITE}/agent_stats/report_failure"
-fi
-
-telemetry_url="https://instrumentation-telemetry-intake.datadoghq.com/api/v2/apmtelemetry"
-if [ -n "$DD_SITE" ]; then
-    telemetry_url="https://instrumentation-telemetry-intake.${DD_SITE}/api/v2/apmtelemetry"
 fi
 
 if [ -n "$TESTING_REPORT_URL" ]; then
@@ -1075,13 +1082,6 @@ if [[ "$agent_flavor" == "datadog-fips-agent" ]]; then
         report_telemetry
         exit 1;
     fi
-fi
-
-# Root user detection
-if [ "$UID" == "0" ]; then
-    sudo_cmd=''
-else
-    sudo_cmd='sudo'
 fi
 
 ##
