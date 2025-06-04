@@ -647,7 +647,13 @@ function install_managed_agent() {
   installer_domain=${DD_INSTALLER_REGISTRY_URL_INSTALLER_PACKAGE:-$([[ "$DD_SITE" == "datad0g.com" ]] && echo "install.datad0g.com" || echo "install.datadoghq.com")}
   installer_url="https://${installer_domain}/scripts/install.sh"
   if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
-    installer_url="https://${installer_domain}/scripts/install-7.${DD_AGENT_MINOR_VERSION}.sh"
+    minor_version=${DD_AGENT_MINOR_VERSION}
+    minor_version_without_patch=${minor_version%%[.~]*}
+    if [ "$minor_version_without_patch" -lt 65 ]; then
+      echo -e "\033[33mWarning: Remote Agent Management is not supported for Agent versions less than 7.65. Installing 7.65.2 now.\n\033[0m"
+      minor_version="65.2"
+    fi
+    installer_url="https://${installer_domain}/scripts/install-7.${minor_version}.sh"
   fi
   if command -v curl >/dev/null; then
     http_code=$(curl -ILsf --retry 3 -w "%{http_code}" -o /dev/null "$installer_url" || true)
