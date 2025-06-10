@@ -74,7 +74,7 @@ fi
 function on_exit() {
     exit_code=$?
     rm -f $npipe
-    report_installer_telemetry "$sudo_cmd" "$DD_API_KEY" "$DD_SITE" "$telemetry_url" "$trace_id" "$logfile" "$start_time" "$exit_code" "$install_script_version" || true
+    report_installer_telemetry "$sudo_cmd" "$DD_API_KEY" "$DD_SITE" "$telemetry_url" "$trace_id" "$logfile" "$start_time" "$exit_code" || true
 }
 trap on_exit EXIT
 
@@ -373,7 +373,6 @@ function report_installer_telemetry() {
     local logfile="$6"
     local start_time="$7"
     local exit_code="$8"
-    local install_script_version="$9"
 
     logs=$(json_escape "$(cat "$logfile")")
 
