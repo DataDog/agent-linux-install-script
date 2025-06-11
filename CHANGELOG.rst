@@ -2,8 +2,12 @@
 Release Notes
 =============
 
-Unreleased
+1.39.0
 ================
+
+- (chore) Remove local `install_script_version`` variable from installer telemetry function (#338)
+- (fleet) Trigger installer trace from exit trap (#336)
+- (fleet) Drop support for older Agents with remote agent management (#335)
 
 1.38.0
 ================
