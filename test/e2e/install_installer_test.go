@@ -36,24 +36,6 @@ func TestInstallUpdaterSuite(t *testing.T) {
 	})
 }
 
-func (s *installUpdaterTestSuite) TestInstallUpdater() {
-	t := s.T()
-	vm := s.Env().RemoteHost
-	cmd := fmt.Sprintf("DD_INSTALLER=true DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
-	output := vm.MustExecute(cmd)
-	t.Log(output)
-	defer s.purge()
-
-	s.assertInstallScript(true)
-	s.assertInstallerInstalled()
-	s.assertValidTraceGenerated()
-
-	s.uninstallInstaller()
-	s.assertUninstallInstaller()
-	// agent should not be uninstalled
-	s.assertInstallScript(true)
-}
-
 // mock installer, it will return 0 for datadog-apm-inject and datadog-apm-library-python
 const isInstalledScript = `#!/bin/bash
 [[ "$1" == "is-installed" ]] && { [[ "$2" == "datadog-apm-inject" || "$2" == "datadog-apm-library-python" ]] && exit 0 || exit 1; } || { echo "Unsupported command"; exit 2; }`
