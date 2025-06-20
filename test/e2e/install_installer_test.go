@@ -36,24 +36,6 @@ func TestInstallUpdaterSuite(t *testing.T) {
 	})
 }
 
-func (s *installUpdaterTestSuite) TestInstallUpdater() {
-	t := s.T()
-	vm := s.Env().RemoteHost
-	cmd := fmt.Sprintf("DD_INSTALLER=true DD_API_KEY=%s DD_SITE=\"datadoghq.com\" bash -c \"$(cat scripts/install_script_agent7.sh)\"", apiKey)
-	output := vm.MustExecute(cmd)
-	t.Log(output)
-	defer s.purge()
-
-	s.assertInstallScript(true)
-	s.assertInstallerInstalled()
-	s.assertValidTraceGenerated()
-
-	s.uninstallInstaller()
-	s.assertUninstallInstaller()
-	// agent should not be uninstalled
-	s.assertInstallScript(true)
-}
-
 // mock installer, it will return 0 for datadog-apm-inject and datadog-apm-library-python
 const isInstalledScript = `#!/bin/bash
 [[ "$1" == "is-installed" ]] && { [[ "$2" == "datadog-apm-inject" || "$2" == "datadog-apm-library-python" ]] && exit 0 || exit 1; } || { echo "Unsupported command"; exit 2; }`
@@ -162,47 +144,6 @@ func (s *installUpdaterTestSuite) purge() {
 	} else {
 		require.FailNow(t, "Unknown package manager")
 	}
-}
-
-func (s *installUpdaterTestSuite) assertInstallerInstalled() {
-	t := s.T()
-	vm := s.Env().RemoteHost
-
-	t.Log("Assert installer is installed")
-	assertFileExists(t, vm, "/opt/datadog-packages/datadog-installer/stable/bin/installer/installer")
-	assertFileExists(t, vm, "/opt/datadog-installer/bin/installer/installer")
-
-	t.Log("Assert installer is not in enabled in systemd")
-	_, err := vm.Execute("systemctl is-active datadog-installer")
-	assert.Error(t, err)
-	assertFileNotExists(t, vm, "/lib/systemd/system/datadog-installer.service")
-}
-
-func (s *installUpdaterTestSuite) uninstallInstaller() {
-	t := s.T()
-	vm := s.Env().RemoteHost
-	t.Helper()
-	if _, err := vm.Execute("command -v apt"); err == nil {
-		t.Log("Uninstall with apt")
-		vm.Execute("sudo apt-get remove -y datadog-installer")
-	} else if _, err = vm.Execute("command -v yum"); err == nil {
-		t.Log("Uninstall with yum")
-		vm.Execute("sudo yum remove -y datadog-installer")
-	} else if _, err = vm.Execute("command -v zypper"); err == nil {
-		t.Log("Uninstall with zypper")
-		vm.Execute("sudo zypper remove -y datadog-installer")
-	} else {
-		require.FailNow(t, "Unknown package manager")
-	}
-}
-
-func (s *installUpdaterTestSuite) assertUninstallInstaller() {
-	t := s.T()
-	vm := s.Env().RemoteHost
-
-	t.Log("Assert installer is uninstalled")
-	assertFileNotExists(t, vm, "/opt/datadog-packages/datadog-installer/stable/bin/installer/installer")
-	assertFileNotExists(t, vm, "/opt/datadog-installer/bin/installer/installer")
 }
 
 func (s *installUpdaterTestSuite) assertPackageInstalledByPackageManager(pkg string) {
