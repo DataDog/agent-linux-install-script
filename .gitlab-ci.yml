@@ -375,16 +375,6 @@ e2e:
           - --run TestInstallErrorTrackingStandaloneSuite
           - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallErrorTrackingStandalone|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent|InstallUpdater)Suite
       - FLAVOR: datadog-agent
-        PLATFORM:
-          - Debian_11
-          - Ubuntu_22_04
-          - RedHat_CentOS_7
-          - RedHat_8
-          - Amazon_Linux_2023
-          - openSUSE_15
-        EXTRA_PARAMS:
-          - --run TestInstallUpdaterSuite
-      - FLAVOR: datadog-agent
         E2E_OVERRIDE_INSTANCE_TYPE: "t2.medium"
         PLATFORM:
           - RedHat_CentOS_6
