@@ -12,7 +12,7 @@ variables:
   CI_IMAGE_AGENT_DEPLOY: v47979770-a5a4cfd0
   CI_IMAGE_DEB_X64: v47979770-a5a4cfd0
   S3_CP_CMD: aws s3 cp --only-show-errors --region us-east-1 --sse AES256
-  TEST_INFRA_DEFINITIONS_BUILDIMAGES: eefd2de87300
+  TEST_INFRA_DEFINITIONS_BUILDIMAGES: 9a75cf853795
   DEFAULT_MAJOR_VERSION: 7
   TESTING_DIR: ${CI_PROJECT_DIR}
   DD_INSTALL_ONLY: "true"
@@ -308,7 +308,7 @@ test-vector:
 
 e2e:
   stage: e2e
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/test-infra-definitions/runner:$TEST_INFRA_DEFINITIONS_BUILDIMAGES
+  image: registry.ddbuild.io/ci/test-infra-definitions/runner:$TEST_INFRA_DEFINITIONS_BUILDIMAGES
   tags: ["arch:amd64"]
   dependencies:
     - generate-scripts
@@ -318,8 +318,8 @@ e2e:
     - mkdir -p ~/.aws
     - aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.agent-qa-profile --with-decryption --query "Parameter.Value" --out text >> ~/.aws/config
     - export AWS_PROFILE=agent-qa-ci
-    - aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.ssh_public_key --with-decryption --query "Parameter.Value" --out text > $E2E_PUBLIC_KEY_PATH
-    - aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.ssh_private_key --with-decryption --query "Parameter.Value" --out text > $E2E_PRIVATE_KEY_PATH
+    - aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.ssh_public_key --with-decryption --query "Parameter.Value" --out text > $E2E_AWS_PUBLIC_KEY_PATH
+    - aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.ssh_private_key --with-decryption --query "Parameter.Value" --out text > $E2E_AWS_PRIVATE_KEY_PATH
     - export DD_API_KEY=$(aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.datadog_api_key_2 --with-decryption --query "Parameter.Value" --out text)
     # Use S3 backend
     - pulumi login "s3://dd-pulumi-state?region=us-east-1&awssdk=v2&profile=$AWS_PROFILE"
@@ -342,8 +342,8 @@ e2e:
   variables:
     KUBERNETES_MEMORY_REQUEST: 12Gi
     KUBERNETES_MEMORY_LIMIT: 16Gi
-    E2E_PUBLIC_KEY_PATH: /tmp/agent-qa-ssh-key.pub
-    E2E_PRIVATE_KEY_PATH: /tmp/agent-qa-ssh-key
+    E2E_AWS_PUBLIC_KEY_PATH: /tmp/agent-qa-ssh-key.pub
+    E2E_AWS_PRIVATE_KEY_PATH: /tmp/agent-qa-ssh-key
     E2E_KEY_PAIR_NAME: ci.agent-linux-install-script
     TEAM: agent-delivery
     SCRIPT_PATH: $CI_PROJECT_DIR/test/e2e/scripts
