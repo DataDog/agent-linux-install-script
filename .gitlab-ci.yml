@@ -5,6 +5,7 @@ stages:
   - e2e
   - e2e_test_upload
   - deploy
+  - deploy_deprecated
 
 variables:
   AWS_MAX_ATTEMPTS: 5 # retry AWS operations 5 times if they fail on network errors
@@ -441,13 +442,39 @@ deploy:
     - when: never
   parallel:
     matrix:
-      - SCRIPT: install_script.sh
       - SCRIPT: install_script_agent6.sh
       - SCRIPT: install_script_agent7.sh
       - SCRIPT: install_script_docker_injection.sh
       - SCRIPT: install_script_op_worker1.sh
       - SCRIPT: install_script_op_worker2.sh
       - SCRIPT: install_script_vector0.sh
+  script:
+    - $S3_CP_CMD ./${SCRIPT} s3://dd-agent/scripts/${SCRIPT} --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
+  after_script:
+    # invalidate the install.datadoghq.com CF distribution
+    - export $(printf "AWS_ACCESS_KEY_ID=%s AWS_SECRET_ACCESS_KEY=%s AWS_SESSION_TOKEN=%s"
+      $(aws --region "us-east-1" sts assume-role
+      --duration-seconds 900
+      --role-arn "arn:aws:iam::464622532012:role/build-stable-cloudfront-invalidation"
+      --role-session-name "build-stable-cloudfront-invalidate-script"
+      --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]"
+      --output text
+      )
+      )
+    - aws --region "us-east-1" cloudfront create-invalidation --distribution-id "E2VSER0FO39KRV" --paths "/scripts/*"
+
+
+deploy_deprecated:
+  image: registry.ddbuild.io/ci/datadog-agent-buildimages/gitlab_agent_deploy:$CI_IMAGE_AGENT_DEPLOY
+  tags: ["arch:amd64"]
+  stage: deploy_deprecated
+  dependencies: ["generate-scripts"]
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+    - when: never
+  variables:
+    SCRIPT: install_script.sh
   script:
     - $S3_CP_CMD ./${SCRIPT} s3://dd-agent/scripts/${SCRIPT} --grants read=uri=http://acs.amazonaws.com/groups/global/AllUsers full=id=3a6e02b08553fd157ae3fb918945dd1eaae5a1aa818940381ef07a430cf25732
   after_script:
