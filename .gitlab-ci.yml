@@ -35,7 +35,7 @@ default:
   before_script:
     - '[ -z "$MAJOR_VERSION" ] && export MAJOR_VERSION=${DEFAULT_MAJOR_VERSION}'
     - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_YUM_VERSION_PATH="testing/pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}/${MAJOR_VERSION}"'
-    - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_APT_REPO_VERSION="pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}-x86_64 ${MAJOR_VERSION}"'
+    - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_APT_REPO_VERSION="stable-x86_64 ${MAJOR_VERSION}"'
 
 generate-scripts:
   image: registry.ddbuild.io/ci/datadog-agent-buildimages/deb_x64:$CI_IMAGE_DEB_X64
