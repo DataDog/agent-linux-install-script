@@ -277,6 +277,15 @@ func (s *linuxInstallerTestSuite) uninstall() {
 	} else {
 		require.FailNow(t, "Unknown package manager")
 	}
+
+	// Clean up any Python bytecode cache files that might be left behind
+	if flavor == "datadog-agent" {
+		if _, err := vm.Execute("command -v find"); err == nil {
+			vm.Execute("sudo find /opt/datadog-agent -name '*.pyc' -delete")
+		} else {
+			t.Log("find command not available, skipping Python bytecode cleanup")
+		}
+	}
 }
 
 func (s *linuxInstallerTestSuite) assertUninstall() {
@@ -289,8 +298,6 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 		assert.NoError(c, err, "user datadog-agent not present after remove")
 		assertFileExists(c, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
 		if flavor == "datadog-agent" {
-			// Clean up any Python bytecode cache files that might be left behind
-			vm.Execute("sudo find /opt/datadog-agent -name '*.pyc' -delete")
 			// The custom file should still be here. All other files, including the extra integration, should be removed
 			expectedFile := fmt.Sprintf("%s/site-packages/testfile", s.getLatestEmbeddedPythonPath("datadog-agent"))
 			assertFileExists(c, vm, expectedFile)
