@@ -978,6 +978,15 @@ else
   apt_repo_version="${agent_dist_channel} ${agent_major_version}"
 fi
 
+ddot=
+ddot_yum_version_path=
+ddot_apt_repo_version=
+if [ -n "$DD_DDOT" ]; then
+  ddot=$DD_DDOT
+  ddot_yum_version_path="${ddot}/${agent_major_version}"
+  ddot_apt_repo_version="${ddot} ${agent_major_version}"
+fi
+
 if [ ! "$apikey" ]; then
   # if it's an upgrade, then we will use the transition script
   if [ ! "$upgrade" ] && [ ! -e "$config_file" ] && [ ! "$no_agent" ]; then
@@ -1148,6 +1157,9 @@ if [ "$OS" == "Red Hat" ]; then
     # if some packages were previously pinned (using excludepkgs)
     # this will unpin them as a side effect
     $sudo_cmd sh -c "echo -e '[datadog]\nname = Datadog, Inc.\nbaseurl = https://${yum_url}/${yum_version_path}/${ARCHI}/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\npriority=1\ngpgkey=${gpgkeys}' > /etc/yum.repos.d/datadog.repo"
+    if [ -n "$ddot" ]; then
+      $sudo_cmd sh -c "echo -e '[datadog]\nname = Datadog, Inc.\nbaseurl = https://${yum_url}/${ddot_yum_version_path}/${ARCHI}/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\npriority=1\ngpgkey=${gpgkeys}' > /etc/yum.repos.d/datadog-ddot.repo"
+    fi
 
     $sudo_cmd yum -y clean metadata
 
@@ -1193,6 +1205,9 @@ if [ "$OS" == "Red Hat" ]; then
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
       $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
+      if [ -n "$ddot" ]; then
+        $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y --disablerepo='*' --enablerepo='datadog-ddot' install $dnf_flag datadog-agent-ddot" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag datadog-agent-ddot" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
+      fi
 
       ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
     else
@@ -1255,6 +1270,12 @@ elif [ "$OS" == "Debian" ]; then
     $sudo_cmd sh -c "echo 'deb [signed-by=${apt_usr_share_keyring}] https://${apt_url}/ ${apt_repo_version}' > /etc/apt/sources.list.d/datadog.list"
     $sudo_cmd sh -c "chmod a+r /etc/apt/sources.list.d/datadog.list"
 
+    if [ -n "$ddot" ]; then
+      printf "\033[34m\n* Installing APT package sources for Datadog DDOT\n\033[0m\n"
+      $sudo_cmd sh -c "echo 'deb [signed-by=${apt_usr_share_keyring}] https://${apt_url}/ ${ddot_apt_repo_version}' > /etc/apt/sources.list.d/datadog-ddot.list"
+      $sudo_cmd sh -c "chmod a+r /etc/apt/sources.list.d/datadog-ddot.list"
+    fi
+
     if [ ! -f $apt_usr_share_keyring ]; then
         $sudo_cmd touch $apt_usr_share_keyring
     fi
@@ -1300,6 +1321,7 @@ If the failing repository is Datadog, please contact Datadog support.
 *****
 "
     $sudo_cmd apt-get update -o Dir::Etc::sourcelist="sources.list.d/datadog.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
+    $sudo_cmd apt-get update -o Dir::Etc::sourcelist="sources.list.d/datadog-ddot.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
     ERROR_MESSAGE="ERROR
 Failed to install one or more packages, sometimes it may be
 due to another APT source failing. See the logs above to
@@ -1343,6 +1365,10 @@ If the cause is unclear, please contact Datadog support.
     $sudo_cmd chmod +x "${POLICYRCD}"
 
     $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
+    if [ -n "$ddot" ]; then
+      # TODO: I'm not sure if this would be correct since there's no repository specified in this command
+      $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes datadog-agent-ddot 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
+    fi
 
     ERR_SUMMARY=$(grep "No space left on device" -C1 /tmp/ddog_install_error_msg || true)
 
