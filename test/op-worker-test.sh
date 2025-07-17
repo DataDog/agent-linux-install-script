@@ -4,6 +4,11 @@ if [[ -v "$DD_OPW_INSTALL_CLASSIC_AGENT" ]]; then
 $DD_OPW_INSTALL_CLASSIC_AGENT
 fi
 
+# Patch the sources.list file for debian. This is a workaround, we should change the image instead
+if [[ "${IMAGE}" =~ "debian:10" ]]; then
+  cp ./test/sources.list /etc/apt/sources.list
+fi
+
 $SCRIPT
 
 EXPECTED_FLAVOR=observability-pipelines-worker

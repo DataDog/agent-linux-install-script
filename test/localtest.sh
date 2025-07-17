@@ -8,6 +8,11 @@ function get_os_type() {
   fi
 }
 
+# Patch the sources.list file for debian. This is a workaround, we should change the image instead
+if [[ "${IMAGE}" =~ "debian:10" ]]; then
+  cp ./test/sources.list /etc/apt/sources.list
+fi
+
 EXPECTED_FLAVOR=${DD_AGENT_FLAVOR:-datadog-agent}
 SCRIPT_FLAVOR=$(echo "${SCRIPT}" | sed "s|.*install_script_\(.*\).sh|\1|")
 if [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] && echo "${SCRIPT}" | grep "agent6.sh$" >/dev/null; then
