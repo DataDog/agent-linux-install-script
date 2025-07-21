@@ -71,10 +71,15 @@ if [ -n "$DD_SITE" ]; then
     telemetry_url="https://instrumentation-telemetry-intake.${DD_SITE}/api/v2/apmtelemetry"
 fi
 
+# OS/Distro Detection
+# Try lsb_release, fallback with /etc/issue then uname command
+KNOWN_DISTRIBUTION="(Debian|Ubuntu|Red Hat|CentOS|openSUSE|Amazon|Arista|SUSE|Rocky|AlmaLinux)"
+DISTRIBUTION=$(lsb_release -d 2>/dev/null | grep -Eo "$KNOWN_DISTRIBUTION" || grep -Eo "$KNOWN_DISTRIBUTION" /etc/issue 2>/dev/null || grep -Eo "$KNOWN_DISTRIBUTION" /etc/Eos-release 2>/dev/null || grep -m1 -Eo "$KNOWN_DISTRIBUTION" /etc/os-release 2>/dev/null || uname -s)
+
 function on_exit() {
     exit_code=$?
     rm -f $npipe
-    report_installer_telemetry "$sudo_cmd" "$DD_API_KEY" "$DD_SITE" "$telemetry_url" "$trace_id" "$logfile" "$start_time" "$exit_code" || true
+    report_installer_telemetry "$sudo_cmd" "$DD_API_KEY" "$DD_SITE" "$telemetry_url" "$trace_id" "$logfile" "$start_time" "$exit_code" "$DISTRIBUTION" || true
 }
 trap on_exit EXIT
 
@@ -373,6 +378,7 @@ function report_installer_telemetry() {
     local logfile="$6"
     local start_time="$7"
     local exit_code="$8"
+    local distribution="$9"
 
     logs=$(json_escape "$(cat "$logfile")")
 
@@ -405,7 +411,7 @@ function report_installer_telemetry() {
         "host": {
             "hostname": "$(json_escape "$(uname -n)")",
             "os": "$(json_escape "$(uname -o)")",
-            "distribution": "$(json_escape "$(lsb_release -ds || echo "Unknown")")",
+            "distribution": "$(json_escape "$distribution")",
             "architecture": "$(json_escape "$(uname -m)")",
             "kernel_version": "$(json_escape "$(uname -v)")",
             "kernel_name": "$(json_escape "$(uname -s)")",
@@ -467,7 +473,7 @@ END
         "host": {
             "hostname": "$(json_escape "$(uname -n)")",
             "os": "$(json_escape "$(uname -o)")",
-            "distribution": "$(json_escape "$(lsb_release -ds || echo "Unknown")")",
+            "distribution": "$(json_escape "$distribution")",
             "architecture": "$(json_escape "$(uname -m)")",
             "kernel_version": "$(json_escape "$(uname -v)")",
             "kernel_name": "$(json_escape "$(uname -s)")",
@@ -1001,11 +1007,6 @@ if [ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] && [ "$agent_major_version" = "6" ] 
   report_telemetry
   exit 1;
 fi
-
-# OS/Distro Detection
-# Try lsb_release, fallback with /etc/issue then uname command
-KNOWN_DISTRIBUTION="(Debian|Ubuntu|Red Hat|CentOS|openSUSE|Amazon|Arista|SUSE|Rocky|AlmaLinux)"
-DISTRIBUTION=$(lsb_release -d 2>/dev/null | grep -Eo "$KNOWN_DISTRIBUTION" || grep -Eo "$KNOWN_DISTRIBUTION" /etc/issue 2>/dev/null || grep -Eo "$KNOWN_DISTRIBUTION" /etc/Eos-release 2>/dev/null || grep -m1 -Eo "$KNOWN_DISTRIBUTION" /etc/os-release 2>/dev/null || uname -s)
 
 if [ "$DISTRIBUTION" == "Darwin" ]; then
     ERROR_MESSAGE="This script does not support installing on the Mac."
