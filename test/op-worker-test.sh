@@ -6,7 +6,9 @@ fi
 
 # Patch the sources.list file for debian. This is a workaround, we should change the image instead
 if [[ "${IMAGE}" =~ "debian:10" ]]; then
-  cp ./test/sources.list /etc/apt/sources.list
+  cp ./test/sources10.list /etc/apt/sources.list
+elif [[ "${IMAGE}" =~ "debian:11" ]]; then
+  cp ./test/sources11.list /etc/apt/sources.list
 fi
 
 $SCRIPT
