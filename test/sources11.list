@@ -4,5 +4,3 @@ deb http://archive.debian.org/debian bullseye-updates main
 deb-src http://archive.debian.org/debian bullseye-updates main
 deb http://archive.debian.org/debian bullseye-backports main
 deb-src http://archive.debian.org/debian bullseye-backports main
-deb http://archive.debian.org/debian-security bullseye/updates main
-deb-src http://archive.debian.org/debian-security bullseye/updates main
