@@ -314,6 +314,10 @@ e2e:
     - generate-scripts
     - go_e2e_deps
   before_script:
+    # Default before_script
+    - '[ -z "$MAJOR_VERSION" ] && export MAJOR_VERSION=${DEFAULT_MAJOR_VERSION}'
+    - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_YUM_VERSION_PATH="testing/pipeline-${TEST_PIPELINE_ID}-a${MAJOR_VERSION}/${MAJOR_VERSION}"'
+    - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_APT_REPO_VERSION="stable-x86_64 ${MAJOR_VERSION}"'
     # Setup AWS Credentials
     - mkdir -p ~/.aws
     - aws ssm get-parameter --region us-east-1 --name ci.agent-linux-install-script.agent-qa-profile --with-decryption --query "Parameter.Value" --out text >> ~/.aws/config
