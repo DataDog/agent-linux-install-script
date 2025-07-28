@@ -635,6 +635,10 @@ function install_apm_ssi() {
   local sudo_cmd="$1"
   local pkg_array_name="$2"
 
+  if [ -z "$DD_APM_INSTRUMENTATION_ENABLED" ]; then
+    return 0
+  fi
+
   installer_domain=${DD_INSTALLER_REGISTRY_URL_INSTALLER_PACKAGE:-$([[ "$DD_SITE" == "datad0g.com" ]] && echo "install.datad0g.com" || echo "install.datadoghq.com")}
   installer_url="https://${installer_domain}/scripts/install-ssi.sh" # TODO: support pinning?
   
