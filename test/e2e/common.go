@@ -121,6 +121,9 @@ func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...s
 		if val, ok := os.LookupEnv("TESTING_APT_URL"); ok {
 			scriptEnvVariable = scriptEnvVariable + fmt.Sprintf(" TESTING_APT_URL='%s'", val)
 		}
+		if val, ok := os.LookupEnv("TESTING_KEYS_URL"); ok {
+			scriptEnvVariable = scriptEnvVariable + fmt.Sprintf(" TESTING_KEYS_URL='%s'", val)
+		}
 	}
 
 	if extraParamLength == 0 {
