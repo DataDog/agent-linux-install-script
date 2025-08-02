@@ -296,6 +296,15 @@ func (s *linuxInstallerTestSuite) uninstall() {
 	} else {
 		require.FailNow(t, "Unknown package manager")
 	}
+
+	// Clean up any Python bytecode cache files that might be left behind
+	if flavor == "datadog-agent" {
+		if _, err := vm.Execute("command -v find"); err == nil {
+			vm.Execute("sudo find /opt/datadog-agent -name '*.pyc' -delete")
+		} else {
+			t.Log("find command not available, skipping Python bytecode cleanup")
+		}
+	}
 }
 
 func (s *linuxInstallerTestSuite) assertUninstall() {
