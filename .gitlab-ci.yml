@@ -20,6 +20,18 @@ variables:
   DD_OP_PIPELINE_ID: 123
   DD_ENV: testenv
 
+# Define the common image list as an anchor
+.common_images:
+  &common_images [
+    amazonlinux:2,
+    amazonlinux:2023,
+    debian:11,
+    debian:12,
+    rockylinux:9.0,
+    ubuntu:22.04,
+    ubuntu:24.04,
+  ]
+
 default:
   retry:
     max: 2
@@ -268,16 +280,7 @@ test-observability-pipelines-worker:
     SCRIPT: ./install_script_op_worker2.sh
   parallel:
     matrix:
-      - IMAGE:
-          [
-            amazonlinux:2,
-            amazonlinux:2023,
-            debian:11,
-            debian:12,
-            rockylinux:9.0,
-            ubuntu:22.04,
-            ubuntu:24.04,
-          ]
+      - IMAGE: *common_images
         DD_OPW_INSTALL_CLASSIC_AGENT: ["", install_script_agent7.sh]
   script:
     - ./test/op-worker-test.sh
@@ -293,16 +296,7 @@ test-vector:
     SCRIPT: ./install_script_vector0.sh
   parallel:
     matrix:
-      - IMAGE:
-          [
-            amazonlinux:2,
-            amazonlinux:2023,
-            debian:11,
-            debian:12,
-            rockylinux:9.0,
-            ubuntu:22.04,
-            ubuntu:24.04,
-          ]
+      - IMAGE: *common_images
   script:
     - ./test/vector-test.sh
 
@@ -466,7 +460,6 @@ deploy:
       )
       )
     - aws --region "us-east-1" cloudfront create-invalidation --distribution-id "E2VSER0FO39KRV" --paths "/scripts/*"
-
 
 deploy_deprecated:
   image: registry.ddbuild.io/ci/datadog-agent-buildimages/gitlab_agent_deploy:$CI_IMAGE_AGENT_DEPLOY
