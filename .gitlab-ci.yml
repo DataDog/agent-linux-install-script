@@ -20,18 +20,6 @@ variables:
   DD_OP_PIPELINE_ID: 123
   DD_ENV: testenv
 
-# Define the common image list as an anchor
-.common_images:
-  &common_images [
-    amazonlinux:2,
-    amazonlinux:2023,
-    debian:11,
-    debian:12,
-    rockylinux:9.0,
-    ubuntu:22.04,
-    ubuntu:24.04,
-  ]
-
 default:
   retry:
     max: 2
@@ -280,7 +268,16 @@ test-observability-pipelines-worker:
     SCRIPT: ./install_script_op_worker2.sh
   parallel:
     matrix:
-      - IMAGE: *common_images
+      - IMAGE:
+          &common_images [
+            amazonlinux:2,
+            amazonlinux:2023,
+            debian:11,
+            debian:12,
+            rockylinux:9.0,
+            ubuntu:22.04,
+            ubuntu:24.04,
+          ]
         DD_OPW_INSTALL_CLASSIC_AGENT: ["", install_script_agent7.sh]
   script:
     - ./test/op-worker-test.sh
