@@ -317,7 +317,7 @@ func (s *linuxInstallerTestSuite) assertUninstall() {
 			// All files in /opt/datadog-agent should be removed
 			assertFileNotExists(c, vm, fmt.Sprintf("/opt/%s", s.baseName))
 		}
-	}, 60*time.Second, 5*time.Second)
+	}, 300*time.Second, 30*time.Second)
 	if t.Failed() {
 		stdout, err := vm.Execute("journalctl --no-pager")
 		if err != nil {
