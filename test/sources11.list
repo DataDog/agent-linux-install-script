@@ -1,0 +1,6 @@
+deb http://archive.debian.org/debian bullseye main
+deb-src http://archive.debian.org/debian bullseye main
+deb http://archive.debian.org/debian bullseye-updates main
+deb-src http://archive.debian.org/debian bullseye-updates main
+deb http://archive.debian.org/debian bullseye-backports main
+deb-src http://archive.debian.org/debian bullseye-backports main
