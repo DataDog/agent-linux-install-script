@@ -378,7 +378,7 @@ e2e:
           - --run TestInstallSystemProbeSuite
           - --run TestInstallComplianceAgentSuite
           - --run TestInstallErrorTrackingStandaloneSuite
-          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallErrorTrackingStandalone|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent|InstallUpdater)Suite
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallDiscovery|InstallFips|InstallErrorTrackingStandalone|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent|InstallUpdater)Suite
       - FLAVOR: datadog-agent
         PLATFORM:
           - Debian_11
@@ -401,7 +401,7 @@ e2e:
           - --run TestInstallSecurityAgentSuite
           - --run TestInstallSystemProbeSuite
           - --run TestInstallComplianceAgentSuite
-          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallFips|InstallErrorTrackingStandalone|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent|InstallUpdater)Suite
+          - --skip Test(Install|Upgrade5|Upgrade6|Upgrade7|InstallDiscovery|InstallFips|InstallErrorTrackingStandalone|InstallMaximalAndRetry|InstallSecurityAgent|InstallSystemProbe|InstallComplianceAgent|InstallUpdater)Suite
       - FLAVOR: datadog-agent
         PLATFORM:
           - Debian_11
