@@ -37,6 +37,7 @@ The install script allows installation of different flavors of the Agent binarie
 |`DD_RUNTIME_SECURITY_CONFIG_ENABLED`|If set to `true`, ensure creation of security Agent and system probe configuration file (if they don't already exist), and enable Cloud Workload Security (CWS).|
 |`DD_COMPLIANCE_CONFIG_ENABLED`|If set to `true`, ensures the creation of a security Agent configuration file if one doesn't already exist, and enables Cloud Security Posture Management (CSPM).|
 |`DD_DISCOVERY_ENABLED`|If set to `true`, and a system probe configuration file does not already exist, creates a system probe configuration file and enables Service Discovery.
+|`DD_LOGS_CONFIG_PROCESS_COLLECT_ALL`|Enable process log collection.|
 |`DD_INSTALL_ONLY`|Set to any value to prevent starting the Agent after installation.|
 |`DD_NO_AGENT_INSTALL`|Do not install the Agent. Instead, installs package signature keys and creates configuration files if they don't already exist. Automatically set to `true` when `DD_APM_INSTRUMENTATION_ENABLED=docker`.|
 
