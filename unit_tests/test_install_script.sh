@@ -274,5 +274,26 @@ testSystemProbeConfigFullConfig(){
   assertEquals 0 $?
 }
 
+### Test logs config process collect all function
+testLogsConfigProcessCollectAll() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_logs_config_process_collect_all "sudo" $config_file
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+
+  # Test logs_enabled is set to true
+  sudo grep -q "^logs_enabled: true" $config_file
+  assertEquals 0 $?
+
+  # Test process_config.process_collection.use_wlm is set to true
+  sudo sed -e '0,/^process_config:/d' -e '/^[^ ]/,$d' $config_file | sed -e '0,/^  process_collection:/d' -e '/^  [^ ]/,$d' | grep -v "#" | grep -q "use_wlm: true"
+  assertEquals 0 $?
+
+  # Test extra_config_providers contains process_log
+  sudo sed -e '0,/^extra_config_providers:/d' -e '/^[^ ]/,$d' $config_file | grep -v "#" | grep -q "process_log"
+  assertEquals 0 $?
+}
+
 # shellcheck source=/dev/null
 . shunit2
