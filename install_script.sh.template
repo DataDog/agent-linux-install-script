@@ -1749,6 +1749,23 @@ discovery:
   enabled: true
 EOF
 }
+function update_logs_config_process_collect_all(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+
+  printf "\033[34m\n* Setting $nice_flavor configuration for process log collection: $config_file\n\033[0m\n"
+  $sudo_cmd cp "$config_file" "${config_file}.orig"
+  $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+logs_enabled: true
+
+process_config:
+  process_collection:
+    use_wlm: true
+
+extra_config_providers:
+  - process_log
+EOF
+}
 function update_ddot(){
   local sudo_cmd="$1"
   local config_file="$2"
@@ -1862,7 +1879,16 @@ elif [ ! "$no_agent" ]; then
     update_hostname "$sudo_cmd" "$hostname" "$config_file"
     update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
     update_env "$sudo_cmd" "$dd_env" "$config_file"
+    if [ "$DD_LOGS_CONFIG_PROCESS_COLLECT_ALL" == "true" ]; then
+      update_logs_config_process_collect_all "$sudo_cmd" "$config_file"
+    fi
   fi
+
+  # DD_LOGS_CONFIG_PROCESS_COLLECT_ALL needs discovery to be enabled
+  if [ "$DD_LOGS_CONFIG_PROCESS_COLLECT_ALL" == "true" ]; then
+    DD_DISCOVERY_ENABLED="true"
+  fi
+
   manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
   manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED"
 fi
