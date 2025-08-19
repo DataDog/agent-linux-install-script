@@ -1113,6 +1113,16 @@ if [[ "$agent_flavor" == "datadog-fips-agent" ]]; then
     fi
 fi
 
+if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
+    if [ "$agent_major_version" != "7" ] || { [ -n "$agent_minor_version_without_patch" ] && [ "${agent_minor_version_without_patch}" -lt 69 ]; } then
+        ERROR_MESSAGE="The datadog-agent-ddot is only available since version AGENT_MAJOR_VERSION_PLACEHOLDER.69.3 and requested minor version is $agent_minor_version"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
+        printf "\033[31m$ERROR_MESSAGE\033[0m\n"
+        report_telemetry
+        exit 1;
+    fi
+fi
+
 ##
 # INSTALL THE NECESSARY PACKAGE SOURCES
 ##
