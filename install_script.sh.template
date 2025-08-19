@@ -1009,8 +1009,17 @@ fi
 ddot_yum_version_path=
 ddot_apt_repo_version=
 if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
-  ddot_yum_version_path="${ddot_dist_channel}/${agent_major_version}"
-  ddot_apt_repo_version="${ddot_dist_channel} ${agent_major_version}"
+  if [ -n "$TESTING_YUM_VERSION_PATH" ]; then
+    ddot_yum_version_path=$TESTING_YUM_VERSION_PATH
+  else
+    ddot_yum_version_path="${ddot_dist_channel}/${agent_major_version}"
+  fi
+
+  if [ -n "$TESTING_APT_REPO_VERSION" ]; then
+    ddot_apt_repo_version=$TESTING_APT_REPO_VERSION
+  else
+    ddot_apt_repo_version="${ddot_dist_channel} ${agent_major_version}"
+  fi
 fi
 
 if [ ! "$apikey" ]; then
