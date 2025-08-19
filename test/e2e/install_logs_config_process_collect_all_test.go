@@ -77,6 +77,11 @@ func (s *installLogsConfigProcessCollectAllTestSuite) assertInstallScript() {
 	assert.True(t, exists, "extra_config_providers should exist")
 	assert.Contains(t, extraConfigProviders, "process_log")
 
+	// Assert logs_config.process_exclude_agent is true
+	logsConfig, exists := datadogConfig["logs_config"].(map[any]any)
+	assert.True(t, exists, "logs_config should exist")
+	assert.Equal(t, true, logsConfig["process_exclude_agent"])
+
 	// Check system-probe.yaml configuration (should have discovery enabled)
 	systemProbeConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assert.Equal(t, true, systemProbeConfig["discovery"].(map[any]any)["enabled"])
