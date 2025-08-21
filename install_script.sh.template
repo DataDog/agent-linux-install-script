@@ -284,6 +284,9 @@ function verify_agent_version(){
         exit 1;
     else
         agent_flavor+="$ver_separator$agent_version_custom"
+        if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
+          ddot_package+="$ver_separator$agent_version_custom"
+        fi
     fi
 }
 
@@ -986,6 +989,7 @@ else
 fi
 
 # Setup DDOT if enabled, the distribution channel for DDOT is independent from that of the core agent
+ddot_package="datadog-agent-ddot"
 ddot_dist_channel=beta
 if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -n "$DD_DDOT_DIST_CHANNEL" ]; then
   if [ "$repository_url" == "datadoghq.com" ]; then
@@ -1241,12 +1245,16 @@ if [ "$OS" == "Red Hat" ]; then
 
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
-      echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+      if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
+        echo -e "  \033[33mInstalling package(s): ${packages[*]} ${ddot_package}\n\033[0m"
+      else
+        echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+      fi
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
       $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
       if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
-        $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y --disablerepo='*' --enablerepo='datadog-ddot' install $dnf_flag datadog-agent-ddot" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag datadog-agent-ddot" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
+        $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y --disablerepo='*' --enablerepo='datadog-ddot' install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
       fi
 
       ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
@@ -1398,7 +1406,11 @@ If the cause is unclear, please contact Datadog support.
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
     fi
 
-    echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+    if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
+      echo -e "  \033[33mInstalling package(s): ${packages[*]} ${ddot_package}\n\033[0m"
+    else
+      echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+    fi
 
     # apt-get will automatically start the service after installation
     # As a workaround, we can use policy.d to prevent this behavior
@@ -1408,7 +1420,7 @@ If the cause is unclear, please contact Datadog support.
 
     $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
-      $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes datadog-agent-ddot 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
+      $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${ddot_package} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
     fi
 
     ERR_SUMMARY=$(grep "No space left on device" -C1 /tmp/ddog_install_error_msg || true)
@@ -1564,7 +1576,11 @@ elif [ "$OS" == "SUSE" ]; then
     fi
 
   if [ ${#packages[@]} -ne 0 ]; then
-    echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+    if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
+      echo -e "  \033[33mInstalling package(s): ${packages[*]} ${ddot_package}\n\033[0m"
+    else
+      echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
+    fi
     # Not yet retry mechanism in zypper, see https://github.com/openSUSE/zypper/issues/420
     if [ -z "$sudo_cmd" ]; then
       ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} zypper --non-interactive --no-refresh install "${packages[@]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
@@ -1574,9 +1590,9 @@ elif [ "$OS" == "SUSE" ]; then
 
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
       if [ -z "$sudo_cmd" ]; then
-        ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} zypper --non-interactive --no-refresh install datadog-agent-ddot 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
+        ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} zypper --non-interactive --no-refresh install ${ddot_package} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
       else
-        $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE="${SYSTEMD_OFFLINE:-0}" zypper --non-interactive --no-refresh install datadog-agent-ddot 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
+        $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE="${SYSTEMD_OFFLINE:-0}" zypper --non-interactive --no-refresh install ${ddot_package} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
       fi
     fi
 
@@ -1795,8 +1811,9 @@ function update_ddot(){
 otelcollector:
   enabled: true
 EOF
+    printf "\033[34m\n* Adding otelcollector to the Datadog Agent configuration: $config_file\n\033[0m\n"
   else
-    printf "\033[31m\n* otelcollector configuration already exists in $config_file, skipping the update.\n\033[0m\n"
+    printf "\033[34m\n* otelcollector configuration already exists in $config_file, skipping the update.\n\033[0m\n"
   fi
 
   if ! $sudo_cmd grep -q "^agent_ipc:" "$config_file"; then
@@ -1806,8 +1823,9 @@ agent_ipc:
   port: 5009
   config_refresh_interval: 60
 EOF
+    printf "\033[34m\n* Adding agent_ipc to the Datadog Agent configuration: $config_file\n\033[0m\n"
   else
-    printf "\033[31m\n* agent_ipc configuration already exists in $config_file, skipping the update.\n\033[0m\n"
+    printf "\033[34m\n* agent_ipc configuration already exists in $config_file, skipping the update.\n\033[0m\n"
   fi
 }
 function manage_security_config(){
