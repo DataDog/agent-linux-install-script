@@ -293,6 +293,10 @@ testLogsConfigProcessCollectAll() {
   # Test extra_config_providers contains process_log
   sudo sed -e '0,/^extra_config_providers:/d' -e '/^[^ ]/,$d' $config_file | grep -v "#" | grep -q "process_log"
   assertEquals 0 $?
+
+  # Test logs_config.process_exclude_agent is set to true
+  sudo sed -e '0,/^logs_config:/d' -e '/^[^ ]/,$d' $config_file | grep -v "#" | grep -q "process_exclude_agent: true"
+  assertEquals 0 $?
 }
 
 # shellcheck source=/dev/null
