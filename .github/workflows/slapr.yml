@@ -12,7 +12,7 @@ jobs:
   run_slapr:
     runs-on: ubuntu-latest
     steps:
-      - uses: DataDog/slapr@master
+      - uses: DataDog/slapr@f4337a20eedf6b840f6d85ee2399f1ee86f109d7 # master
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           SLACK_CHANNEL_ID: "${{ secrets.SLACK_CHANNEL_ID }}"
