@@ -1793,6 +1793,9 @@ function update_logs_config_process_collect_all(){
   $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
 logs_enabled: true
 
+logs_config:
+  process_exclude_agent: true
+
 process_config:
   process_collection:
     use_wlm: true
