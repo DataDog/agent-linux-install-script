@@ -1202,7 +1202,7 @@ if [ "$OS" == "Red Hat" ]; then
     # this will unpin them as a side effect
     $sudo_cmd sh -c "echo -e '[datadog]\nname = Datadog, Inc.\nbaseurl = https://${yum_url}/${yum_version_path}/${ARCHI}/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\npriority=1\ngpgkey=${gpgkeys}' > /etc/yum.repos.d/datadog.repo"
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
-      $sudo_cmd sh -c "echo -e '[datadog-ddot]\nname = Datadog, Inc.\nbaseurl = https://${yum_url}/${ddot_yum_version_path}/${ARCHI}/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\npriority=1\ngpgkey=${gpgkeys}' > /etc/yum.repos.d/datadog-ddot.repo"
+      $sudo_cmd sh -c "echo -e '[datadog-ddot]\nname = Datadog, Inc.\nbaseurl = https://${yum_url}/${ddot_yum_version_path}/${ARCHI}/\nenabled=0\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\npriority=1\ngpgkey=${gpgkeys}' > /etc/yum.repos.d/datadog-ddot.repo"
     fi
 
     $sudo_cmd yum -y clean metadata
@@ -1371,6 +1371,7 @@ If the failing repository is Datadog, please contact Datadog support.
     $sudo_cmd apt-get update -o Dir::Etc::sourcelist="sources.list.d/datadog.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
       $sudo_cmd apt-get update -o Dir::Etc::sourcelist="sources.list.d/datadog-ddot.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
+      $sudo_cmd mv /etc/apt/sources.list.d/datadog-ddot.list /etc/apt/sources.list.d/datadog-ddot.list.disabled
     fi
     ERROR_MESSAGE="ERROR
 Failed to install one or more packages, sometimes it may be
@@ -1420,7 +1421,9 @@ If the cause is unclear, please contact Datadog support.
 
     $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
+      $sudo_cmd mv /etc/apt/sources.list.d/datadog-ddot.list.disabled /etc/apt/sources.list.d/datadog-ddot.list
       $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${ddot_package} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
+      $sudo_cmd mv /etc/apt/sources.list.d/datadog-ddot.list /etc/apt/sources.list.d/datadog-ddot.list.disabled
     fi
 
     ERR_SUMMARY=$(grep "No space left on device" -C1 /tmp/ddog_install_error_msg || true)
@@ -1503,7 +1506,7 @@ elif [ "$OS" == "SUSE" ]; then
   $sudo_cmd sh -c "echo -e '[datadog]\nname=datadog\nenabled=1\nbaseurl=https://${yum_url}/suse/${yum_version_path}/${ARCHI}\ntype=rpm-md\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\ngpgkey=${gpgkeys}' > /etc/zypp/repos.d/datadog.repo"
   if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
     echo -e "\033[34m\n* Installing YUM Repository for DDOT\n\033[0m"
-    $sudo_cmd sh -c "echo -e '[datadog-ddot]\nname=datadog-ddot\nenabled=1\nbaseurl=https://${yum_url}/suse/${ddot_yum_version_path}/${ARCHI}\ntype=rpm-md\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\ngpgkey=${gpgkeys}' > /etc/zypp/repos.d/datadog-ddot.repo"
+    $sudo_cmd sh -c "echo -e '[datadog-ddot]\nname=datadog-ddot\nenabled=0\nbaseurl=https://${yum_url}/suse/${ddot_yum_version_path}/${ARCHI}\ntype=rpm-md\ngpgcheck=1\nrepo_gpgcheck=${rpm_repo_gpgcheck}\ngpgkey=${gpgkeys}' > /etc/zypp/repos.d/datadog-ddot.repo"
   fi
 
 
@@ -1592,7 +1595,9 @@ elif [ "$OS" == "SUSE" ]; then
       if [ -z "$sudo_cmd" ]; then
         ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} zypper --non-interactive --no-refresh install "${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
       else
+        $sudo_cmd zypper modifyrepo --enable datadog-ddot
         $sudo_cmd ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE="${SYSTEMD_OFFLINE:-0}" zypper --non-interactive --no-refresh install "${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
+        $sudo_cmd zypper modifyrepo --disable datadog-ddot
       fi
     fi
 
