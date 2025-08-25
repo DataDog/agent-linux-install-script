@@ -36,6 +36,7 @@ const (
 	defaultPlatform                         = "Ubuntu_22_04"
 	defaultMode                             = "install"
 	fipsConfigFilepath                      = "/etc/datadog-fips-proxy/datadog-fips-proxy.cfg"
+	otelConfigFileName                      = "otel-config.yaml"
 	systemProbeConfigFileName               = "system-probe.yaml"
 	securityAgentConfigFileName             = "security-agent.yaml"
 )
@@ -227,6 +228,9 @@ func (s *linuxInstallerTestSuite) assertInstallScript(active bool) {
 	if flavor == agentFlavorDatadogAgent {
 		serviceNames = append(serviceNames, "datadog-agent-trace")
 		// Cannot assert process-agent because it may be running or dead based on timing
+	}
+	if strings.Contains(t.Name(), "install-ddot") {
+		serviceNames = append(serviceNames, "datadog-agent-ddot")
 	}
 	// Check that the services are active
 	if _, err = vm.Execute("command -v systemctl"); err == nil {
