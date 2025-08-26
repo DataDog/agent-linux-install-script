@@ -2,8 +2,21 @@
 Release Notes
 =============
 
-Unreleased
+1.40.0
 ================
+
+- Enable logs_config.auto_multi_line_detection for process logs (#365)
+- Add support for DDOT to install script (#348)
+- Enable logs_config.process_exclude_agent for process logs (#363)
+- Allow enabling process log collection (#359)
+- Adjust CI for TestInstallDiscovery (#361)
+- Bump test-infra version (#356)
+- [SINT-3627] Support TESTING_KEYS_URL in E2E tests (#355)
+- [update-deb-pkgs2-incident-41054] Removed security (#352)
+- [update-deb-ami-incident-41054] Did workaround for debian 11 as well (#351)
+- Update target version after change to testing artifacts upload (#346)
+- Move old script to its own Gitlab stage - deprecated (#345)
+- Bump test-infra and datadog-agent version (#344)
 
 1.39.0
 ================
