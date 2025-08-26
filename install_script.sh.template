@@ -1800,6 +1800,7 @@ logs_enabled: true
 
 logs_config:
   process_exclude_agent: true
+  auto_multi_line_detection: true
 
 process_config:
   process_collection:
