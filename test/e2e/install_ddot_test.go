@@ -35,8 +35,7 @@ func TestInstallDDOTSuite(t *testing.T) {
 }
 
 func (s *installDDOTTestSuite) TestInstallDDOT() {
-	// TODO: Remove testing URLs and minor version when packages get promoted to prod
-	s.InstallAgent(7, "DD_OTELCOLLECTOR_ENABLED=true DD_SITE=\"datadoghq.com\" TESTING_APT_URL=apt.datad0g.com TESTING_YUM_URL=yum.datad0g.com", "Install latest Agent 7")
+	s.InstallAgent(7, "DD_OTELCOLLECTOR_ENABLED=true DD_SITE=\"datadoghq.com\" DD_AGENT_MAJOR_VERSION=7 DD_AGENT_MINOR_VERSION=69.3-1", "Install latest Agent 7")
 
 	s.assertInstallScript()
 
