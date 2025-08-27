@@ -35,7 +35,7 @@ func TestInstallDDOTSuite(t *testing.T) {
 }
 
 func (s *installDDOTTestSuite) TestInstallDDOT() {
-	s.InstallAgent(7, "DD_OTELCOLLECTOR_ENABLED=true DD_SITE=\"datadoghq.com\" DD_AGENT_MAJOR_VERSION=7 DD_AGENT_MINOR_VERSION=69.3-1", "Install latest Agent 7")
+	s.InstallAgent(7, "DD_OTELCOLLECTOR_ENABLED=true DD_SITE=\"datadoghq.com\" DD_AGENT_MAJOR_VERSION=7 DD_AGENT_MINOR_VERSION=69.3-1", "Install Agent 7.69.3 with DDOT")
 
 	s.assertInstallScript()
 
