@@ -611,7 +611,7 @@ function _install_installer_script() {
       return 1
     fi
   else
-    echo "Error: Curl or wget is required to install the agent with Remote Agent Management."
+    echo "Error: Curl or wget is required to install the agent with the specified configuration."
     return 1
   fi
   return 0
