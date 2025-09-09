@@ -297,6 +297,10 @@ testLogsConfigProcessCollectAll() {
   # Test logs_config.process_exclude_agent is set to true
   sudo sed -e '0,/^logs_config:/d' -e '/^[^ ]/,$d' $config_file | grep -v "#" | grep -q "process_exclude_agent: true"
   assertEquals 0 $?
+
+  # Test logs_config.auto_multi_line_detection is set to true
+  sudo sed -e '0,/^logs_config:/d' -e '/^[^ ]/,$d' $config_file | grep -v "#" | grep -q "auto_multi_line_detection: true"
+  assertEquals 0 $?
 }
 
 # shellcheck source=/dev/null
