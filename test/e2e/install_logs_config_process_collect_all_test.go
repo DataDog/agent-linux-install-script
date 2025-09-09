@@ -82,6 +82,9 @@ func (s *installLogsConfigProcessCollectAllTestSuite) assertInstallScript() {
 	assert.True(t, exists, "logs_config should exist")
 	assert.Equal(t, true, logsConfig["process_exclude_agent"])
 
+	// Assert logs_config.auto_multi_line_detection is true
+	assert.Equal(t, true, logsConfig["auto_multi_line_detection"])
+
 	// Check system-probe.yaml configuration (should have discovery enabled)
 	systemProbeConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assert.Equal(t, true, systemProbeConfig["discovery"].(map[any]any)["enabled"])

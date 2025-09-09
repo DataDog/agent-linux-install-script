@@ -37,6 +37,7 @@ The install script allows installation of different flavors of the Agent binarie
 |`DD_RUNTIME_SECURITY_CONFIG_ENABLED`|If set to `true`, ensure creation of security Agent and system probe configuration file (if they don't already exist), and enable Cloud Workload Security (CWS).|
 |`DD_COMPLIANCE_CONFIG_ENABLED`|If set to `true`, ensures the creation of a security Agent configuration file if one doesn't already exist, and enables Cloud Security Posture Management (CSPM).|
 |`DD_DISCOVERY_ENABLED`|If set to `true`, and a system probe configuration file does not already exist, creates a system probe configuration file and enables Service Discovery.
+|`DD_OTELCOLLECTOR_ENABLED`|If set to `true`, and an OTel Collector configuration file does not already exist, creates an OTel Collector configuration file and installs/enables Datadog Distribution of OpenTelemetry (DDOT).
 |`DD_LOGS_CONFIG_PROCESS_COLLECT_ALL`|Enable process log collection.|
 |`DD_INSTALL_ONLY`|Set to any value to prevent starting the Agent after installation.|
 |`DD_NO_AGENT_INSTALL`|Do not install the Agent. Instead, installs package signature keys and creates configuration files if they don't already exist. Automatically set to `true` when `DD_APM_INSTRUMENTATION_ENABLED=docker`.|
@@ -57,13 +58,13 @@ The install script also comes with its own configuration options.
 |`DD_AGENT_MAJOR_VERSION`|The Agent major version. Must be `6` or `7`.|
 |`DD_AGENT_MINOR_VERSION`|Full or partial version numbers from the minor digit. Example: `20` defaults to the highest patch version. `20.0~rc.5` explicitly targets this version. An invalid minor version terminates the script.|
 |`DD_AGENT_DIST_CHANNEL`|The package distribution channel. Possible values are `stable` or `beta` on production repositories, and `stable`, `beta` or `nightly` on custom repositories. Other channels can be targeted with `TESTING_APT_URL` or `TESTING_YUM_URL`.|
+|`DD_DDOT_DIST_CHANNEL`|The package distribution channel for DDOT. Possible value is `beta` on production repositories while DDOT is in preview, and `stable`, `beta` or `nightly` on custom repositories.
 |`TESTING_KEYS_URL`|The URL to retrieve the package signature keys. Default to `keys.datadoghq.com`.|
 |`TESTING_APT_URL`|Replace the whole APT bucket URL. Useful to test with trial buckets.|
 |`TESTING_YUM_URL`|Replace the whole YUM bucket URL. Useful to test with trial buckets.|
 |`TESTING_REPORT_URL`|A custom URL to receive the report and telemetry in case of a script failure.|
 |`TESTING_APT_REPO_VERSION`|A custom name for the APT package. To be used with `TESTING_APT_URL` to target trial buckets.|
 |`TESTING_YUM_VERSION_PATH`|A custom name for the YUM package. To be used with `TESTING_YUM_URL` to target trial buckets.|
-
 
 ## Others scripts
 This repository also contains install scripts for Observability Pipelines Worker and Vector. For more information, see the documentation for [OPW](https://docs.datadoghq.com/observability_pipelines/setup/?tab=docker) and [Vector](https://vector.dev/docs/setup/installation/).
