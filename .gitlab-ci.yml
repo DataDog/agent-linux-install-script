@@ -31,6 +31,7 @@ default:
       - scheduler_failure
       - stale_schedule
       - data_integrity_failure
+      - script_failure
   # Handle inputs when running as a downstream pipeline from the datadog-agent repo
   before_script:
     - '[ -z "$MAJOR_VERSION" ] && export MAJOR_VERSION=${DEFAULT_MAJOR_VERSION}'
