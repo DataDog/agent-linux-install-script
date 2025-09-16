@@ -620,19 +620,6 @@ function _install_installer_script() {
   return 0
 }
 
-# install_managed_agent installs the agent with Fleet Automation's agent management (preview feature).
-function install_managed_agent() {
-  echo "Installing the Datadog Agent with Remote Agent Management"
-  installer_domain=${DD_INSTALLER_REGISTRY_URL_INSTALLER_PACKAGE:-$([[ "$DD_SITE" == "datad0g.com" ]] && echo "install.datad0g.com" || echo "install.datadoghq.com")}
-  installer_url="https://${installer_domain}/scripts/install.sh"
-  if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
-    installer_url="https://${installer_domain}/scripts/install-7.${DD_AGENT_MINOR_VERSION}.sh"
-  fi
-  
-  _install_installer_script "$installer_url"
-  exit $?
-}
-
 # install_apm_ssi installs APM Single Step Instrumentation.
 function install_apm_ssi() {
   local sudo_cmd="$1"
@@ -644,18 +631,10 @@ function install_apm_ssi() {
 
   installer_domain=${DD_INSTALLER_REGISTRY_URL_INSTALLER_PACKAGE:-$([[ "$DD_SITE" == "datad0g.com" ]] && echo "install.datad0g.com" || echo "install.datadoghq.com")}
   installer_url="https://${installer_domain}/scripts/install-ssi.sh" # TODO: support pinning?
-  
+
   _install_installer_script "$installer_url" || true
   filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
 }
-
-##
-# INSTALLER INSTALL SCRIPT HATCH
-# If DD_REMOTE_UPDATES is set, we will use the installer script to install the agent
-##
-if [ -n "$DD_REMOTE_UPDATES" ]; then
-  install_managed_agent
-fi
 
 echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
 
@@ -1667,6 +1646,18 @@ function update_env(){
   if [ -n "$dd_env" ]; then
     printf "\033[34m\n* Adding your DD_ENV to the $nice_flavor configuration: $config_file\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's|^# env:.*|env: $dd_env|' $config_file"
+  fi
+}
+update_remote_updates(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+  if [ -n "$remote_updates" ]; then
+    printf "\033[34m\n* Setting $nice_flavor configuration to use Remote Updates: $config_file\n\033[0m\n"
+    if grep -q "^remote_updates:" "$config_file"; then
+      $sudo_cmd sh -c "sed -i 's|^# remote_updates:.*|remote_updates: $remote_updates|' $config_file"
+    else
+      $sudo_cmd echo "remote_updates: $remote_updates" >> "$config_file"
+    fi
   fi
 }
 function update_security_and_or_compliance(){
