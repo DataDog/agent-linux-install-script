@@ -717,6 +717,11 @@ if [ -n "$DD_AGENT_FLAVOR" ]; then
     agent_flavor=$DD_AGENT_FLAVOR #Eg: datadog-iot-agent
 fi
 
+remote_updates=
+if [ -n "$DD_REMOTE_UPDATES" ]; then
+  remote_updates=$DD_REMOTE_UPDATES
+fi
+
 ##
 # INSTALL SCRIPT CONFIGURATION OPTIONS
 # Technical options to test with non-production values for signature keys, packages or reporting telemetry.
@@ -875,6 +880,12 @@ if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
   clean_agent_minor_version=$(echo "${DD_AGENT_MINOR_VERSION}" | sed -E 's/~.*//g')
   # remove the patch version if the minor version includes it (eg: 33.1 -> 33)
   agent_minor_version_without_patch="${clean_agent_minor_version%.*}"
+  if [ -n "$remote_updates" ] && [ "$agent_minor_version_without_patch" -lt 69 ]; then
+    echo -e "\033[33mWarning: Remote Agent Management is not supported for Agent versions less than 7.69 (General Availability). Installing 7.69.4 now.\n\033[0m"
+    agent_minor_version="69.4"
+    clean_agent_minor_version="69.4"
+    agent_minor_version_without_patch="69"
+  fi
 fi
 
 agent_dist_channel=stable
