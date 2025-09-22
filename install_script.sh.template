@@ -1648,7 +1648,7 @@ function update_env(){
     $sudo_cmd sh -c "sed -i 's|^# env:.*|env: $dd_env|' $config_file"
   fi
 }
-update_remote_updates(){
+function update_remote_updates(){
   local sudo_cmd="$1"
   local config_file="$2"
   if [ -n "$remote_updates" ]; then
