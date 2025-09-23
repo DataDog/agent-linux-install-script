@@ -1661,13 +1661,14 @@ function update_env(){
 }
 function update_remote_updates(){
   local sudo_cmd="$1"
-  local config_file="$2"
+  local remote_updates="$2"
+  local config_file="$3"
   if [ -n "$remote_updates" ]; then
     printf "\033[34m\n* Setting $nice_flavor configuration to use Remote Updates: $config_file\n\033[0m\n"
-    if grep -q "^remote_updates:" "$config_file"; then
+    if $sudo_cmd grep -q "^remote_updates:" "$config_file"; then
       $sudo_cmd sh -c "sed -i 's|^# remote_updates:.*|remote_updates: $remote_updates|' $config_file"
     else
-      $sudo_cmd echo "remote_updates: $remote_updates" >> "$config_file"
+      echo "remote_updates: $remote_updates" | $sudo_cmd tee -a "$config_file" > /dev/null
     fi
   fi
 }
@@ -1858,6 +1859,7 @@ elif [ ! "$no_agent" ]; then
     if [ "$DD_LOGS_CONFIG_PROCESS_COLLECT_ALL" == "true" ]; then
       update_logs_config_process_collect_all "$sudo_cmd" "$config_file"
     fi
+    update_remote_updates "$sudo_cmd" "$remote_updates" "$config_file"
   fi
 
   # DD_LOGS_CONFIG_PROCESS_COLLECT_ALL needs discovery to be enabled
