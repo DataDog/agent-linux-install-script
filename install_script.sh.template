@@ -1365,7 +1365,7 @@ else
 Please follow the instructions on the Agent setup page:
 
 https://app.datadoghq.com/account/settings/agent/latest?platform=overview"
-printf "\033[31m$ERROR_MESSAGE\033[0m\n"
+    printf "\033[31m$ERROR_MESSAGE\033[0m\n"
     report_telemetry
     exit;
 fi
