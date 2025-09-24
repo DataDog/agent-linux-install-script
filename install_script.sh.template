@@ -628,7 +628,7 @@ function install_managed_agent() {
   if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
     installer_url="https://${installer_domain}/scripts/install-7.${DD_AGENT_MINOR_VERSION}.sh"
   fi
-  
+
   _install_installer_script "$installer_url"
   exit $?
 }
@@ -644,7 +644,7 @@ function install_apm_ssi() {
 
   installer_domain=${DD_INSTALLER_REGISTRY_URL_INSTALLER_PACKAGE:-$([[ "$DD_SITE" == "datad0g.com" ]] && echo "install.datad0g.com" || echo "install.datadoghq.com")}
   installer_url="https://${installer_domain}/scripts/install-ssi.sh" # TODO: support pinning?
-  
+
   _install_installer_script "$installer_url" || true
   filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
 }
@@ -1347,6 +1347,11 @@ If the cause is unclear, please contact Datadog support.
 
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
+    fi
+
+    if [ "$agent_flavor" == "datadog-agent" ]; then
+        # Old version of the install scripts created a __pycache__ directory in the python-scripts directory
+        rm -rf "/opt/datadog-agent/python-scripts/__pycache__"
     fi
 
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
