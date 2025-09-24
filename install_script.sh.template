@@ -93,134 +93,6 @@ with the contents of $logfile and any information you think would be
 useful and we will do our very best to help you solve your problem.\n"
 }
 
-function report(){
-  if curl -f -sSL --retry 5 \
-    --data-urlencode "os=${OS}" \
-    --data-urlencode "version=${agent_major_version}" \
-    --data-urlencode "log=$(cat $logfile)" \
-    --data-urlencode "email=${email}" \
-    --data-urlencode "apikey=${apikey}" \
-    --data-urlencode "variant=${variant}" \
-    "$report_failure_url"; then
-   printf "A notification has been sent to Datadog with the contents of $logfile\n"
-  else
-    printf "Unable to send the notification (curl v7.18 or newer is required)"
-  fi
-}
-
-function report_telemetry() {
-  local install_id="$1"
-  local install_type="$2"
-  local install_time="$3"
-
-  if [ "$DD_INSTRUMENTATION_TELEMETRY_ENABLED" == "false" ] || \
-    [ "$site" == "ddog-gov.com" ] || \
-    [ -z "${apikey}" ] || \
-    [ -z "$telemetry_url" ]; then
-    return
-  fi
-
-  install_id_tag=
-  install_type_tag=
-  install_time_tag=
-  if [ -n "$install_id" ] ; then
-    install_id_tag="\"install_id\": \"$install_id\","
-  fi
-  if [ -n "$install_type" ] ; then
-    install_type_tag="\"install_type\": \"$install_type\","
-  fi
-  if [ -n "$install_time" ] ; then
-    install_time_tag="\"install_time\": $install_time,"
-  fi
-
-  if [ -n "$agent_minor_version" ] ; then
-    safe_agent_version=$(echo -n "$agent_major_version.$agent_minor_version" | tr '\n' ' ' | tr '"' '_')
-  else
-    safe_agent_version=$(echo -n "$agent_major_version" | tr '\n' ' ' | tr '"' '_')
-  fi
-
-  APM_TELEMETRY_SAFE_AGENT_VERSION_OVERRIDE_PLACEHOLDER
-  if [ -z "${ERROR_CODE}" ] ; then
-    telemetry_event="
-{
-   \"request_type\": \"apm-onboarding-event\",
-   \"api_version\": \"v1\",
-   \"payload\": {
-       \"event_name\": \"agent.installation.success\",
-       \"tags\": {
-           $install_id_tag
-           $install_type_tag
-           $install_time_tag
-           \"agent_platform\": \"native\",
-           \"agent_version\": \"$safe_agent_version\",
-           \"script_version\": \"$install_script_version\"
-       }
-   }
-}
-"
-  else
-    safe_error_message=$(echo -n "$ERROR_MESSAGE" | tr '\n' ' ' | tr '"' '_')
-    # Install ID, time and type are typically not reported if the installation does not succeed,
-    # but if the function is called with those arguments, we will pass them along anyway.
-    telemetry_event="
-{
-   \"request_type\": \"apm-onboarding-event\",
-   \"api_version\": \"v1\",
-   \"payload\": {
-       \"event_name\": \"agent.installation.error\",
-       \"tags\": {
-           $install_id_tag
-           $install_type_tag
-           $install_time_tag
-           \"agent_platform\": \"native\",
-           \"agent_version\": \"$safe_agent_version\",
-           \"script_version\": \"$install_script_version\"
-       },
-       \"error\": {
-          \"code\": $ERROR_CODE,
-          \"message\": \"$safe_error_message\"
-       }
-   }
-}
-"
-  fi
-
-  if ! (cat <<END
-       $telemetry_event
-END
-       ) | curl -f -sSL --retry 5 -o /dev/null \
-    "$telemetry_url" \
-    --header 'Content-Type: application/json' \
-    --header "DD-Api-Key: $apikey" \
-    --data @-
-  then
-    printf "Unable to send telemetry\n"
-  fi
-}
-
-function on_read_error() {
-  printf "Timed out or input EOF reached, assuming 'No'\n"
-  yn="n"
-}
-
-function get_email() {
-  emaillocalpart='^[a-zA-Z0-9][a-zA-Z0-9._%+-]{0,63}'
-  hostnamepart='[a-zA-Z0-9.-]+\.[a-zA-Z]+'
-  email_regex="$emaillocalpart@$hostnamepart"
-  cntr=0
-  until [[ "$cntr" -eq 3 ]]
-  do
-      read -p "Enter an email address so we can follow up: " -r email
-      if [[ "$email" =~ $email_regex ]]; then
-        isEmailValid=true
-        break
-      else
-        ((cntr=cntr+1))
-        echo -e "\033[33m($cntr/3) Email address invalid: $email\033[0m\n"
-      fi
-  done
-}
-
 function on_error() {
     if [ -z "${ERROR_MESSAGE}" ] ; then
       # Save the few lines of the log file for telemetry if the error message is blank
@@ -239,35 +111,8 @@ Troubleshooting and basic usage information for the $nice_flavor are available a
     ERROR_MESSAGE=$SAVED_ERROR_MESSAGE
     ERROR_CODE=$GENERAL_ERROR_CODE
     report_telemetry
-
-    if ! tty -s; then
-      fallback_msg
-      exit 1;
-    fi
-
-    if [ "$site" == "ddog-gov.com" ]; then
-      fallback_msg
-      exit 1;
-    fi
-
-    while true; do
-        read -t 60 -p  "Do you want to send a failure report to Datadog (including $logfile)? (y/[n]) " -r yn || on_read_error
-        case $yn in
-          [Yy]* )
-            get_email
-            if [[ -n "$isEmailValid" ]]; then
-              report
-            fi
-            fallback_msg
-            break;;
-          [Nn]*|"" )
-            fallback_msg
-            break;;
-          * )
-            printf "Please answer yes or no.\n"
-            ;;
-        esac
-    done
+    fallback_msg
+    exit 1;
 }
 trap on_error ERR
 
@@ -628,7 +473,7 @@ function install_managed_agent() {
   if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
     installer_url="https://${installer_domain}/scripts/install-7.${DD_AGENT_MINOR_VERSION}.sh"
   fi
-  
+
   _install_installer_script "$installer_url"
   exit $?
 }
@@ -644,7 +489,7 @@ function install_apm_ssi() {
 
   installer_domain=${DD_INSTALLER_REGISTRY_URL_INSTALLER_PACKAGE:-$([[ "$DD_SITE" == "datad0g.com" ]] && echo "install.datad0g.com" || echo "install.datadoghq.com")}
   installer_url="https://${installer_domain}/scripts/install-ssi.sh" # TODO: support pinning?
-  
+
   _install_installer_script "$installer_url" || true
   filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
 }
