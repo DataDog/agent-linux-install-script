@@ -99,7 +99,8 @@ Troubleshooting and basic usage information for the $nice_flavor are available a
 
     https://docs.datadoghq.com/agent/basic_agent_usage/\n\033[0m\n"
 
-    ERROR_MESSAGE=$SAVED_ERROR_MESSAGE    report_telemetry
+    ERROR_MESSAGE=$SAVED_ERROR_MESSAGE
+    report_telemetry
     fallback_msg
     exit 1;
 }
