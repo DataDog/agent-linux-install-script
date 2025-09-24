@@ -1351,7 +1351,7 @@ If the cause is unclear, please contact Datadog support.
 
     if [ "$agent_flavor" == "datadog-agent" ]; then
         # Old version of the install scripts created a __pycache__ directory in the python-scripts directory
-        rm -rf "/opt/datadog-agent/python-scripts/__pycache__"
+        $sudo_cmd rm -rf "/opt/datadog-agent/python-scripts/__pycache__"
     fi
 
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
