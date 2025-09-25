@@ -454,18 +454,6 @@ function _install_installer_script() {
   return 0
 }
 
-# install_managed_agent installs the agent with Fleet Automation's agent management (preview feature).
-function install_managed_agent() {
-  echo "Installing the Datadog Agent with Remote Agent Management"
-  installer_domain=${DD_INSTALLER_REGISTRY_URL_INSTALLER_PACKAGE:-$([[ "$DD_SITE" == "datad0g.com" ]] && echo "install.datad0g.com" || echo "install.datadoghq.com")}
-  installer_url="https://${installer_domain}/scripts/install.sh"
-  if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
-    installer_url="https://${installer_domain}/scripts/install-7.${DD_AGENT_MINOR_VERSION}.sh"
-  fi
-
-  _install_installer_script "$installer_url"
-  exit $?
-}
 # install_apm_ssi installs APM Single Step Instrumentation.
 function install_apm_ssi() {
   local sudo_cmd="$1"
