@@ -1337,6 +1337,11 @@ If the cause is unclear, please contact Datadog support.
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
     fi
 
+    if [ "$agent_flavor" == "datadog-agent" ]; then
+        # Old version of the install scripts created a __pycache__ directory in the python-scripts directory
+        $sudo_cmd rm -rf "/opt/datadog-agent/python-scripts/__pycache__"
+    fi
+
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
       echo -e "  \033[33mInstalling package(s): ${packages[*]} ${ddot_package}\n\033[0m"
     else
