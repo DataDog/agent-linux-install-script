@@ -880,12 +880,6 @@ if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
   clean_agent_minor_version=$(echo "${DD_AGENT_MINOR_VERSION}" | sed -E 's/~.*//g')
   # remove the patch version if the minor version includes it (eg: 33.1 -> 33)
   agent_minor_version_without_patch="${clean_agent_minor_version%.*}"
-  if [ -n "$remote_updates" ] && [ "$agent_minor_version_without_patch" -lt 69 ]; then
-    echo -e "\033[33mWarning: Remote Agent Management is not supported for Agent versions less than 7.69 (General Availability). Installing 7.69.4 now.\n\033[0m"
-    agent_minor_version="69.4"
-    clean_agent_minor_version="69.4"
-    agent_minor_version_without_patch="69"
-  fi
 fi
 
 agent_dist_channel=stable
@@ -1066,6 +1060,10 @@ if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
         report_telemetry
         exit 1;
     fi
+fi
+
+if [ -n "$remote_updates" ] && [ "$agent_minor_version_without_patch" -lt 69 ]; then
+  echo -e "\033[33mWarning: Remote Agent Management is not supported for Agent versions less than 7.69 (General Availability).\n\033[0m"
 fi
 
 ##
