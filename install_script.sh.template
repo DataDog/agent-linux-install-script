@@ -643,7 +643,13 @@ function install_apm_ssi() {
   fi
 
   installer_domain=${DD_INSTALLER_REGISTRY_URL_INSTALLER_PACKAGE:-$([[ "$DD_SITE" == "datad0g.com" ]] && echo "install.datad0g.com" || echo "install.datadoghq.com")}
-  installer_url="https://${installer_domain}/scripts/install-ssi.sh" # TODO: support pinning?
+
+  # Technical option to test with non-production install-ssi.sh scripts
+  if [ -n "$DD_APM_INSTRUMENTATION_PIPELINE_ID" ]; then
+    installer_domain="${installer_domain}/pipeline-${DD_APM_INSTRUMENTATION_PIPELINE_ID}"
+  fi
+
+  installer_url="https://${installer_domain}/scripts/install-ssi.sh" # TODO: support version pinning?
   
   _install_installer_script "$installer_url" || true
   filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
