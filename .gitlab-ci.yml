@@ -86,7 +86,8 @@ unit_tests:
   stage: test
   dependencies: ["generate-scripts"]
   script:
-    - apt-get update && apt-get install -y shunit2 yamllint curl sudo
+    - apt-get update && apt-get install -y shunit2 yamllint curl sudo software-properties-common
+    - sudo add-apt-repository -y ppa:rmescandon/yq && apt-get install -y yq
     - DD_API_KEY=123 DD_SITE="datadoghq.com" DD_INSTALL_ONLY=true bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script_agent7.sh)"
     - python3 unit_tests/extract_functions.py
     - ./unit_tests/test_install_script.sh
