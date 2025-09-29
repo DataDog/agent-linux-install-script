@@ -37,6 +37,12 @@ RPM_GPG_KEYS=("DATADOG_RPM_KEY_CURRENT.public" "DATADOG_RPM_KEY_4F09D16B.public"
 # We no longer add it and we explicitly remove it.
 RPM_GPG_KEYS_TO_REMOVE=("gpg-pubkey-4172a230-55dd14f6")
 
+# Error codes for telemetry
+GENERAL_ERROR_CODE=1
+UNSUPPORTED_PLATFORM_CODE=5
+INVALID_PARAMETERS_CODE=6
+UNABLE_TO_INSTALL_DEPENDENCY_CODE=7
+
 # Root user detection
 if [ "$UID" == "0" ]; then
     sudo_cmd=''
@@ -60,7 +66,10 @@ exec 1>&-
 exec 1>$npipe 2>&1
 
 # Set telemetry URL
-telemetry_url="https://instrumentation-telemetry-intake.${DD_SITE:-datadoghq.com}/api/v2/apmtelemetry"
+telemetry_url="https://instrumentation-telemetry-intake.datadoghq.com/api/v2/apmtelemetry"
+if [ -n "$DD_SITE" ]; then
+    telemetry_url="https://instrumentation-telemetry-intake.${DD_SITE}/api/v2/apmtelemetry"
+fi
 
 # OS/Distro Detection
 # Try lsb_release, fallback with /etc/issue then uname command
@@ -70,7 +79,7 @@ DISTRIBUTION=$(lsb_release -d 2>/dev/null | grep -Eo "$KNOWN_DISTRIBUTION" || gr
 function on_exit() {
     exit_code=$?
     rm -f $npipe
-    report_telemetry "$sudo_cmd" "$DD_API_KEY" "$DD_SITE" "$telemetry_url" "$trace_id" "$logfile" "$start_time" "$exit_code" "$DISTRIBUTION" || true
+    report_installer_telemetry "$sudo_cmd" "$DD_API_KEY" "$DD_SITE" "$telemetry_url" "$trace_id" "$logfile" "$start_time" "$exit_code" "$DISTRIBUTION" || true
 }
 trap on_exit EXIT
 
@@ -82,6 +91,134 @@ function fallback_msg(){
 If you are still having problems, please send an email to $support_email
 with the contents of $logfile and any information you think would be
 useful and we will do our very best to help you solve your problem.\n"
+}
+
+function report(){
+  if curl -f -sSL --retry 5 \
+    --data-urlencode "os=${OS}" \
+    --data-urlencode "version=${agent_major_version}" \
+    --data-urlencode "log=$(cat $logfile)" \
+    --data-urlencode "email=${email}" \
+    --data-urlencode "apikey=${apikey}" \
+    --data-urlencode "variant=${variant}" \
+    "$report_failure_url"; then
+   printf "A notification has been sent to Datadog with the contents of $logfile\n"
+  else
+    printf "Unable to send the notification (curl v7.18 or newer is required)"
+  fi
+}
+
+function report_telemetry() {
+  local install_id="$1"
+  local install_type="$2"
+  local install_time="$3"
+
+  if [ "$DD_INSTRUMENTATION_TELEMETRY_ENABLED" == "false" ] || \
+    [ "$site" == "ddog-gov.com" ] || \
+    [ -z "${apikey}" ] || \
+    [ -z "$telemetry_url" ]; then
+    return
+  fi
+
+  install_id_tag=
+  install_type_tag=
+  install_time_tag=
+  if [ -n "$install_id" ] ; then
+    install_id_tag="\"install_id\": \"$install_id\","
+  fi
+  if [ -n "$install_type" ] ; then
+    install_type_tag="\"install_type\": \"$install_type\","
+  fi
+  if [ -n "$install_time" ] ; then
+    install_time_tag="\"install_time\": $install_time,"
+  fi
+
+  if [ -n "$agent_minor_version" ] ; then
+    safe_agent_version=$(echo -n "$agent_major_version.$agent_minor_version" | tr '\n' ' ' | tr '"' '_')
+  else
+    safe_agent_version=$(echo -n "$agent_major_version" | tr '\n' ' ' | tr '"' '_')
+  fi
+
+  APM_TELEMETRY_SAFE_AGENT_VERSION_OVERRIDE_PLACEHOLDER
+  if [ -z "${ERROR_CODE}" ] ; then
+    telemetry_event="
+{
+   \"request_type\": \"apm-onboarding-event\",
+   \"api_version\": \"v1\",
+   \"payload\": {
+       \"event_name\": \"agent.installation.success\",
+       \"tags\": {
+           $install_id_tag
+           $install_type_tag
+           $install_time_tag
+           \"agent_platform\": \"native\",
+           \"agent_version\": \"$safe_agent_version\",
+           \"script_version\": \"$install_script_version\"
+       }
+   }
+}
+"
+  else
+    safe_error_message=$(echo -n "$ERROR_MESSAGE" | tr '\n' ' ' | tr '"' '_')
+    # Install ID, time and type are typically not reported if the installation does not succeed,
+    # but if the function is called with those arguments, we will pass them along anyway.
+    telemetry_event="
+{
+   \"request_type\": \"apm-onboarding-event\",
+   \"api_version\": \"v1\",
+   \"payload\": {
+       \"event_name\": \"agent.installation.error\",
+       \"tags\": {
+           $install_id_tag
+           $install_type_tag
+           $install_time_tag
+           \"agent_platform\": \"native\",
+           \"agent_version\": \"$safe_agent_version\",
+           \"script_version\": \"$install_script_version\"
+       },
+       \"error\": {
+          \"code\": $ERROR_CODE,
+          \"message\": \"$safe_error_message\"
+       }
+   }
+}
+"
+  fi
+
+  if ! (cat <<END
+       $telemetry_event
+END
+       ) | curl -f -sSL --retry 5 -o /dev/null \
+    "$telemetry_url" \
+    --header 'Content-Type: application/json' \
+    --header "DD-Api-Key: $apikey" \
+    --data @-
+  then
+    printf "Unable to send telemetry\n"
+  fi
+}
+
+function on_read_error() {
+  printf "Timed out or input EOF reached, assuming 'No'\n"
+  yn="n"
+}
+
+function get_email() {
+  emaillocalpart='^[a-zA-Z0-9][a-zA-Z0-9._%+-]{0,63}'
+  hostnamepart='[a-zA-Z0-9.-]+\.[a-zA-Z]+'
+  email_regex="$emaillocalpart@$hostnamepart"
+  cntr=0
+  until [[ "$cntr" -eq 3 ]]
+  do
+      read -p "Enter an email address so we can follow up: " -r email
+      if [[ "$email" =~ $email_regex ]]; then
+        isEmailValid=true
+        break
+      else
+        ((cntr=cntr+1))
+        echo -e "\033[33m($cntr/3) Email address invalid: $email\033[0m\n"
+      fi
+  done
 }
 
 function on_error() {
@@ -100,9 +237,37 @@ Troubleshooting and basic usage information for the $nice_flavor are available a
     https://docs.datadoghq.com/agent/basic_agent_usage/\n\033[0m\n"
 
     ERROR_MESSAGE=$SAVED_ERROR_MESSAGE
+    ERROR_CODE=$GENERAL_ERROR_CODE
     report_telemetry
-    fallback_msg
-    exit 1;
+
+    if ! tty -s; then
+      fallback_msg
+      exit 1;
+    fi
+
+    if [ "$site" == "ddog-gov.com" ]; then
+      fallback_msg
+      exit 1;
+    fi
+
+    while true; do
+        read -t 60 -p  "Do you want to send a failure report to Datadog (including $logfile)? (y/[n]) " -r yn || on_read_error
+        case $yn in
+          [Yy]* )
+            get_email
+            if [[ -n "$isEmailValid" ]]; then
+              report
+            fi
+            fallback_msg
+            break;;
+          [Nn]*|"" )
+            fallback_msg
+            break;;
+          * )
+            printf "Please answer yes or no.\n"
+            ;;
+        esac
+    done
 }
 trap on_error ERR
 
@@ -110,6 +275,7 @@ function verify_agent_version(){
     local ver_separator="$1"
     if [ -z "$agent_version_custom" ]; then
         ERROR_MESSAGE="Specified version not found: $agent_major_version.$agent_minor_version"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
         echo -e "
   \033[33mWarning: $ERROR_MESSAGE
   Check available versions at: https://github.com/DataDog/datadog-agent/blob/main/CHANGELOG.rst\033[0m"
@@ -203,7 +369,7 @@ function json_escape() {
     echo "$string"
 }
 
-function report_telemetry() {
+function report_installer_telemetry() {
     # Note: do not use local variables from the rest of the script.
     # The `trap` method will call this function with the local variables evaluated at the time of the trap.
     # You should be able to use environment variables or global variables.
@@ -471,6 +637,7 @@ function install_apm_ssi() {
   fi
 
   installer_url="https://${installer_domain}/scripts/install-ssi.sh" # TODO: support version pinning?
+  
   _install_installer_script "$installer_url" || true
   filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
 }
@@ -595,6 +762,16 @@ else
   apt_url="apt.${repository_url}"
 fi
 
+report_failure_url="https://api.datadoghq.com/agent_stats/report_failure"
+if [ -n "$DD_SITE" ]; then
+    report_failure_url="https://api.${DD_SITE}/agent_stats/report_failure"
+fi
+
+if [ -n "$TESTING_REPORT_URL" ]; then
+  report_failure_url=$TESTING_REPORT_URL
+  telemetry_url=$TESTING_REPORT_URL
+fi
+
 ##
 # APM SPECIFIC CONFIGURATION
 ##
@@ -613,6 +790,7 @@ nice_flavor=$(getMapData flavor_to_readable "$agent_flavor")
 
 if [ "$nice_flavor" = "Unknown" ]; then
     ERROR_MESSAGE="Unknown DD_AGENT_FLAVOR \"$agent_flavor\""
+    ERROR_CODE=$INVALID_PARAMETERS_CODE
     echo -e "\033[33m$ERROR_MESSAGE\033[0m"
     fallback_msg
     report_telemetry
@@ -682,6 +860,7 @@ agent_major_version=AGENT_MAJOR_VERSION_PLACEHOLDER
 if [ -n "$DD_AGENT_MAJOR_VERSION" ]; then
   if [ "$DD_AGENT_MAJOR_VERSION" != "6" ] && [ "$DD_AGENT_MAJOR_VERSION" != "7" ]; then
     ERROR_MESSAGE="DD_AGENT_MAJOR_VERSION must be either 6 or 7. Current value: $DD_AGENT_MAJOR_VERSION"
+    ERROR_CODE=$INVALID_PARAMETERS_CODE
     echo "$ERROR_MESSAGE"
     report_telemetry
     exit 1;
@@ -714,12 +893,14 @@ if [ -n "$DD_AGENT_DIST_CHANNEL" ]; then
   if [ "$repository_url" == "datadoghq.com" ]; then
     if [ "$DD_AGENT_DIST_CHANNEL" != "stable" ] && [ "$DD_AGENT_DIST_CHANNEL" != "beta" ]; then
       ERROR_MESSAGE="DD_AGENT_DIST_CHANNEL must be either 'stable' or 'beta'. Current value: $DD_AGENT_DIST_CHANNEL"
+      ERROR_CODE=$INVALID_PARAMETERS_CODE
       echo "$ERROR_MESSAGE"
       report_telemetry
       exit 1;
     fi
   elif [ "$DD_AGENT_DIST_CHANNEL" != "stable" ] && [ "$DD_AGENT_DIST_CHANNEL" != "beta" ] && [ "$DD_AGENT_DIST_CHANNEL" != "nightly" ]; then
     ERROR_MESSAGE="DD_AGENT_DIST_CHANNEL must be either 'stable', 'beta' or 'nightly' on custom repos. Current value: $DD_AGENT_DIST_CHANNEL"
+    ERROR_CODE=$INVALID_PARAMETERS_CODE
     echo "$ERROR_MESSAGE"
     report_telemetry
     exit 1;
@@ -746,12 +927,14 @@ if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -n "$DD_DDOT_DIST_CHANNEL" ]; then
   if [ "$repository_url" == "datadoghq.com" ]; then
     if [ "$DD_DDOT_DIST_CHANNEL" != "beta" ]; then
       ERROR_MESSAGE="DD_DDOT_DIST_CHANNEL must be 'beta' while only available in preview. Current value: $DD_DDOT_DIST_CHANNEL"
+      ERROR_CODE=$INVALID_PARAMETERS_CODE
       echo "$ERROR_MESSAGE"
       report_telemetry
       exit 1;
     fi
   elif [ "$DD_DDOT_DIST_CHANNEL" != "stable" ] && [ "$DD_DDOT_DIST_CHANNEL" != "beta" ] && [ "$DD_DDOT_DIST_CHANNEL" != "nightly" ]; then
     ERROR_MESSAGE="DD_DDOT_DIST_CHANNEL must be either 'stable', 'beta' or 'nightly' on custom repos. Current value: $DD_DDOT_DIST_CHANNEL"
+    ERROR_CODE=$INVALID_PARAMETERS_CODE
     echo "$ERROR_MESSAGE"
     report_telemetry
     exit 1;
@@ -785,6 +968,7 @@ fi
 
 if [[ $(uname -m) == "armv7l" ]] && [[ $agent_flavor == "datadog-agent" ]] && [ ! "$no_agent" ]; then
     ERROR_MESSAGE="The full $nice_flavor isn't available for your architecture (armv7l).\nInstall the $(getMapData flavor_to_readable datadog-iot-agent) by setting DD_AGENT_FLAVOR='datadog-iot-agent'."
+    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE\033[0m\n"
     report_telemetry
     exit 1;
@@ -792,6 +976,7 @@ fi
 
 if [ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] && [ "$agent_major_version" = "6" ] ; then
   ERROR_MESSAGE="APM library injection is not supported with Agent version 6"
+  ERROR_CODE=$INVALID_PARAMETERS_CODE
   echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
   report_telemetry
   exit 1;
@@ -799,6 +984,7 @@ fi
 
 if [ "$DISTRIBUTION" == "Darwin" ]; then
     ERROR_MESSAGE="This script does not support installing on the Mac."
+    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE
 
 Please use the 1-step script available at https://app.datadoghq.com/account/settings/agent/latest?platform=macos.\033[0m\n"
@@ -823,12 +1009,14 @@ fi
 if [[ "$agent_flavor" == "datadog-dogstatsd" ]]; then
     if [[ $(uname -m) == "armv7l" ]] || { [[ $(uname -m) != "x86_64" ]] && [[ "$OS" != "Debian" ]]; }; then
         ERROR_MESSAGE="The $nice_flavor isn't available for your architecture."
+        ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
         report_telemetry
         exit 1;
     fi
     if  [[ "$OS" == "Debian" ]] && [[ $(uname -m) == "aarch64" ]] && { [[ -n "$agent_minor_version_without_patch" ]] && [[ "$agent_minor_version_without_patch" -lt 35 ]]; }; then
         ERROR_MESSAGE="The $nice_flavor is only available since version 7.35.0 for your architecture."
+        ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
         report_telemetry
         exit 1;
@@ -839,12 +1027,14 @@ if [ -n "$fips_mode" ]; then
     UNAME_M=$(uname -m)
     if [[ ${UNAME_M} != "x86_64" ]] && [[ ${UNAME_M} != "aarch64" ]]; then
         ERROR_MESSAGE="FIPS mode isn't available for your architecture"
+        ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
         report_telemetry
         exit 1;
     fi
     if [[ -n "$agent_minor_version_without_patch" ]] && [[ "${agent_minor_version_without_patch}" -lt 41 ]]; then
         ERROR_MESSAGE="FIPS mode is only available since version AGENT_MAJOR_VERSION_PLACEHOLDER.41.0 and requested minor version is $agent_minor_version"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
         report_telemetry
         exit 1;
@@ -854,12 +1044,14 @@ fi
 if [[ "$agent_flavor" == "datadog-fips-agent" ]]; then
     if [[ -n "$fips_mode" ]]; then
         ERROR_MESSAGE="The datadog-fips-agent cannot be used with the fips-proxy installed. Please install without DD_FIPS_MODE set"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
         report_telemetry
         exit 1;
     fi
     if [[ -n "$agent_minor_version_without_patch" ]] && [[ "${agent_minor_version_without_patch}" -lt 64 ]]; then
         ERROR_MESSAGE="The datadog-fips-agent is only available since version AGENT_MAJOR_VERSION_PLACEHOLDER.64.x and requested minor version is $agent_minor_version"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
         report_telemetry
         exit 1;
@@ -869,13 +1061,14 @@ fi
 if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
     if [ "$agent_major_version" != "7" ] || { [ -n "$agent_minor_version_without_patch" ] && [ "${agent_minor_version_without_patch}" -lt 69 ]; } then
         ERROR_MESSAGE="The datadog-agent-ddot is only available since version AGENT_MAJOR_VERSION_PLACEHOLDER.69.3 and requested minor version is $agent_minor_version"
+        ERROR_CODE=$INVALID_PARAMETERS_CODE
         printf "\033[31m$ERROR_MESSAGE\033[0m\n"
         report_telemetry
         exit 1;
     fi
 fi
 
-if [ -n "$remote_updates" ] && [ "$agent_minor_version_without_patch" -lt 69 ]; then
+if [ -n "$remote_updates" ] && { [ -n "$agent_minor_version_without_patch" ] && [ "$agent_minor_version_without_patch" -lt 69 ]; }; then
   echo -e "\033[33mWarning: Remote Agent Management is not supported for Agent versions less than 7.69 (General Availability).\n\033[0m"
 fi
 
@@ -886,6 +1079,7 @@ if [ "$OS" == "Red Hat" ]; then
     remove_rpm_gpg_keys "$sudo_cmd" "${RPM_GPG_KEYS_TO_REMOVE[@]}"
     if { [ "$DISTRIBUTION" == "Rocky" ] || [ "$DISTRIBUTION" == "AlmaLinux" ]; } && { [ -n "$agent_minor_version_without_patch" ] && [ "$agent_minor_version_without_patch" -lt 33 ]; } && ! echo "$agent_flavor" | grep '[0-9]' > /dev/null; then
         ERROR_MESSAGE="A future version of $nice_flavor will support $DISTRIBUTION"
+        ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
         echo -e "\033[33m$ERROR_MESSAGE\n\033[0m"
         report_telemetry
         exit;
@@ -900,6 +1094,7 @@ if [ "$OS" == "Red Hat" ]; then
         if [ -n "$agent_minor_version_without_patch" ]; then
             if [ "$agent_minor_version_without_patch" -ge "52" ]; then
                 ERROR_MESSAGE="$DISTRIBUTION < 7 only supports $nice_flavor $agent_major_version up to $agent_major_version.51."
+                ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
                 printf "\033[31m$ERROR_MESSAGE\033[0m\n"
                 report_telemetry
                 exit;
@@ -1088,6 +1283,7 @@ elif [ "$OS" == "Debian" ]; then
       if [ -n "$agent_minor_version_without_patch" ]; then
           if [ "$agent_minor_version_without_patch" -ge "36" ]; then
               ERROR_MESSAGE="Debian < 8 only supports $nice_flavor $agent_major_version up to $agent_major_version.35."
+              ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
               printf "\033[31m$ERROR_MESSAGE\033[0m\n"
               report_telemetry
               exit;
@@ -1179,6 +1375,7 @@ elif [ "$OS" == "SUSE" ]; then
   UNAME_M=$(uname -m)
   if [ "$UNAME_M"  == "i686" ] || [ "$UNAME_M"  == "i386" ] || [ "$UNAME_M"  == "x86" ]; then
       ERROR_MESSAGE="The Datadog Agent installer is only available for 64 bit SUSE Enterprise machines."
+      ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
       printf "\033[31m$ERROR_MESSAGE\033[0m\n"
       report_telemetry
       exit;
@@ -1211,6 +1408,7 @@ elif [ "$OS" == "SUSE" ]; then
     fi
     if ! rpm -q curl > /dev/null; then
       ERROR_MESSAGE="Failed to install curl."
+      ERROR_CODE=$UNABLE_TO_INSTALL_DEPENDENCY_CODE
       echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
       fallback_msg
       report_telemetry
@@ -1265,6 +1463,7 @@ elif [ "$OS" == "SUSE" ]; then
       if [ -n "$agent_minor_version_without_patch" ]; then
           if [ "$agent_minor_version_without_patch" -ge "33" ]; then
               ERROR_MESSAGE="openSUSE < 15 only supports $nice_flavor $agent_major_version up to $agent_major_version.32."
+              ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
               printf "\033[31m$ERROR_MESSAGE\033[0m\n"
               report_telemetry
               exit;
@@ -1281,6 +1480,7 @@ elif [ "$OS" == "SUSE" ]; then
       if [ -n "$agent_minor_version_without_patch" ]; then
           if [ "$agent_minor_version_without_patch" -ge "33" ]; then
               ERROR_MESSAGE="SLES < 12 only supports $nice_flavor $agent_major_version up to $agent_major_version.32."
+              ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
               printf "\033[31m$ERROR_MESSAGE\033[0m\n"
               report_telemetry
               exit;
@@ -1351,6 +1551,7 @@ elif [ "$OS" == "SUSE" ]; then
   for expected_pkg in "${packages[@]}"; do
     if ! rpm -q "${expected_pkg}" > /dev/null; then
       ERROR_MESSAGE="Failed to install ${expected_pkg}."
+      ERROR_CODE=$UNABLE_TO_INSTALL_DEPENDENCY_CODE
       echo -e "\033[31m$ERROR_MESSAGE\033[0m\n"
       fallback_msg
       report_telemetry
@@ -1363,6 +1564,7 @@ else
 Please follow the instructions on the Agent setup page:
 
 https://app.datadoghq.com/account/settings/agent/latest?platform=overview"
+    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
     printf "\033[31m$ERROR_MESSAGE\033[0m\n"
     report_telemetry
     exit;
