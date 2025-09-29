@@ -875,7 +875,7 @@ if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
     fi
 fi
 
-if [ -n "$remote_updates" ] && [ "$agent_minor_version_without_patch" -lt 69 ]; then
+if [ -n "$remote_updates" ] && { [ -n "$agent_minor_version_without_patch" ] && [ "$agent_minor_version_without_patch" -lt 69 ]; }; then
   echo -e "\033[33mWarning: Remote Agent Management is not supported for Agent versions less than 7.69 (General Availability).\n\033[0m"
 fi
 
