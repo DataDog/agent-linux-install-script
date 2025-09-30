@@ -536,23 +536,6 @@ function is_installed_by_installer() {
     fi
 }
 
-function filter_packages_installed_by_installer() {
-    local sudo_cmd="$1"
-    local pkg_array_name=$2
-    local -a not_installed_packages=()  # Temporary array for not installed packages
-
-    for package in $(eval echo "\${${pkg_array_name}[@]}"); do
-        if ! is_installed_by_installer "$sudo_cmd" "$package"; then
-            not_installed_packages+=("$package")
-        else
-            echo -e "\033[34m\n* $package has been installed successfully by the installer\n\033[0m"
-        fi
-    done
-
-    # Copy the filtered array back to the original array
-    eval "$pkg_array_name=(\"\${not_installed_packages[@]}\")"
-}
-
 function remove_existing_packages_for_fips_flavor() {
     local sudo_cmd="$1"
     local os="$2"
@@ -623,7 +606,6 @@ function _install_installer_script() {
 # install_apm_ssi installs APM Single Step Instrumentation.
 function install_apm_ssi() {
   local sudo_cmd="$1"
-  local pkg_array_name="$2"
 
   if [ -z "$DD_APM_INSTRUMENTATION_ENABLED" ]; then
     return 0
@@ -639,7 +621,6 @@ function install_apm_ssi() {
   installer_url="https://${installer_domain}/scripts/install-ssi.sh" # TODO: support version pinning?
   
   _install_installer_script "$installer_url" || true
-  filter_packages_installed_by_installer "$sudo_cmd" "$pkg_array_name"
 }
 
 echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
@@ -1171,10 +1152,6 @@ if [ "$OS" == "Red Hat" ]; then
       packages+=("datadog-fips-proxy")
     fi
 
-    # Install the installer
-    # Note: this function will remove installed packages from the "packages" array
-    install_apm_ssi "$sudo_cmd" "packages" || true
-
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
     fi
@@ -1334,11 +1311,6 @@ If the cause is unclear, please contact Datadog support.
     if [ -n "$fips_mode" ]; then
       packages+=("datadog-fips-proxy")
     fi
-
-    # Install the installer
-    # Note: this function will remove installed packages from the "packages" array
-    install_apm_ssi "$sudo_cmd" "packages" || true
-
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
     fi
@@ -1370,6 +1342,7 @@ If the cause is unclear, please contact Datadog support.
     ERR_SUMMARY=$(grep "No space left on device" -C1 /tmp/ddog_install_error_msg || true)
 
     ERROR_MESSAGE=""
+
 elif [ "$OS" == "SUSE" ]; then
   remove_rpm_gpg_keys "$sudo_cmd" "${RPM_GPG_KEYS_TO_REMOVE[@]}"
   UNAME_M=$(uname -m)
@@ -1510,10 +1483,6 @@ elif [ "$OS" == "SUSE" ]; then
   if [ -n "$fips_mode" ]; then
     packages+=("datadog-fips-proxy")
   fi
-
-    # Install the installer
-    # Note: this function will remove installed packages from the "packages" array
-    install_apm_ssi "$sudo_cmd" "packages" || true
 
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
@@ -1906,6 +1875,9 @@ fi
 if [ -n "$system_probe_ensure_config" ]; then
   ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
 fi
+
+# Install APM SSI if needed
+install_apm_ssi "$sudo_cmd" || true
 
 # Creating or overriding the install information
 function generate_install_id() {
