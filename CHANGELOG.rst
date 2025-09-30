@@ -5,6 +5,20 @@ Release Notes
 Unreleased
 ================
 
+1.41.1
+================
+
+- (fleet) Fix system-probe/security-agent configuration files not being created when APM SSI is enabled (#380)
+
+1.41.0
+================
+
+- (fleet) migrate remote updates to use deb/rpm installs instead of OCI (#369)
+- (fleet) cleanup python script __pycache__ during DEB installs (#372)
+- add script_failure to retry conditions (#368)
+- Update DDOT e2e tests for prod packages (#364)
+- upgrade(fleet): Use installer install script to install APM SSI (#337)
+
 1.40.0
 ================
 
