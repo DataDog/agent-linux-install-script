@@ -2,8 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.41.1
 ================
+
+- (fleet) Fix system-probe/security-agent configuration files not being created when APM SSI is enabled (#380)
 
 1.41.0
 ================
