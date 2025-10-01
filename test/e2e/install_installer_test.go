@@ -77,6 +77,18 @@ func (s *installUpdaterTestSuite) TestInstallWithRemoteUpdates() {
 	s.assertValidTraceGenerated()
 }
 
+func (s *installUpdaterTestSuite) TestInstallerOnlyInstall() {
+	t := s.T()
+	vm := s.Env().RemoteHost
+
+	cmd := "DD_INSTALLER=true DD_NO_AGENT_INSTALL=true bash -c \"$(cat scripts/install_script_agent7.sh)\""
+	output := vm.MustExecute(cmd)
+	t.Log(output)
+	defer s.purge()
+
+	s.assertInstallerInstalled()
+}
+
 func (s *installUpdaterTestSuite) assertInstallScriptWithRemoteUpdates(active bool) {
 	t := s.T()
 	vm := s.Env().RemoteHost
@@ -187,4 +199,12 @@ func (s *installUpdaterTestSuite) assertValidTraceGenerated() {
 	if !json.Valid(rawTrace) {
 		t.Fatalf("Trace is not valid JSON: %s", string(rawTrace))
 	}
+}
+
+func (s *installUpdaterTestSuite) assertInstallerInstalled() {
+	t := s.T()
+	vm := s.Env().RemoteHost
+
+	_, err := vm.Execute("datadog-installer")
+	require.NoError(t, err)
 }

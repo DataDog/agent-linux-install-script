@@ -607,7 +607,7 @@ function _install_installer_script() {
 function install_apm_ssi() {
   local sudo_cmd="$1"
 
-  if [ -z "$DD_APM_INSTRUMENTATION_ENABLED" ]; then
+  if [ -z "$DD_APM_INSTRUMENTATION_ENABLED" ] && [ -z "$DD_INSTALLER" ]; then
     return 0
   fi
 
