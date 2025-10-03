@@ -1658,12 +1658,12 @@ function update_security_and_or_compliance(){
   if [ "$enable_security" == "true" ]; then
     printf "\033[34m\n* Enabling runtime security in $local_config_file configuration\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/^#\s*runtime_security_config:$/runtime_security_config:/' $local_config_file"
-    $sudo_cmd sh -c "sed -i '/^runtime_security_config:/,// s/^\s*# \(\s\+\)enabled:\s*false/\1enabled: true/' $local_config_file"
+    $sudo_cmd sh -c "sed -i '/^runtime_security_config:/,// s/^\s*#\s*enabled:\s*false/  enabled: true/' $local_config_file"
   fi
   if [ "$enable_compliance" == "true" ]; then
     printf "\033[34m\n* Enabling compliance monitoring in $local_config_file configuration\n\033[0m\n"
     $sudo_cmd sh -c "sed -i 's/^#\s*compliance_config:$/compliance_config:/' $local_config_file"
-    $sudo_cmd sh -c "sed -i '/^compliance_config:/,// s/^\s*# \(\s\+\)enabled:\s*false/\1enabled: true/' $local_config_file"
+    $sudo_cmd sh -c "sed -i '/^compliance_config:/,// s/^\s*#\s*enabled:\s*false/  enabled: true/' $local_config_file"
   fi
 }
 function update_error_tracking_standalone(){
