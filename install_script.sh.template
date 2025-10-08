@@ -1698,6 +1698,17 @@ discovery:
   enabled: true
 EOF
 }
+function update_privileged_logs(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+
+  printf "\033[34m\n* Setting $nice_flavor configuration to enable Privileged Logs: $config_file\n\033[0m\n"
+  $sudo_cmd cp "$config_file" "${config_file}.orig"
+  $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+privileged_logs:
+  enabled: true
+EOF
+}
 function update_logs_config_process_collect_all(){
   local sudo_cmd="$1"
   local config_file="$2"
@@ -1762,11 +1773,15 @@ function manage_system_probe_config(){
   local probe_config_file="$2"
   local enable_security="$3"
   local enable_discovery="$4"
-  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ]; then
+  local enable_privileged_logs="$5"
+  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ] || [ "$enable_privileged_logs" == "true" ]; then
     if ensure_config_file_exists "$sudo_cmd" "$probe_config_file" "root"; then
       update_security_and_or_compliance "$sudo_cmd" "$probe_config_file" "$enable_security" "false"
       if [ "$enable_discovery" == "true" ]; then
         update_discovery "$sudo_cmd" "$probe_config_file"
+      fi
+      if [ "$enable_privileged_logs" == "true" ]; then
+        update_privileged_logs "$sudo_cmd" "$probe_config_file"
       fi
     fi
   fi
@@ -1846,7 +1861,7 @@ elif [ ! "$no_agent" ]; then
   fi
 
   manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
-  manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED"
+  manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED" "$DD_PRIVILEGED_LOGS_ENABLED"
 fi
 
 # DDOT configuration update

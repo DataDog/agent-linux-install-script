@@ -225,33 +225,54 @@ testSecurityConfigFullConfig(){
 ### Manage system probe config files
 testSystemProbeConfigNoCreation() {
   sudo rm $system_probe_config_file 2> /dev/null
-  manage_system_probe_config "sudo" $system_probe_config_file false false
+  manage_system_probe_config "sudo" $system_probe_config_file false false false
   sudo test -e $system_probe_config_file
   assertEquals 1 $?
 }
 testSystemProbeConfigSecOn(){
   sudo rm $system_probe_config_file 2> /dev/null
-  manage_system_probe_config "sudo" $system_probe_config_file true false
+  manage_system_probe_config "sudo" $system_probe_config_file true false false
   yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
   assertEquals 0 $?
   assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "true"
   assertEquals "$(sudo yq eval '.discovery.enabled' $system_probe_config_file)" "null"
+  assertEquals "$(sudo yq eval '.privileged_logs.enabled' $system_probe_config_file)" "null"
 }
 testSystemProbeConfigDiscoveryOn(){
   sudo rm $system_probe_config_file 2> /dev/null
-  manage_system_probe_config "sudo" $system_probe_config_file false true
+  manage_system_probe_config "sudo" $system_probe_config_file false true false
   yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
   assertEquals 0 $?
   assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "null"
   assertEquals "$(sudo yq eval '.discovery.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.privileged_logs.enabled' $system_probe_config_file)" "null"
+}
+testSystemProbeConfigPrivilegedLogsOn(){
+  sudo rm $system_probe_config_file 2> /dev/null
+  manage_system_probe_config "sudo" $system_probe_config_file false false true
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "null"
+  assertEquals "$(sudo yq eval '.discovery.enabled' $system_probe_config_file)" "null"
+  assertEquals "$(sudo yq eval '.privileged_logs.enabled' $system_probe_config_file)" "true"
+}
+testSystemProbeConfigPrivilegedLogsAndDiscovery(){
+  sudo rm $system_probe_config_file 2> /dev/null
+  manage_system_probe_config "sudo" $system_probe_config_file false true true
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "null"
+  assertEquals "$(sudo yq eval '.discovery.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.privileged_logs.enabled' $system_probe_config_file)" "true"
 }
 testSystemProbeConfigFullConfig(){
   sudo rm $system_probe_config_file 2> /dev/null
-  manage_system_probe_config "sudo" $system_probe_config_file true true
+  manage_system_probe_config "sudo" $system_probe_config_file true true true
   yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
   assertEquals 0 $?
   assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "true"
   assertEquals "$(sudo yq eval '.discovery.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.privileged_logs.enabled' $system_probe_config_file)" "true"
 }
 
 ### Test logs config process collect all function
