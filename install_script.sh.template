@@ -435,6 +435,7 @@ function report_installer_telemetry() {
                     "duration": ${time_since_start},
                     "error": ${exit_code},
                     "meta": {
+                        "extended_telemetry": "true",
                         "language": "shell",
                         "exit_code": ${exit_code},
                         "version": "${install_script_version}",
