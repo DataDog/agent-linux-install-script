@@ -600,15 +600,20 @@ function end_stage() {
     if [ -z "$CURRENT_STAGE" ]; then
         return  # No active stage to end
     fi
+    local stage_error # Error code (0 = success)
+    local stage_metadata
+    local current_time
+    local duration
+    local safe_error
 
-    local stage_error="${1:-0}"  # Error code (0 = success)
-    local stage_metadata="${2:-}"  # Optional metadata, can be auto-populated
-    local current_time=$(date +%s%N)
-    local duration=$((current_time - STAGE_START_TIME))
+    stage_error="${1:-0}"
+    stage_metadata="${2:-}"
+    current_time=$(date +%s%N)
+    duration=$((current_time - STAGE_START_TIME))
 
     # Build metadata from existing error context if available and no metadata provided
     if [ -z "$stage_metadata" ] && [ "$stage_error" -ne 0 ]; then
-        local safe_error=$(printf '%s' "${ERROR_MESSAGE:-Unknown error}" | tr '"' "'" | tr '\n' ' ' | head -c 200)
+        safe_error=$(printf '%s' "${ERROR_MESSAGE:-Unknown error}" | tr '"' "'" | tr '\n' ' ' | head -c 200)
         stage_metadata="\"error\": \"$safe_error\", \"error_code\": \"${ERROR_CODE:-$stage_error}\""
     fi
 
@@ -1665,7 +1670,7 @@ https://app.datadoghq.com/account/settings/agent/latest?platform=overview"
 fi
 
 # Complete package_sources_setup
-end_stage 0 "\"repository_type\": \"${OS}\", \"keys_installed\": \"$(ls /etc/apt/trusted.gpg.d/datadog* 2>/dev/null | wc -l || echo 0)\", \"repo_url\": \"${DD_REPO_URL:-datadoghq.com}\""
+end_stage 0 "\"repository_type\": \"${OS}\", \"keys_installed\": \"$(find /etc/apt/trusted.gpg.d/ -name 'datadog*' 2>/dev/null | wc -l || echo 0)\", \"repo_url\": \"${DD_REPO_URL:-datadoghq.com}\""
 start_stage "agent5_upgrade"
 
 ##
