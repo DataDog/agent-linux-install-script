@@ -147,6 +147,24 @@ testNoEnv(){
   assertEquals 0 $?
 }
 
+### update_infrastructure_mode
+testInfrastructureModeUpdated(){
+  sudo cp ${config_file}.example $config_file
+  update_infrastructure_mode "sudo" "basic" $config_file
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  sudo grep -w "^infrastructure_mode: basic" $config_file | sudo tee tmp > /dev/null
+  assertEquals 0 $?
+  nb_match=$(sudo cat tmp | wc -l)
+  assertEquals 1 "$nb_match"
+}
+testNoInfrastructureMode(){
+  sudo cp ${config_file}.example $config_file
+  update_infrastructure_mode "sudo" "" $config_file
+  sudo grep -wq "^infrastructure_mode:" $config_file
+  assertEquals 1 $?
+}
+
 ### update_security_and_or_compliance
 testRuntimeSecurityUpdated() {
   sudo cp ${security_agent_config_file}.example $security_agent_config_file

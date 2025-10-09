@@ -657,6 +657,11 @@ if [ -n "$DD_NO_AGENT_INSTALL" ]; then
     no_agent=true
 fi
 
+infrastructure_mode=
+if [ -n "$DD_INFRASTRUCTURE_MODE" ]; then
+    infrastructure_mode=$DD_INFRASTRUCTURE_MODE
+fi
+
 host_tags=  # A comma-separated list of tags, e.g. foo:bar,env:prod
 if [ -n "$DD_TAGS" ]; then
     host_tags=$DD_TAGS
@@ -1642,6 +1647,19 @@ function update_env(){
     $sudo_cmd sh -c "sed -i 's|^# env:.*|env: $dd_env|' $config_file"
   fi
 }
+function update_infrastructure_mode(){
+  local sudo_cmd="$1"
+  local infrastructure_mode="$2"
+  local config_file="$3"
+  if [ -n "$infrastructure_mode" ]; then
+      printf "\033[34m\n* Setting $nice_flavor configuration to use Infrastructure Mode $infrastructure_mode: $config_file\n\033[0m\n"
+      if $sudo_cmd grep -q "^# infrastructure_mode:" "$config_file"; then
+        $sudo_cmd sh -c "sed -i \"s|^# infrastructure_mode:.*$|infrastructure_mode: ""$infrastructure_mode""|\" $config_file"
+      else
+        echo "infrastructure_mode: $infrastructure_mode" | $sudo_cmd tee -a "$config_file" > /dev/null
+      fi
+  fi
+}
 function update_remote_updates(){
   local sudo_cmd="$1"
   local remote_updates="$2"
@@ -1875,6 +1893,7 @@ elif [ ! "$no_agent" ]; then
     update_hostname "$sudo_cmd" "$hostname" "$config_file"
     update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
     update_env "$sudo_cmd" "$dd_env" "$config_file"
+    update_infrastructure_mode "$sudo_cmd" "$infrastructure_mode" "$config_file"
     if [ "$DD_LOGS_CONFIG_PROCESS_COLLECT_ALL" == "true" ]; then
       update_logs_config_process_collect_all "$sudo_cmd" "$config_file"
     fi
