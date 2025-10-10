@@ -59,7 +59,9 @@ export DATADOG_PARENT_ID=$trace_id
 # Stage tracking globals for detailed telemetry spans
 CURRENT_STAGE=""
 STAGE_START_TIME=""
-# Format "name:start_time:duration:error:metadata"
+CURRENT_STAGE_SPAN_ID=""
+STAGE_COUNTER=0
+# Format "name:span_id:start_time:duration:error:metadata"
 declare -a SCRIPT_STAGES=()
 
 # Set up a named pipe for logging
@@ -457,12 +459,8 @@ END
 )
 
     # Add stage spans
-    span_counter=0
     for stage_info in "${SCRIPT_STAGES[@]}"; do
-        IFS=':' read -r stage_name stage_start stage_duration stage_error stage_metadata <<< "$stage_info"
-        span_counter=$((span_counter + 1))
-        # Generate unique positive span ID using timestamp + counter to avoid overflow
-        stage_span_id=$((time_now_seconds * 1000 + span_counter))
+        IFS=':' read -r stage_name stage_span_id stage_start stage_duration stage_error stage_metadata <<< "$stage_info"
 
         # Debug: Log stage processing
         echo "DEBUG: Processing stage $stage_name, span_id=$stage_span_id, error=$stage_error" >> /tmp/datadog-stages-debug.txt
@@ -591,8 +589,13 @@ function start_stage() {
 
     CURRENT_STAGE="$stage_name"
     STAGE_START_TIME=$(date +%s%N)
+    STAGE_COUNTER=$((STAGE_COUNTER + 1))
+    CURRENT_STAGE_SPAN_ID=$((trace_id + STAGE_COUNTER))
 
-    echo "DEBUG: Started stage: $stage_name" >> /tmp/datadog-stages-debug.txt
+    # Update parent ID so subprocess spans nest under this stage
+    export DATADOG_PARENT_ID=$CURRENT_STAGE_SPAN_ID
+
+    echo "DEBUG: Started stage: $stage_name (span_id=$CURRENT_STAGE_SPAN_ID)" >> /tmp/datadog-stages-debug.txt
 }
 
 # Complete current stage with result, uses existing ERROR_MESSAGE/ERROR_CODE globals
@@ -617,14 +620,16 @@ function end_stage() {
         stage_metadata="\"error\": \"$safe_error\", \"error_code\": \"${ERROR_CODE:-$stage_error}\""
     fi
 
-    # Store stage info in SCRIPT_STAGES global: "name:start_time:duration:error:metadata"
-    SCRIPT_STAGES+=("$CURRENT_STAGE:$STAGE_START_TIME:$duration:$stage_error:$stage_metadata")
+    # Store stage info in SCRIPT_STAGES global: "name:span_id:start_time:duration:error:metadata"
+    SCRIPT_STAGES+=("$CURRENT_STAGE:$CURRENT_STAGE_SPAN_ID:$STAGE_START_TIME:$duration:$stage_error:$stage_metadata")
 
     echo "DEBUG: Ended stage: $CURRENT_STAGE (error=$stage_error, duration=${duration}ns)" >> /tmp/datadog-stages-debug.txt
 
-    # Reset stage tracking
+    # Reset stage tracking and restore parent to root trace
     CURRENT_STAGE=""
     STAGE_START_TIME=""
+    CURRENT_STAGE_SPAN_ID=""
+    export DATADOG_PARENT_ID=$trace_id
 }
 
 function is_installed_by_installer() {
