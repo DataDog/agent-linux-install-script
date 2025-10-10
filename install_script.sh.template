@@ -590,8 +590,12 @@ function start_stage() {
     CURRENT_STAGE="$stage_name"
     STAGE_START_TIME=$(date +%s%N)
     STAGE_COUNTER=$((STAGE_COUNTER + 1))
-    CURRENT_STAGE_SPAN_ID=$((trace_id + STAGE_COUNTER))
-
+    
+    # Generate stage span ID using seconds + counter to avoid trace_id overflow
+    local time_now_seconds
+    time_now_seconds=$(date +%s)
+    CURRENT_STAGE_SPAN_ID=$((time_now_seconds * 1000 + STAGE_COUNTER))
+    
     # Update parent ID so subprocess spans nest under this stage
     export DATADOG_PARENT_ID=$CURRENT_STAGE_SPAN_ID
 
