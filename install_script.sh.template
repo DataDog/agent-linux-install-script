@@ -699,6 +699,11 @@ if [ -n "$DD_SYSTEM_PROBE_ENSURE_CONFIG" ]; then
   system_probe_ensure_config=$DD_SYSTEM_PROBE_ENSURE_CONFIG
 fi
 
+usm_enabled=
+if [ -n "$DD_SYSTEM_PROBE_SERVICE_MONITORING_ENABLED" ]; then
+  usm_enabled=$DD_SYSTEM_PROBE_SERVICE_MONITORING_ENABLED
+fi
+
 agent_flavor="datadog-agent"
 if [ -n "$DD_AGENT_FLAVOR" ]; then
     agent_flavor=$DD_AGENT_FLAVOR #Eg: datadog-iot-agent
@@ -1709,6 +1714,17 @@ privileged_logs:
   enabled: true
 EOF
 }
+function update_usm(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+
+  printf "\033[34m\n* Setting $nice_flavor configuration to enable Universal Service Monitoring: $config_file\n\033[0m\n"
+  $sudo_cmd cp "$config_file" "${config_file}.orig"
+  $sudo_cmd sed -i \
+    -e 's/^# service_monitoring_config:/service_monitoring_config:/' \
+    -e '/^service_monitoring_config:/,/^$/s/^  # enabled: false/  enabled: true/' \
+    "$config_file"
+}
 function update_logs_config_process_collect_all(){
   local sudo_cmd="$1"
   local config_file="$2"
@@ -1774,7 +1790,8 @@ function manage_system_probe_config(){
   local enable_security="$3"
   local enable_discovery="$4"
   local enable_privileged_logs="$5"
-  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ] || [ "$enable_privileged_logs" == "true" ]; then
+  local enable_usm="$6"
+  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ] || [ "$enable_privileged_logs" == "true" ] || [ "$enable_usm" == "true" ]; then
     if ensure_config_file_exists "$sudo_cmd" "$probe_config_file" "root"; then
       update_security_and_or_compliance "$sudo_cmd" "$probe_config_file" "$enable_security" "false"
       if [ "$enable_discovery" == "true" ]; then
@@ -1782,6 +1799,9 @@ function manage_system_probe_config(){
       fi
       if [ "$enable_privileged_logs" == "true" ]; then
         update_privileged_logs "$sudo_cmd" "$probe_config_file"
+      fi
+      if [ "$enable_usm" == "true" ]; then
+        update_usm "$sudo_cmd" "$probe_config_file"
       fi
     fi
   fi
@@ -1861,7 +1881,7 @@ elif [ ! "$no_agent" ]; then
   fi
 
   manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
-  manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED" "$DD_PRIVILEGED_LOGS_ENABLED"
+  manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED" "$DD_PRIVILEGED_LOGS_ENABLED" "$usm_enabled"
 fi
 
 # DDOT configuration update
