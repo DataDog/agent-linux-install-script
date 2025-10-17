@@ -1878,6 +1878,14 @@ elif [ ! "$no_agent" ]; then
   # DD_LOGS_CONFIG_PROCESS_COLLECT_ALL needs discovery to be enabled
   if [ "$DD_LOGS_CONFIG_PROCESS_COLLECT_ALL" == "true" ]; then
     DD_DISCOVERY_ENABLED="true"
+      # Only disable privileged logs if explicitly set to false
+    if [ "$DD_PRIVILEGED_LOGS_ENABLED" == "false" ]; then
+      # Keep it false
+      DD_PRIVILEGED_LOGS_ENABLED="false"
+    else
+      # Enable by default (covers: undefined, empty, true, or any other value)
+      DD_PRIVILEGED_LOGS_ENABLED="true"
+    fi
   fi
 
   manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
