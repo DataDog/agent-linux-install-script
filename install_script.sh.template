@@ -886,7 +886,13 @@ if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "docker" ] ; then
 fi
 
 # Complete environment_processing
-end_stage 0 "\"api_key_provided\": \"$([ -n "$DD_API_KEY" ] && echo "true" || echo "false")\", \"site\": \"${DD_SITE:-datadoghq.com}\", \"install_only\": \"$([ -n "$DD_INSTALL_ONLY" ] && echo "true" || echo "false")\", \"agent_flavor\": \"${DD_AGENT_FLAVOR:-datadog-agent}\""
+end_stage 0 "$(cat <<-END | tr -d '\n'
+"api_key_provided": "$([ -n "$DD_API_KEY" ] && echo "true" || echo "false")",
+"site": "${DD_SITE:-datadoghq.com}",
+"install_only": "$([ -n "$DD_INSTALL_ONLY" ] && echo "true" || echo "false")",
+"agent_flavor": "${DD_AGENT_FLAVOR:-datadog-agent}"
+END
+)"
 start_stage "configuration_validation"
 
 ##
@@ -1189,7 +1195,13 @@ elif command -v zypper >/dev/null; then
 fi
 
 # Complete configuration_validation
-end_stage 0 "\"agent_major_version\": \"${agent_major_version}\", \"agent_minor_version\": \"${agent_minor_version:-latest}\", \"os_detected\": \"${OS}\", \"package_manager\": \"${detected_pkg_mgr}\""
+end_stage 0 "$(cat <<-END | tr -d '\n'
+"agent_major_version": "${agent_major_version}",
+"agent_minor_version": "${agent_minor_version:-latest}",
+"os_detected": "${OS}",
+"package_manager": "${detected_pkg_mgr}"
+END
+)"
 start_stage "package_sources_setup"
 
 ##
@@ -1679,7 +1691,12 @@ https://app.datadoghq.com/account/settings/agent/latest?platform=overview"
 fi
 
 # Complete package_sources_setup
-end_stage 0 "\"repository_type\": \"${OS}\", \"keys_installed\": \"$(find /etc/apt/trusted.gpg.d/ -name 'datadog*' 2>/dev/null | wc -l || echo 0)\", \"repo_url\": \"${DD_REPO_URL:-datadoghq.com}\""
+end_stage 0 "$(cat <<-END | tr -d '\n'
+"repository_type": "${OS}",
+"keys_installed": "$(find /etc/apt/trusted.gpg.d/ -name 'datadog*' 2>/dev/null | wc -l || echo 0)",
+"repo_url": "${DD_REPO_URL:-datadoghq.com}"
+END
+)"
 start_stage "agent5_upgrade"
 
 ##
@@ -1700,7 +1717,11 @@ if [ -n "$upgrade" ] && [ "$agent_flavor" != "datadog-dogstatsd" ]; then
 fi
 
 # Complete agent5_upgrade
-end_stage 0 "\"upgrade_requested\": \"$([ -n "$upgrade" ] && echo "true" || echo "false")\", \"legacy_config_exists\": \"$([ -e "$LEGACY_CONF" ] && echo "true" || echo "false")\""
+end_stage 0 "$(cat <<-END | tr -d '\n'
+"upgrade_requested": "$([ -n "$upgrade" ] && echo "true" || echo "false")",
+"legacy_config_exists": "$([ -e "$LEGACY_CONF" ] && echo "true" || echo "false")"
+END
+)"
 start_stage "configuration_setup"
 
 ##
@@ -2113,7 +2134,12 @@ declare -a monitoring_services
 monitoring_services=( "datadog-agent" )
 
 # Complete configuration_setup
-end_stage 0 "\"config_file_path\": \"${config_file}\", \"apm_enabled\": \"$([ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] && echo "$DD_APM_INSTRUMENTATION_ENABLED" || echo "false")\", \"security_enabled\": \"$([ -n "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" ] && echo "true" || echo "false")\""
+end_stage 0 "$(cat <<-END | tr -d '\n'
+"config_file_path": "${config_file}",
+"apm_enabled": "$([ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] && echo "$DD_APM_INSTRUMENTATION_ENABLED" || echo "false")",
+"security_enabled": "$([ -n "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" ] && echo "true" || echo "false")"
+END
+)"
 start_stage "service_management"
 
 ##
@@ -2206,6 +2232,11 @@ for current_service in "${services[@]}"; do
   fi
 done
 # Complete service_management (final stage)
-end_stage 0 "\"services_count\": \"${#services[@]}\", \"no_start_mode\": \"$([ -n "$no_start" ] && echo "true" || echo "false")\", \"init_system\": \"$([ -d /run/systemd/system ] && echo "systemd" || echo "other")\""
+end_stage 0 "$(cat <<-END | tr -d '\n'
+"services_count": "${#services[@]}",
+"no_start_mode": "$([ -n "$no_start" ] && echo "true" || echo "false")",
+"init_system": "$([ -d /run/systemd/system ] && echo "systemd" || echo "other")"
+END
+)"
 
 report_telemetry "$install_id" "$install_type" "$install_time"
