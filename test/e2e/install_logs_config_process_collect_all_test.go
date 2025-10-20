@@ -88,6 +88,9 @@ func (s *installLogsConfigProcessCollectAllTestSuite) assertInstallScript() {
 	// Check system-probe.yaml configuration (should have discovery enabled)
 	systemProbeConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assert.Equal(t, true, systemProbeConfig["discovery"].(map[any]any)["enabled"])
+	assert.Equal(t, true, systemProbeConfig["privileged_logs"].(map[any]any)["enabled"])
+
+
 }
 
 func (s *installLogsConfigProcessCollectAllTestSuite) assertUninstall() {
