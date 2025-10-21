@@ -42,7 +42,7 @@ func TestInstallLogsConfigProcessCollectAllDisabledPrivilegedLogsSuite(t *testin
 	if flavor != agentFlavorDatadogAgent {
 		t.Skip("logs config process collect all test supports only datadog-agent flavor")
 	}
-	stackName := fmt.Sprintf("install-logs-config-process-collect-all-disabled-privileged-logs-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
+	stackName := fmt.Sprintf("pcanpl-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
 	t.Run(stackName, func(t *testing.T) {
 		t.Logf("We will install with logs config process collect all and privileged logs disabled %s with install script on %s", flavor, platform)
 		testSuite := &installLogsConfigProcessCollectAllDisabledPrivilegedLogsTestSuite{}
