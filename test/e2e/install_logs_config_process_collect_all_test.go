@@ -50,6 +50,20 @@ func (s *installLogsConfigProcessCollectAllTestSuite) TestInstallLogsConfigProce
 	s.assertPurge()
 }
 
+func (s *installLogsConfigProcessCollectAllTestSuite) TestInstallLogsConfigProcessCollectAllWithPrivilegedLogsDisabled() {
+	s.InstallAgent(7, "DD_LOGS_CONFIG_PROCESS_COLLECT_ALL=true DD_PRIVILEGED_LOGS_ENABLED=false DD_SITE=\"datadoghq.com\"", "Install latest Agent 7 with privileged logs explicitly disabled")
+
+	s.assertInstallScriptWithPrivilegedLogsDisabled()
+
+	s.uninstall()
+
+	s.assertUninstall()
+
+	s.purge()
+
+	s.assertPurge()
+}
+
 func (s *installLogsConfigProcessCollectAllTestSuite) assertInstallScript() {
 	s.linuxInstallerTestSuite.assertInstallScript(true)
 	t := s.T()
@@ -89,8 +103,31 @@ func (s *installLogsConfigProcessCollectAllTestSuite) assertInstallScript() {
 	systemProbeConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assert.Equal(t, true, systemProbeConfig["discovery"].(map[any]any)["enabled"])
 	assert.Equal(t, true, systemProbeConfig["privileged_logs"].(map[any]any)["enabled"])
+}
 
+func (s *installLogsConfigProcessCollectAllTestSuite) assertInstallScriptWithPrivilegedLogsDisabled() {
+	s.linuxInstallerTestSuite.assertInstallScript(true)
+	t := s.T()
+	vm := s.Env().RemoteHost
 
+	t.Log("Assert both datadog.yaml and system-probe.yaml configs are created")
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, s.configFile))
+	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
+
+	// Check system-probe.yaml configuration
+	systemProbeConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
+
+	// Discovery should be enabled (required by DD_LOGS_CONFIG_PROCESS_COLLECT_ALL)
+	assert.Equal(t, true, systemProbeConfig["discovery"].(map[any]any)["enabled"])
+
+	// Privileged logs should be disabled when explicitly set to false
+	privilegedLogsConfig, exists := systemProbeConfig["privileged_logs"].(map[any]any)
+	if exists {
+		assert.Equal(t, false, privilegedLogsConfig["enabled"], "privileged_logs should be disabled when DD_PRIVILEGED_LOGS_ENABLED=false")
+	} else {
+		// If the section doesn't exist, that's also acceptable as it means it's not enabled
+		t.Log("privileged_logs section not present in config (disabled)")
+	}
 }
 
 func (s *installLogsConfigProcessCollectAllTestSuite) assertUninstall() {
