@@ -496,3 +496,5 @@ deploy_deprecated:
       )
       )
     - aws --region "us-east-1" cloudfront create-invalidation --distribution-id "E2VSER0FO39KRV" --paths "/scripts/*"
+
+#test
