@@ -512,6 +512,9 @@ configure_system_tests:
     SYSTEM_TESTS_REF: main
     SYSTEM_TESTS_LIBRARY: auto_inject
   script:
+    - echo "DEBUG ARTIFACTS FROM generate-scripts"
+    - ls -la
+    - echo "END DEBUG ARTIFACTS FROM generate-scripts"
     - cd /system-tests
     - git pull  # update to most recent system-tests
     - git checkout $SYSTEM_TESTS_REF
