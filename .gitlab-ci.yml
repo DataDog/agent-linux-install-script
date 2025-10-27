@@ -525,6 +525,10 @@ configure_system_tests:
       ls -la
       echo "END DEBUG ARTIFACTS FROM generate-scripts"
       pwd
+      echo "LS ROOT"
+      ls /
+      echo "LS PREVIOUS"
+      ls ../
       echo "Uploading the installer script to S3..."
       S3_DESTINATION="s3://${S3_AGENT_LINUX_INSTALL_SCRIPT_BUCKET}/${CI_PIPELINE_ID}/"
       echo "S3 destination: ${S3_DESTINATION}"
