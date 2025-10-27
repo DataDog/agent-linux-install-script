@@ -1714,6 +1714,17 @@ privileged_logs:
   enabled: true
 EOF
 }
+function disable_privileged_logs(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+
+  printf "\033[34m\n* Setting $nice_flavor configuration to disable Privileged Logs: $config_file\n\033[0m\n"
+  $sudo_cmd cp "$config_file" "${config_file}.orig"
+  $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+privileged_logs:
+  enabled: false
+EOF
+}
 function update_usm(){
   local sudo_cmd="$1"
   local config_file="$2"
@@ -1791,7 +1802,7 @@ function manage_system_probe_config(){
   local enable_discovery="$4"
   local enable_privileged_logs="$5"
   local enable_usm="$6"
-  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ] || [ "$enable_privileged_logs" == "true" ] || [ "$enable_usm" == "true" ]; then
+  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ] || [ "$enable_privileged_logs" == "true" ] || [ "$enable_privileged_logs" == "false" ] || [ "$enable_usm" == "true" ]; then
     if ensure_config_file_exists "$sudo_cmd" "$probe_config_file" "root"; then
       update_security_and_or_compliance "$sudo_cmd" "$probe_config_file" "$enable_security" "false"
       if [ "$enable_discovery" == "true" ]; then
@@ -1799,6 +1810,8 @@ function manage_system_probe_config(){
       fi
       if [ "$enable_privileged_logs" == "true" ]; then
         update_privileged_logs "$sudo_cmd" "$probe_config_file"
+      elif [ "$enable_privileged_logs" == "false" ]; then
+        disable_privileged_logs "$sudo_cmd" "$probe_config_file"
       fi
       if [ "$enable_usm" == "true" ]; then
         update_usm "$sudo_cmd" "$probe_config_file"
