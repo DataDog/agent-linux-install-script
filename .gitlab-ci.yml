@@ -501,7 +501,8 @@ deploy_deprecated:
     - aws --region "us-east-1" cloudfront create-invalidation --distribution-id "E2VSER0FO39KRV" --paths "/scripts/*"
 
 configure_system_tests:
-  image: registry.ddbuild.io/ci/libdatadog-build/system-tests:67634676
+  #image: registry.ddbuild.io/ci/libdatadog-build/system-tests:67634676
+  image: registry.ddbuild.io/ci/libdatadog-build/system-tests-pulumi:52556819
   tags: ["arch:amd64"]
   stage: system_tests
   needs: [generate-scripts]
