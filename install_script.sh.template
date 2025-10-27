@@ -1892,7 +1892,7 @@ elif [ ! "$no_agent" ]; then
   if [ "$DD_LOGS_CONFIG_PROCESS_COLLECT_ALL" == "true" ]; then
     DD_DISCOVERY_ENABLED="true"
     # Enable privileged logs by default unless explicitly set to false
-    if [ "$DD_PRIVILEGED_LOGS_ENABLED" != "false" ]; then
+    if [ -z "$DD_PRIVILEGED_LOGS_ENABLED" ] || [ "$DD_PRIVILEGED_LOGS_ENABLED" != "false" ]; then
       DD_PRIVILEGED_LOGS_ENABLED="true"
     fi
   fi
