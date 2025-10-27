@@ -513,6 +513,10 @@ configure_system_tests:
     SYSTEM_TESTS_REF: main
     SYSTEM_TESTS_LIBRARY: auto_inject
     S3_AGENT_LINUX_INSTALL_SCRIPT_BUCKET: system-tests-aws-agent-linux-install-script
+  before_script:
+    - mkdir -p ~/.aws
+    - aws ssm get-parameter --region us-east-1 --name ci.${CI_PROJECT_NAME}.apm-ecosystems-reliability-profile --with-decryption --query "Parameter.Value" --out text > ~/.aws/config
+    - export AWS_PROFILE=apm-ecosystems-reliability-ci
   script:
     - |
       echo "DEBUG ARTIFACTS FROM generate-scripts"
