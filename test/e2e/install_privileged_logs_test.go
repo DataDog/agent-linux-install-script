@@ -16,16 +16,18 @@ import (
 
 type installPrivilegedLogsTestSuite struct {
 	linuxInstallerTestSuite
+	enabledValue bool
 }
 
-func TestInstallPrivilegedLogsSuite(t *testing.T) {
-	if flavor != agentFlavorDatadogAgent {
-		t.Skip("privileged logs test supports only datadog-agent flavor")
+func runPrivilegedLogsTest(t *testing.T, enabled bool) {
+	suffix := "enabled"
+	if !enabled {
+		suffix = "disabled"
 	}
-	stackName := fmt.Sprintf("install-privileged-logs-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
+	stackName := fmt.Sprintf("install-privileged-logs-%s-%s-%s-%s", suffix, flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
 	t.Run(stackName, func(t *testing.T) {
-		t.Logf("We will install with system-probe privileged logs %s with install script on %s", flavor, platform)
-		testSuite := &installPrivilegedLogsTestSuite{}
+		t.Logf("We will install with system-probe privileged logs %s %s with install script on %s", suffix, flavor, platform)
+		testSuite := &installPrivilegedLogsTestSuite{enabledValue: enabled}
 		e2e.Run(t,
 			testSuite,
 			e2e.WithProvisioner(awshost.ProvisionerNoAgentNoFakeIntake(awshost.WithEC2InstanceOptions(getEC2Options(t)...))),
@@ -34,19 +36,36 @@ func TestInstallPrivilegedLogsSuite(t *testing.T) {
 	})
 }
 
+func TestInstallPrivilegedLogsSuite(t *testing.T) {
+	if flavor != agentFlavorDatadogAgent {
+		t.Skip("privileged logs test supports only datadog-agent flavor")
+	}
+	runPrivilegedLogsTest(t, true)
+}
+
+func TestInstallPrivilegedLogsDisabledSuite(t *testing.T) {
+	if flavor != agentFlavorDatadogAgent {
+		t.Skip("privileged logs test supports only datadog-agent flavor")
+	}
+	runPrivilegedLogsTest(t, false)
+}
+
 func (s *installPrivilegedLogsTestSuite) TestInstallPrivilegedLogs() {
-	s.InstallAgent(7, "DD_PRIVILEGED_LOGS_ENABLED=true DD_SITE=\"datadoghq.com\"", "Install latest Agent 7 with privileged logs")
-
+	enabledStr := "true"
+	action := "enabled"
+	if !s.enabledValue {
+		enabledStr = "false"
+		action = "explicitly disabled"
+	}
+	envVars := fmt.Sprintf("DD_PRIVILEGED_LOGS_ENABLED=%s DD_SITE=\"datadoghq.com\"", enabledStr)
+	description := fmt.Sprintf("Install latest Agent 7 with privileged logs %s", action)
+	
+	s.InstallAgent(7, envVars, description)
 	s.assertInstallScript()
-
 	s.addExtraIntegration()
-
 	s.uninstall()
-
 	s.assertUninstall()
-
 	s.purge()
-
 	s.assertPurge()
 }
 
@@ -54,14 +73,26 @@ func (s *installPrivilegedLogsTestSuite) assertInstallScript() {
 	s.linuxInstallerTestSuite.assertInstallScript(true)
 	t := s.T()
 	vm := s.Env().RemoteHost
-	t.Log("Assert system probe config is created and security-agent is not created")
+	
+	action := "enabled"
+	if !s.enabledValue {
+		action = "explicitly disabled"
+	}
+	t.Logf("Assert system probe config is created with privileged logs %s", action)
+	
 	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
 
 	systemProbeConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
 	assert.NotContains(t, systemProbeConfig, "runtime_security_config")
 	assert.NotContains(t, systemProbeConfig, "discovery")
-	assert.Equal(t, true, systemProbeConfig["privileged_logs"].(map[any]any)["enabled"])
+	
+	if s.enabledValue {
+		assert.Equal(t, true, systemProbeConfig["privileged_logs"].(map[any]any)["enabled"])
+	} else {
+		assert.Contains(t, systemProbeConfig, "privileged_logs", "privileged_logs should be present in config when explicitly disabled")
+		assert.Equal(t, false, systemProbeConfig["privileged_logs"].(map[any]any)["enabled"], "privileged_logs.enabled should be explicitly set to false")
+	}
 }
 
 func (s *installPrivilegedLogsTestSuite) assertUninstall() {
@@ -73,76 +104,6 @@ func (s *installPrivilegedLogsTestSuite) assertUninstall() {
 }
 
 func (s *installPrivilegedLogsTestSuite) assertPurge() {
-	if s.shouldSkipPurge() {
-		return
-	}
-	s.linuxInstallerTestSuite.assertPurge()
-	t := s.T()
-	vm := s.Env().RemoteHost
-	t.Log("Assert system probe is removed after purge")
-	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
-}
-
-type installPrivilegedLogsDisabledTestSuite struct {
-	linuxInstallerTestSuite
-}
-
-func TestInstallPrivilegedLogsDisabledSuite(t *testing.T) {
-	if flavor != agentFlavorDatadogAgent {
-		t.Skip("privileged logs test supports only datadog-agent flavor")
-	}
-	stackName := fmt.Sprintf("install-privileged-logs-disabled-%s-%s-%s", flavor, platform, getenv("CI_PIPELINE_ID", "dev"))
-	t.Run(stackName, func(t *testing.T) {
-		t.Logf("We will install with system-probe privileged logs disabled %s with install script on %s", flavor, platform)
-		testSuite := &installPrivilegedLogsDisabledTestSuite{}
-		e2e.Run(t,
-			testSuite,
-			e2e.WithProvisioner(awshost.ProvisionerNoAgentNoFakeIntake(awshost.WithEC2InstanceOptions(getEC2Options(t)...))),
-			e2e.WithStackName(stackName),
-		)
-	})
-}
-
-func (s *installPrivilegedLogsDisabledTestSuite) TestInstallPrivilegedLogsDisabled() {
-	s.InstallAgent(7, "DD_PRIVILEGED_LOGS_ENABLED=false DD_SITE=\"datadoghq.com\"", "Install latest Agent 7 with privileged logs explicitly disabled")
-
-	s.assertInstallScript()
-
-	s.addExtraIntegration()
-
-	s.uninstall()
-
-	s.assertUninstall()
-
-	s.purge()
-
-	s.assertPurge()
-}
-
-func (s *installPrivilegedLogsDisabledTestSuite) assertInstallScript() {
-	s.linuxInstallerTestSuite.assertInstallScript(true)
-	t := s.T()
-	vm := s.Env().RemoteHost
-	t.Log("Assert system probe config is created with privileged logs explicitly disabled")
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
-	assertFileNotExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, securityAgentConfigFileName))
-
-	systemProbeConfig := unmarshalConfigFile(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
-	assert.NotContains(t, systemProbeConfig, "runtime_security_config")
-	assert.NotContains(t, systemProbeConfig, "discovery")
-	assert.Contains(t, systemProbeConfig, "privileged_logs", "privileged_logs should be present in config when explicitly disabled")
-	assert.Equal(t, false, systemProbeConfig["privileged_logs"].(map[any]any)["enabled"], "privileged_logs.enabled should be explicitly set to false")
-}
-
-func (s *installPrivilegedLogsDisabledTestSuite) assertUninstall() {
-	s.linuxInstallerTestSuite.assertUninstall()
-	t := s.T()
-	vm := s.Env().RemoteHost
-	t.Log("Assert system probe is there after uninstall")
-	assertFileExists(t, vm, fmt.Sprintf("/etc/%s/%s", s.baseName, systemProbeConfigFileName))
-}
-
-func (s *installPrivilegedLogsDisabledTestSuite) assertPurge() {
 	if s.shouldSkipPurge() {
 		return
 	}
