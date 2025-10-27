@@ -502,7 +502,6 @@ deploy_deprecated:
 
 configure_system_tests:
   image: registry.ddbuild.io/ci/libdatadog-build/system-tests:67634676
-  #image: registry.ddbuild.io/ci/libdatadog-build/system-tests-pulumi:52556819
   tags: ["arch:amd64"]
   stage: system_tests
   needs: [generate-scripts]
@@ -510,9 +509,10 @@ configure_system_tests:
   - when: on_success
   variables:
     SYSTEM_TESTS_SCENARIOS_GROUPS: "simple_onboarding"
-    SYSTEM_TESTS_REF: main
+    SYSTEM_TESTS_REF: robertomonteromiguel/tweaks_agent_installer_new_pipelines
     SYSTEM_TESTS_LIBRARY: auto_inject
     S3_AGENT_LINUX_INSTALL_SCRIPT_BUCKET: system-tests-aws-agent-linux-install-script
+    DD_INSTALLER_VERSION: $CI_PIPELINE_ID
   before_script:
     - mkdir -p ~/.aws
     - aws ssm get-parameter --region us-east-1 --name ci.${CI_PROJECT_NAME}.apm-ecosystems-reliability-profile --with-decryption --query "Parameter.Value" --out text > ~/.aws/config
@@ -532,8 +532,7 @@ configure_system_tests:
       echo "Uploading the installer script to S3..."
       S3_DESTINATION="s3://${S3_AGENT_LINUX_INSTALL_SCRIPT_BUCKET}/${CI_PIPELINE_ID}/"
       echo "S3 destination: ${S3_DESTINATION}"
-      #aws s3 cp install_script_agent7.sh "$S3_DESTINATION" --recursive --quiet || echo "Failed to upload the installer script to S3"
-      aws s3 cp ./install_script_agent7.sh "$S3_DESTINATION"
+      aws s3 cp ./install_script_agent7.sh "$S3_DESTINATION" --quiet || echo "Failed to upload the installer script to S3"
       echo "END UPLOADING THE INSTALLER SCRIPT TO S3"
     - cd /system-tests
     - git pull  # update to most recent system-tests
