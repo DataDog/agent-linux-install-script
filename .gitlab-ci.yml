@@ -519,7 +519,7 @@ configure_system_tests:
     - export AWS_PROFILE=apm-ecosystems-reliability-ci
   script:
     - |
-      echo "Uploading the installer script to S3..."
+      echo "Uploading the installer script to S3...."
       S3_DESTINATION="s3://${S3_AGENT_LINUX_INSTALL_SCRIPT_BUCKET}/${CI_PIPELINE_ID}/"
       echo "S3 destination: ${S3_DESTINATION}"
       aws s3 cp ./install_script_agent7.sh "$S3_DESTINATION" --quiet || echo "Failed to upload the installer script to S3"
