@@ -1,3 +1,5 @@
+include:
+  - remote: https://gitlab-templates.ddbuild.io/libdatadog/include/single-step-instrumentation-tests.yml
 stages:
   - generate
   - deps_fetch
@@ -6,6 +8,7 @@ stages:
   - e2e_test_upload
   - deploy
   - deploy_deprecated
+  - system_tests
 
 variables:
   AWS_MAX_ATTEMPTS: 5 # retry AWS operations 5 times if they fail on network errors
@@ -496,3 +499,52 @@ deploy_deprecated:
       )
       )
     - aws --region "us-east-1" cloudfront create-invalidation --distribution-id "E2VSER0FO39KRV" --paths "/scripts/*"
+
+configure_system_tests:
+  image: registry.ddbuild.io/ci/libdatadog-build/system-tests:67634676
+  tags: ["arch:amd64"]
+  stage: system_tests
+  needs: [generate-scripts]
+  rules:
+  - when: on_success
+  variables:
+    SYSTEM_TESTS_SCENARIOS_GROUPS: "simple_onboarding"
+    SYSTEM_TESTS_REF: main
+    SYSTEM_TESTS_LIBRARY: auto_inject
+    S3_AGENT_LINUX_INSTALL_SCRIPT_BUCKET: system-tests-aws-agent-linux-install-script
+    DD_INSTALL_SCRIPT_VERSION: $CI_PIPELINE_ID
+  before_script:
+    - mkdir -p ~/.aws
+    - aws ssm get-parameter --region us-east-1 --name ci.${CI_PROJECT_NAME}.apm-ecosystems-reliability-profile --with-decryption --query "Parameter.Value" --out text > ~/.aws/config
+    - export AWS_PROFILE=apm-ecosystems-reliability-ci
+    - |
+      echo "Uploading the install script to S3...."
+      S3_DESTINATION="s3://${S3_AGENT_LINUX_INSTALL_SCRIPT_BUCKET}/${CI_PIPELINE_ID}/"
+      echo "S3 destination: ${S3_DESTINATION}"
+      aws s3 cp ./install_script_agent7.sh "$S3_DESTINATION" --quiet || echo "Failed to upload the installer script to S3"
+      echo "Done uploading the install script to S3"
+  script:
+    - cd /system-tests
+    - git pull  # update to most recent system-tests
+    - git checkout $SYSTEM_TESTS_REF
+    - ./build.sh -i runner
+    - source venv/bin/activate
+    - python utils/scripts/ci_orchestrators/external_gitlab_pipeline.py > system_tests_pipeline.yml
+    - cp system_tests_pipeline.yml $CI_PROJECT_DIR
+  artifacts:
+    paths:
+      - system_tests_pipeline.yml
+
+system_tests:
+  stage: system_tests
+  needs: ["configure_system_tests"]
+  allow_failure: false
+  rules:
+  - when: on_success
+  variables:
+    PARENT_PIPELINE_SOURCE: $CI_PIPELINE_SOURCE
+  trigger:
+    include:
+      - artifact: system_tests_pipeline.yml
+        job: configure_system_tests
+    strategy: depend
