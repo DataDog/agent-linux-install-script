@@ -509,7 +509,7 @@ configure_system_tests:
   - when: on_success
   variables:
     SYSTEM_TESTS_SCENARIOS_GROUPS: "simple_onboarding"
-    SYSTEM_TESTS_REF: robertomonteromiguel/tweaks_agent_installer_new_pipelines
+    SYSTEM_TESTS_REF: main
     SYSTEM_TESTS_LIBRARY: auto_inject
     S3_AGENT_LINUX_INSTALL_SCRIPT_BUCKET: system-tests-aws-agent-linux-install-script
     DD_INSTALL_SCRIPT_VERSION: $CI_PIPELINE_ID
