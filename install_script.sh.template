@@ -642,7 +642,7 @@ function is_installed_by_installer() {
     local command_prefix
     if command -v datadog-installer >/dev/null 2>&1; then
         command_prefix="${sudo_cmd:+$sudo_cmd -E}"
-        $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DATADOG_TRACE_ID=\"${DATADOG_TRACE_ID}\" DATADOG_PARENT_ID=\"${DATADOG_TRACE_ID}\" datadog-installer is-installed \"${package}\""
+        $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DATADOG_TRACE_ID=\"${DATADOG_TRACE_ID}\" DATADOG_PARENT_ID=\"${DATADOG_PARENT_ID}\" datadog-installer is-installed \"${package}\""
         local status=$?
         if [ $status -eq 0 ]; then
             return 0
@@ -704,7 +704,7 @@ function _install_installer_script() {
       echo "Error: Unable to download the installer script from $installer_url. HTTP status code: $http_code"
       return 1
     fi
-    if ! bash <(curl -L -s -f --retry 3 "$installer_url") 2> >(tee /tmp/datadog-installer-stderr.log >&2 || true > /dev/null) > >(tee /tmp/datadog-installer-stdout.log || true > /dev/null); then
+    if ! DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} bash <(curl -L -s -f --retry 3 "$installer_url") 2> >(tee /tmp/datadog-installer-stderr.log >&2 || true > /dev/null) > >(tee /tmp/datadog-installer-stdout.log || true > /dev/null); then
       return 1
     fi
   elif command -v wget >/dev/null; then
@@ -713,7 +713,7 @@ function _install_installer_script() {
       echo "Error: Unable to download the installer script from $installer_url. HTTP status code: $http_code"
       return 1
     fi
-    if ! bash <(wget -q --tries=3 -O - "$installer_url") 2> >(tee /tmp/datadog-installer-stderr.log >&2 || true > /dev/null) > >(tee /tmp/datadog-installer-stdout.log || true > /dev/null); then
+    if ! DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} bash <(wget -q --tries=3 -O - "$installer_url") 2> >(tee /tmp/datadog-installer-stderr.log >&2 || true > /dev/null) > >(tee /tmp/datadog-installer-stdout.log || true > /dev/null); then
       return 1
     fi
   else
@@ -1307,6 +1307,16 @@ if [ "$OS" == "Red Hat" ]; then
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
     fi
 
+    # Complete package_sources_setup
+    end_stage 0 "$(cat <<-END | tr -d '\n'
+"agent_major_version": "${agent_major_version}",
+"agent_minor_version": "${agent_minor_version:-latest}",
+"os_detected": "${OS}",
+"package_manager": "${detected_pkg_mgr}"
+END
+)"
+    start_stage "install_agent_packages"
+
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
       if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
@@ -1316,9 +1326,9 @@ if [ "$OS" == "Red Hat" ]; then
       fi
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
-      $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
+      $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
       if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
-        $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y --disablerepo='*' --enablerepo='datadog-ddot' install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
+        $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} yum -y --disablerepo='*' --enablerepo='datadog-ddot' install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
       fi
 
       ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
@@ -1483,6 +1493,16 @@ If the cause is unclear, please contact Datadog support.
     echo exit 101 > "${POLICYRCD}"
     $sudo_cmd chmod +x "${POLICYRCD}"
 
+    # Complete package_sources_setup
+    end_stage 0 "$(cat <<-END | tr -d '\n'
+"agent_major_version": "${agent_major_version}",
+"agent_minor_version": "${agent_minor_version:-latest}",
+"os_detected": "${OS}",
+"package_manager": "${detected_pkg_mgr}"
+END
+)"
+    start_stage "install_agent_packages"
+
     $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
       $sudo_cmd mv /etc/apt/sources.list.d/datadog-ddot.list.disabled /etc/apt/sources.list.d/datadog-ddot.list
@@ -1639,6 +1659,15 @@ elif [ "$OS" == "SUSE" ]; then
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
     fi
 
+  # Complete package_sources_setup
+  end_stage 0 "$(cat <<-END | tr -d '\n'
+"agent_major_version": "${agent_major_version}",
+"agent_minor_version": "${agent_minor_version:-latest}",
+"os_detected": "${OS}",
+"package_manager": "${detected_pkg_mgr}"
+END
+)"
+  start_stage "install_agent_packages"
   if [ ${#packages[@]} -ne 0 ]; then
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
       echo -e "  \033[33mInstalling package(s): ${packages[*]} ${ddot_package}\n\033[0m"
@@ -1690,7 +1719,7 @@ https://app.datadoghq.com/account/settings/agent/latest?platform=overview"
     exit;
 fi
 
-# Complete package_sources_setup
+# Complete install_agent_packages
 end_stage 0 "$(cat <<-END | tr -d '\n'
 "repository_type": "${OS}",
 "keys_installed": "$(find /etc/apt/trusted.gpg.d/ -name 'datadog*' 2>/dev/null | wc -l || echo 0)",
