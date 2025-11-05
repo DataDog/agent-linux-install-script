@@ -43,6 +43,7 @@ The install script allows installation of different flavors of the Agent binarie
 |`DD_LOGS_CONFIG_PROCESS_COLLECT_ALL`|Enable process log collection.|
 |`DD_INSTALL_ONLY`|Set to any value to prevent starting the Agent after installation.|
 |`DD_NO_AGENT_INSTALL`|Do not install the Agent. Instead, installs package signature keys and creates configuration files if they don't already exist. Automatically set to `true` when `DD_APM_INSTRUMENTATION_ENABLED=docker`.|
+|`DD_INFRASTRUCTURE_MODE`|The monitoring mode the agent is configured in, each mode offers different amount of feature.|
 
 
 ## Install script configuration options
