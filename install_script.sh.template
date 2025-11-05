@@ -1728,7 +1728,7 @@ function update_usm(){
   $sudo_cmd cp "$config_file" "${config_file}.orig"
   $sudo_cmd sed -i \
     -e 's/^# service_monitoring_config:/service_monitoring_config:/' \
-    -e '/^service_monitoring_config:/,/^$/s/^  # enabled: false/  enabled: true/' \
+    -e '/^service_monitoring_config:/,/^$/s/^\s*#\s*enabled: false/  enabled: true/' \
     "$config_file"
 }
 function update_logs_config_process_collect_all(){
