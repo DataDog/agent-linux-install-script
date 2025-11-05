@@ -34,6 +34,7 @@ func TestInstallInfraModeSuite(t *testing.T) {
 func (s *installInfraModeTestSuite) TestInstall() {
 	s.InstallAgent(7, "DD_INFRASTRUCTURE_MODE=basic", "Install Agent 7 in basic infrastructure mode")
 	s.assertInfraModeSet("basic")
+	s.addExtraIntegration()
 	s.uninstall()
 	s.assertUninstall()
 	s.purge()
