@@ -743,7 +743,7 @@ function install_apm_ssi() {
   _install_installer_script "$installer_url" || true
 }
 
-start_stage "environment_processing"
+start_stage "initialization"
 
 echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
 
@@ -895,12 +895,14 @@ if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "docker" ] ; then
   no_agent=true
 fi
 
-# Complete environment_processing
+# Complete initialization
 end_stage 0 "$(cat <<-END | tr -d '\n'
 "api_key_provided": "$([ -n "$DD_API_KEY" ] && echo "true" || echo "false")",
 "site": "${DD_SITE:-datadoghq.com}",
 "install_only": "$([ -n "$DD_INSTALL_ONLY" ] && echo "true" || echo "false")",
-"agent_flavor": "${DD_AGENT_FLAVOR:-datadog-agent}"
+"agent_flavor": "${DD_AGENT_FLAVOR:-datadog-agent}",
+"dd_url_override": "$([ -n "$DD_URL" ] && echo "true" || echo "false")",
+"shell_type": "${0##*/}"
 END
 )"
 start_stage "configuration_validation"
@@ -1208,8 +1210,8 @@ fi
 end_stage 0 "$(cat <<-END | tr -d '\n'
 "agent_major_version": "${agent_major_version}",
 "agent_minor_version": "${agent_minor_version:-latest}",
-"os_detected": "${OS}",
-"package_manager": "${detected_pkg_mgr}"
+"package_manager": "${detected_pkg_mgr}",
+"fips_mode_enabled": "$([ -n "$fips_mode" ] && echo "true" || echo "false")"
 END
 )"
 start_stage "package_sources_setup"
@@ -1319,10 +1321,7 @@ if [ "$OS" == "Red Hat" ]; then
 
     # Complete package_sources_setup
     end_stage 0 "$(cat <<-END | tr -d '\n'
-"agent_major_version": "${agent_major_version}",
-"agent_minor_version": "${agent_minor_version:-latest}",
-"os_detected": "${OS}",
-"package_manager": "${detected_pkg_mgr}"
+"dnf_mode": "$([ -n "$dnf_flag" ] && echo "true" || echo "false")"
 END
 )"
     start_stage "install_agent_packages"
@@ -1505,10 +1504,9 @@ If the cause is unclear, please contact Datadog support.
 
     # Complete package_sources_setup
     end_stage 0 "$(cat <<-END | tr -d '\n'
-"agent_major_version": "${agent_major_version}",
-"agent_minor_version": "${agent_minor_version:-latest}",
-"os_detected": "${OS}",
-"package_manager": "${detected_pkg_mgr}"
+"dependencies_installed": "${#APT_DEPS[@]}",
+"apt_version": "${apt_version}",
+"https_transport_required": "$(printf "${apt_version}\n1.4.9" | sort -V -C && echo 'false' || echo 'true')"
 END
 )"
     start_stage "install_agent_packages"
@@ -1671,10 +1669,7 @@ elif [ "$OS" == "SUSE" ]; then
 
   # Complete package_sources_setup
   end_stage 0 "$(cat <<-END | tr -d '\n'
-"agent_major_version": "${agent_major_version}",
-"agent_minor_version": "${agent_minor_version:-latest}",
-"os_detected": "${OS}",
-"package_manager": "${detected_pkg_mgr}"
+"suse11_mode": "$([ "$SUSE11" == "yes" ] && echo 'true' || echo 'false')"
 END
 )"
   start_stage "install_agent_packages"
@@ -1731,9 +1726,11 @@ fi
 
 # Complete install_agent_packages
 end_stage 0 "$(cat <<-END | tr -d '\n'
-"repository_type": "${OS}",
-"keys_installed": "$(find /etc/apt/trusted.gpg.d/ -name 'datadog*' 2>/dev/null | wc -l || echo 0)",
-"repo_url": "${DD_REPO_URL:-datadoghq.com}"
+"packages_requested": "${#packages[@]}",
+"fips_mode_enabled": "$([ -n "$fips_mode" ] && echo "true" || echo "false")",
+"ddot_enabled": "$([ -n "$DD_OTELCOLLECTOR_ENABLED" ] && echo "true" || echo "false")",
+"no_agent_mode": "$([ -n "$no_agent" ] && echo "true" || echo "false")",
+"agent_flavor_installed": "${agent_flavor:-datadog-agent}"
 END
 )"
 start_stage "agent5_upgrade"
@@ -1758,7 +1755,9 @@ fi
 # Complete agent5_upgrade
 end_stage 0 "$(cat <<-END | tr -d '\n'
 "upgrade_requested": "$([ -n "$upgrade" ] && echo "true" || echo "false")",
-"legacy_config_exists": "$([ -e "$LEGACY_CONF" ] && echo "true" || echo "false")"
+"legacy_config_exists": "$([ -e "$LEGACY_CONF" ] && echo "true" || echo "false")",
+"legacy_config_path": "${LEGACY_CONF}",
+"import_script_available": "$([ -f "/opt/datadog-agent/bin/import" ] && echo "true" || echo "false")"
 END
 )"
 start_stage "configuration_setup"
@@ -2215,7 +2214,14 @@ monitoring_services=( "datadog-agent" )
 end_stage 0 "$(cat <<-END | tr -d '\n'
 "config_file_path": "${config_file}",
 "apm_enabled": "$([ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] && echo "$DD_APM_INSTRUMENTATION_ENABLED" || echo "false")",
-"security_enabled": "$([ -n "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" ] && echo "true" || echo "false")"
+"security_enabled": "$([ -n "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" ] && echo "true" || echo "false")",
+"compliance_enabled": "$([ -n "$DD_COMPLIANCE_CONFIG_ENABLED" ] && echo "true" || echo "false")",
+"logs_collection_enabled": "$([ "$DD_LOGS_CONFIG_PROCESS_COLLECT_ALL" == "true" ] && echo "true" || echo "false")",
+"hostname_override": "$([ -n "$hostname" ] && echo "true" || echo "false")",
+"tags_configured": "$([ -n "$host_tags" ] && echo "true" || echo "false")",
+"ddot_configured": "$([ -n "$DD_OTELCOLLECTOR_ENABLED" ] && echo "true" || echo "false")",
+"infrastructure_mode": "$([ -n "$infrastructure_mode" ] && echo "true" || echo "false")"
+
 END
 )"
 start_stage "service_management"
@@ -2313,7 +2319,9 @@ done
 end_stage 0 "$(cat <<-END | tr -d '\n'
 "services_count": "${#services[@]}",
 "no_start_mode": "$([ -n "$no_start" ] && echo "true" || echo "false")",
-"init_system": "$([ -d /run/systemd/system ] && echo "systemd" || echo "other")"
+"init_system": "$([ -d /run/systemd/system ] && echo "systemd" || echo "other")",
+"service_command": "${service_cmd}",
+"suse11_mode": "$([ "$SUSE11" == "yes" ] && echo "true" || echo "false")"
 END
 )"
 
