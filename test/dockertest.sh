@@ -49,6 +49,11 @@ while [[ $# -gt 0 ]]; do
     --opw-install-classic-agent)
       DD_OPW_INSTALL_CLASSIC_AGENT="$2"
       ;;
+    --show-trace)
+      SHOW_TRACE="1"
+      shift
+      continue
+      ;;
     --vector)
       VECTOR="$2"
       ;;
@@ -96,4 +101,5 @@ docker run --rm --platform "$PLATFORM" \
   -e TESTING_APT_REPO_VERSION="$TESTING_APT_REPO_VERSION" \
   -e TESTING_YUM_URL="$TESTING_YUM_URL" \
   -e TESTING_YUM_VERSION_PATH="$TESTING_YUM_VERSION_PATH" \
+  -e SHOW_TRACE="$SHOW_TRACE" \
   --entrypoint "$ENTRYPOINT_PATH" "$IMAGE"
