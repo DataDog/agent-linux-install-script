@@ -779,6 +779,11 @@ if [ -n "$DD_NO_AGENT_INSTALL" ]; then
     no_agent=true
 fi
 
+infrastructure_mode=
+if [ -n "$DD_INFRASTRUCTURE_MODE" ]; then
+    infrastructure_mode=$DD_INFRASTRUCTURE_MODE
+fi
+
 host_tags=  # A comma-separated list of tags, e.g. foo:bar,env:prod
 if [ -n "$DD_TAGS" ]; then
     host_tags=$DD_TAGS
@@ -819,6 +824,11 @@ fi
 system_probe_ensure_config=
 if [ -n "$DD_SYSTEM_PROBE_ENSURE_CONFIG" ]; then
   system_probe_ensure_config=$DD_SYSTEM_PROBE_ENSURE_CONFIG
+fi
+
+usm_enabled=
+if [ -n "$DD_SYSTEM_PROBE_SERVICE_MONITORING_ENABLED" ]; then
+  usm_enabled=$DD_SYSTEM_PROBE_SERVICE_MONITORING_ENABLED
 fi
 
 agent_flavor="datadog-agent"
@@ -1834,6 +1844,19 @@ function update_env(){
     $sudo_cmd sh -c "sed -i 's|^# env:.*|env: $dd_env|' $config_file"
   fi
 }
+function update_infrastructure_mode(){
+  local sudo_cmd="$1"
+  local infrastructure_mode="$2"
+  local config_file="$3"
+  if [ -n "$infrastructure_mode" ]; then
+      printf "\033[34m\n* Setting $nice_flavor configuration to use Infrastructure Mode $infrastructure_mode: $config_file\n\033[0m\n"
+      if $sudo_cmd grep -q "^# infrastructure_mode:" "$config_file"; then
+        $sudo_cmd sh -c "sed -i \"s|^# infrastructure_mode:.*$|infrastructure_mode: ""$infrastructure_mode""|\" $config_file"
+      else
+        echo "infrastructure_mode: $infrastructure_mode" | $sudo_cmd tee -a "$config_file" > /dev/null
+      fi
+  fi
+}
 function update_remote_updates(){
   local sudo_cmd="$1"
   local remote_updates="$2"
@@ -1895,16 +1918,33 @@ discovery:
   enabled: true
 EOF
 }
-function update_privileged_logs(){
+function set_privileged_logs(){
   local sudo_cmd="$1"
   local config_file="$2"
+  local enabled="$3"
 
-  printf "\033[34m\n* Setting $nice_flavor configuration to enable Privileged Logs: $config_file\n\033[0m\n"
+  local action="enable"
+  if [ "$enabled" == "false" ]; then
+    action="disable"
+  fi
+
+  printf "\033[34m\n* Setting $nice_flavor configuration to $action Privileged Logs: $config_file\n\033[0m\n"
   $sudo_cmd cp "$config_file" "${config_file}.orig"
   $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
 privileged_logs:
-  enabled: true
+  enabled: $enabled
 EOF
+}
+function update_usm(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+
+  printf "\033[34m\n* Setting $nice_flavor configuration to enable Universal Service Monitoring: $config_file\n\033[0m\n"
+  $sudo_cmd cp "$config_file" "${config_file}.orig"
+  $sudo_cmd sed -i \
+    -e 's/^# service_monitoring_config:/service_monitoring_config:/' \
+    -e '/^service_monitoring_config:/,/^$/s/^\s*#\s*enabled: false/  enabled: true/' \
+    "$config_file"
 }
 function update_logs_config_process_collect_all(){
   local sudo_cmd="$1"
@@ -1971,14 +2011,18 @@ function manage_system_probe_config(){
   local enable_security="$3"
   local enable_discovery="$4"
   local enable_privileged_logs="$5"
-  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ] || [ "$enable_privileged_logs" == "true" ]; then
+  local enable_usm="$6"
+  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ] || [ "$enable_privileged_logs" == "true" ] || [ "$enable_privileged_logs" == "false" ] || [ "$enable_usm" == "true" ]; then
     if ensure_config_file_exists "$sudo_cmd" "$probe_config_file" "root"; then
       update_security_and_or_compliance "$sudo_cmd" "$probe_config_file" "$enable_security" "false"
       if [ "$enable_discovery" == "true" ]; then
         update_discovery "$sudo_cmd" "$probe_config_file"
       fi
-      if [ "$enable_privileged_logs" == "true" ]; then
-        update_privileged_logs "$sudo_cmd" "$probe_config_file"
+      if [ "$enable_privileged_logs" == "true" ] || [ "$enable_privileged_logs" == "false" ]; then
+        set_privileged_logs "$sudo_cmd" "$probe_config_file" "$enable_privileged_logs"
+      fi
+      if [ "$enable_usm" == "true" ]; then
+        update_usm "$sudo_cmd" "$probe_config_file"
       fi
     fi
   fi
@@ -2046,6 +2090,7 @@ elif [ ! "$no_agent" ]; then
     update_hostname "$sudo_cmd" "$hostname" "$config_file"
     update_hosttags "$sudo_cmd" "$host_tags" "$config_file"
     update_env "$sudo_cmd" "$dd_env" "$config_file"
+    update_infrastructure_mode "$sudo_cmd" "$infrastructure_mode" "$config_file"
     if [ "$DD_LOGS_CONFIG_PROCESS_COLLECT_ALL" == "true" ]; then
       update_logs_config_process_collect_all "$sudo_cmd" "$config_file"
     fi
@@ -2055,10 +2100,14 @@ elif [ ! "$no_agent" ]; then
   # DD_LOGS_CONFIG_PROCESS_COLLECT_ALL needs discovery to be enabled
   if [ "$DD_LOGS_CONFIG_PROCESS_COLLECT_ALL" == "true" ]; then
     DD_DISCOVERY_ENABLED="true"
+    # Enable privileged logs by default unless explicitly set to false
+    if [ -z "$DD_PRIVILEGED_LOGS_ENABLED" ] || [ "$DD_PRIVILEGED_LOGS_ENABLED" != "false" ]; then
+      DD_PRIVILEGED_LOGS_ENABLED="true"
+    fi
   fi
 
   manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
-  manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED" "$DD_PRIVILEGED_LOGS_ENABLED"
+  manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED" "$DD_PRIVILEGED_LOGS_ENABLED" "$usm_enabled"
 fi
 
 # DDOT configuration update
