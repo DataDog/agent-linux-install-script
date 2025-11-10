@@ -90,7 +90,6 @@ function on_exit() {
 
     # Handle any remaining active stage
     if [ -n "$CURRENT_STAGE" ]; then
-        echo "DEBUG: on_exit ending active stage: $CURRENT_STAGE (exit_code=$exit_code)" >> /tmp/datadog-stages-debug.txt
         end_stage "$exit_code"  # End with actual script exit code
     fi
 
@@ -256,7 +255,6 @@ Troubleshooting and basic usage information for the $nice_flavor are available a
 
     # Auto-capture current stage failure (integrates with existing error handling)
     if [ -n "$CURRENT_STAGE" ]; then
-        echo "DEBUG: on_error capturing failure in stage: $CURRENT_STAGE" >> /tmp/datadog-stages-debug.txt
         end_stage "${ERROR_CODE:-$GENERAL_ERROR_CODE}"  # Use actual error code
     fi
 
@@ -462,9 +460,6 @@ END
     for stage_info in "${SCRIPT_STAGES[@]}"; do
         IFS=':' read -r stage_name stage_span_id stage_start stage_duration stage_error stage_metadata <<< "$stage_info"
 
-        # Debug: Log stage processing
-        echo "DEBUG: Processing stage $stage_name, span_id=$stage_span_id, error=$stage_error" >> /tmp/datadog-stages-debug.txt
-
         # Build stage metadata JSON
         local stage_meta_json="\"language\": \"shell\", \"stage\": \"${stage_name}\""
         if [ -n "$stage_metadata" ]; then
@@ -598,8 +593,6 @@ function start_stage() {
     
     # Update parent ID so subprocess spans nest under this stage
     export DATADOG_PARENT_ID=$CURRENT_STAGE_SPAN_ID
-
-    echo "DEBUG: Started stage: $stage_name (span_id=$CURRENT_STAGE_SPAN_ID)" >> /tmp/datadog-stages-debug.txt
 }
 
 # Complete current stage with result, uses existing ERROR_MESSAGE/ERROR_CODE globals
@@ -626,8 +619,6 @@ function end_stage() {
 
     # Store stage info in SCRIPT_STAGES global: "name:span_id:start_time:duration:error:metadata"
     SCRIPT_STAGES+=("$CURRENT_STAGE:$CURRENT_STAGE_SPAN_ID:$STAGE_START_TIME:$duration:$stage_error:$stage_metadata")
-
-    echo "DEBUG: Ended stage: $CURRENT_STAGE (error=$stage_error, duration=${duration}ns)" >> /tmp/datadog-stages-debug.txt
 
     # Reset stage tracking and restore parent to root trace
     CURRENT_STAGE=""
