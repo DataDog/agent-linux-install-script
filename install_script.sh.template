@@ -536,6 +536,45 @@ function is_installed_by_installer() {
     fi
 }
 
+function remove_existing_datadog_installer_package() {
+    local sudo_cmd="$1"
+    local os="$2"
+
+    local exit_status=0
+    # find if datadog-installer is installed
+    if [ "$os" == "Debian" ]; then
+        $sudo_cmd apt list --installed "datadog-installer" 2>/dev/null | grep -q "datadog-installer" || exit_status=$?
+    elif [ "$os" == "Red Hat" ]; then
+        $sudo_cmd yum list installed "datadog-installer" || exit_status=$?
+    elif [ "$os" == "SUSE" ]; then
+        $sudo_cmd zypper search -i "datadog-installer" || exit_status=$?
+    else
+        return 0
+    fi
+
+    if [ "$exit_status" -ne 0 ]; then
+        return 0
+    fi
+
+    echo -e "\033[34m\n* Removing the datadog-installer package\n\033[0m"
+    exit_status=0
+    if [ "$os" == "Debian" ]; then
+        $sudo_cmd apt-get remove -y --force-yes "datadog-installer" || exit_status=$?
+    elif [ "$os" == "Red Hat" ]; then
+        $sudo_cmd yum -y --disablerepo='*' --enablerepo='datadog' remove "datadog-installer" || $sudo_cmd yum -y remove "datadog-installer" || exit_status=$?
+    elif [ "$os" == "SUSE" ]; then
+        $sudo_cmd zypper --non-interactive --no-refresh remove "datadog-installer" || exit_status=$?
+    else
+        return 0
+    fi
+
+    if [ "$exit_status" -ne 0 ]; then
+        echo -e "\033[31m\n* Failed to remove existing datadog-installer package. Please manually remove it and try again\n\033[0m"
+        exit "$exit_status"
+    fi
+    return "$exit_status"
+}
+
 function remove_existing_packages_for_fips_flavor() {
     local sudo_cmd="$1"
     local os="$2"
@@ -1165,6 +1204,7 @@ if [ "$OS" == "Red Hat" ]; then
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
     fi
+    remove_existing_datadog_installer_package "$sudo_cmd" "$OS"
 
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
@@ -1324,6 +1364,7 @@ If the cause is unclear, please contact Datadog support.
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
     fi
+    remove_existing_datadog_installer_package "$sudo_cmd" "$OS"
 
     if [ "$agent_flavor" == "datadog-agent" ]; then
         # Old version of the install scripts created a __pycache__ directory in the python-scripts directory
@@ -1497,6 +1538,7 @@ elif [ "$OS" == "SUSE" ]; then
     if [ "$agent_flavor" == "datadog-fips-agent" ]; then
         remove_existing_packages_for_fips_flavor "$sudo_cmd" "$OS"
     fi
+    remove_existing_datadog_installer_package "$sudo_cmd" "$OS"
 
   if [ ${#packages[@]} -ne 0 ]; then
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
