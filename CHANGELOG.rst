@@ -2,8 +2,18 @@
 Release Notes
 =============
 
-Unreleased
+1.42.0
 ================
+
+- Extend current telemetry with script stage spans (#388)
+- Add infrastructure mode variable (#387)
+- Add system-tests to gitlab (#392)
+- Make privileged logs opt-out in install script if process log collection is enabled (#390)
+- Support usm in the agent script (#389)
+- Add option to enable privileged logs (#385)
+- Pin GitHub Actions to commit SHAs with version comments (#386)
+- Change sed command for replacement (#384)
+- feat(UT): Use yq for yaml config check during tests (#376)
 
 1.41.1
 ================
