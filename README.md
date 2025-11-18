@@ -93,5 +93,5 @@ Tests can be run using Docker; for example to test installation of latest Agent 
 To test installation of the latest IoT Agent 7.38 release with the `install_script_agent7.sh` file on Ubuntu 22.04 run:
 
 ```
-./test/dockertest.sh --image ubuntu:22.04 --script install_script_agent7.sh --minor_version "38" --flavor "datadog-iot-agent"
+./test/dockertest.sh --image ubuntu:22.04 --script install_script_agent7.sh --minor-version "38" --flavor "datadog-iot-agent"
 ```

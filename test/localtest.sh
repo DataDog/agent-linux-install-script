@@ -23,6 +23,62 @@ if [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] && echo "${SCRIPT}" | grep "agent
 fi
 
 cp "$SCRIPT" /tmp/script.sh
+
+# Set up trace capture for telemetry testing (only if SHOW_TRACE is set)
+if [[ "${SHOW_TRACE}" == "1" ]]; then
+  export TRACE_CAPTURE_FILE="/tmp/captured_traces.json"
+  rm -f "$TRACE_CAPTURE_FILE"
+  echo "[INFO] Trace capture enabled - traces will be captured to $TRACE_CAPTURE_FILE"
+fi
+
+# Override curl to capture trace payloads (only if SHOW_TRACE is enabled)
+if [[ "${SHOW_TRACE}" == "1" ]]; then
+  # shellcheck disable=SC2317
+  curl() {
+    if [[ "$*" == *"instrumentation-telemetry-intake"* ]]; then
+      echo "[TRACE CAPTURE] Intercepting telemetry submission" >&2
+      echo "[TRACE CAPTURE] Full curl args: $*" >&2
+      
+      # Check if using --data @- (reading from stdin)
+      if [[ "$*" == *"--data @-"* ]]; then
+        echo "[TRACE CAPTURE] Capturing data from stdin" >&2
+        # Read all stdin and save it directly
+        cat >> "$TRACE_CAPTURE_FILE"
+        echo "[TRACE CAPTURE] Data captured from stdin to $TRACE_CAPTURE_FILE" >&2
+      else
+        # Extract --data payload from parameters (fallback case)
+        while [[ $# -gt 0 ]]; do
+          case "$1" in 
+            --data)
+              if [[ -n "$2" && "$2" != "@-" ]]; then
+                echo "$2" >> "$TRACE_CAPTURE_FILE"
+                echo "[TRACE CAPTURE] Data parameter written to $TRACE_CAPTURE_FILE" >&2
+              fi
+              shift 2
+              ;;
+            --data-raw)
+              if [[ -n "$2" ]]; then
+                echo "$2" >> "$TRACE_CAPTURE_FILE"
+                echo "[TRACE CAPTURE] Data-raw parameter written to $TRACE_CAPTURE_FILE" >&2
+              fi
+              shift 2
+              ;;
+            *) 
+              shift 
+              ;;
+          esac
+        done
+      fi
+      
+      echo '202'  # Mock successful HTTP response
+      return 0
+    else
+      # Use real curl for all other requests (GPG keys, packages, etc.)
+      command curl "$@"
+    fi
+  }
+  export -f curl
+fi
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" == "all" ] || [ "$DD_APM_INSTRUMENTATION_ENABLED" == "docker" ] || [ "$SCRIPT_FLAVOR" == "docker_injection" ]; then
     # fake presence of docker for the installer
     touch /usr/local/bin/docker && chmod +x /usr/local/bin/docker
@@ -210,6 +266,55 @@ if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
   test -d /opt/datadog-packages/datadog-apm-library-python/stable
   test -d /opt/datadog-packages/datadog-apm-library-ruby/stable
   echo "[OK] Inject libraries installed"
+fi
+
+# Validate captured trace data (only if SHOW_TRACE is enabled)
+if [[ "${SHOW_TRACE}" == "1" ]]; then
+  echo "=== TRACE VALIDATION ==="
+if [ -f "$TRACE_CAPTURE_FILE" ]; then
+  echo "[OK] Trace data was captured"
+  
+  # Validate JSON structure
+  if command -v jq >/dev/null 2>&1; then
+    if jq . "$TRACE_CAPTURE_FILE" >/dev/null 2>&1; then
+      echo "[OK] Captured trace is valid JSON"
+      
+      # Count spans
+      SPAN_COUNT=$(jq '.traces[0] | length' "$TRACE_CAPTURE_FILE" 2>/dev/null || echo "0")
+      echo "[INFO] Trace contains $SPAN_COUNT spans"
+      
+      # Check for root span
+      ROOT_SPANS=$(jq '.traces[0] | map(select(.parent_id == null)) | length' "$TRACE_CAPTURE_FILE" 2>/dev/null || echo "0")
+      if [ "$ROOT_SPANS" = "1" ]; then
+        echo "[OK] Found 1 root span"
+      else
+        echo "[WARN] Expected 1 root span, found $ROOT_SPANS"
+      fi
+      
+      # List stage spans
+      STAGE_SPANS=$(jq -r '.traces[0][] | select(.parent_id != null) | .name' "$TRACE_CAPTURE_FILE" 2>/dev/null || true)
+      if [ -n "$STAGE_SPANS" ]; then
+        echo "[INFO] Stage spans found:"
+        echo "$STAGE_SPANS" | sed 's/^/  - /'
+      fi
+      
+    else
+      echo "[FAIL] Captured trace is not valid JSON"
+      RESULT=1
+    fi
+  else
+    echo "[INFO] jq not available, skipping JSON validation"
+  fi
+  
+  echo "[INFO] Captured trace data:"
+  echo "----------------------------------------"
+  cat "$TRACE_CAPTURE_FILE"
+  echo "----------------------------------------"
+  
+else
+  echo "[WARN] No trace data was captured (file not found: $TRACE_CAPTURE_FILE)"
+fi
+  echo "=== END TRACE VALIDATION ==="
 fi
 
 exit ${RESULT}

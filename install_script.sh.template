@@ -56,6 +56,14 @@ start_time=$(date +%s%N)
 export DATADOG_TRACE_ID=$trace_id
 export DATADOG_PARENT_ID=$trace_id
 
+# Stage tracking globals for detailed telemetry spans
+CURRENT_STAGE=""
+STAGE_START_TIME=""
+CURRENT_STAGE_SPAN_ID=""
+STAGE_COUNTER=0
+# Format "name:span_id:start_time:duration:error:metadata"
+declare -a SCRIPT_STAGES=()
+
 # Set up a named pipe for logging
 npipe=/tmp/$$.tmp
 mknod $npipe p
@@ -79,6 +87,12 @@ DISTRIBUTION=$(lsb_release -d 2>/dev/null | grep -Eo "$KNOWN_DISTRIBUTION" || gr
 function on_exit() {
     exit_code=$?
     rm -f $npipe
+
+    # Handle any remaining active stage
+    if [ -n "$CURRENT_STAGE" ]; then
+        end_stage "$exit_code"  # End with actual script exit code
+    fi
+
     report_installer_telemetry "$sudo_cmd" "$DD_API_KEY" "$DD_SITE" "$telemetry_url" "$trace_id" "$logfile" "$start_time" "$exit_code" "$DISTRIBUTION" || true
 }
 trap on_exit EXIT
@@ -238,6 +252,12 @@ Troubleshooting and basic usage information for the $nice_flavor are available a
 
     ERROR_MESSAGE=$SAVED_ERROR_MESSAGE
     ERROR_CODE=$GENERAL_ERROR_CODE
+
+    # Auto-capture current stage failure (integrates with existing error handling)
+    if [ -n "$CURRENT_STAGE" ]; then
+        end_stage "${ERROR_CODE:-$GENERAL_ERROR_CODE}"  # Use actual error code
+    fi
+
     report_telemetry
 
     if ! tty -s; then
@@ -403,6 +423,69 @@ function report_installer_telemetry() {
     time_now=$(date +%s%N)
     time_since_start=$((time_now - start_time))
 
+    spans_json=$(cat <<-END
+                {
+                    "service": "datadog-linux-install-script",
+                    "name": "install_script",
+                    "resource": "install_script",
+                    "trace_id": ${trace_id},
+                    "span_id": ${trace_id},
+                    "parent_id": 0,
+                    "start": ${start_time},
+                    "duration": ${time_since_start},
+                    "error": ${exit_code},
+                    "meta": {
+                        "extended_telemetry": "true",
+                        "language": "shell",
+                        "exit_code": ${exit_code},
+                        "version": "${install_script_version}",
+                        "network.gcr_io": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://gcr.io/v2/datadoghq/installer-package/manifests/latest")")",
+                        "network.install_datadoghq_com_install_script": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/scripts/install_script_agent7.sh")")",
+                        "network.install_datadoghq_com_index": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/index.html")")",
+                        "network.public_ecr_aws": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://public.ecr.aws/datadog/agent/manifests/latest")")",
+                        "network.yum_datadoghq_com": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://yum.datadoghq.com/index.html")")",
+                        "network.apt_datadoghq_com": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://apt.datadoghq.com/index.html")")"
+                    },
+                    "metrics": {
+                        "_trace_root": 1,
+                        "_top_level": 1,
+                        "_dd.top_level": 1,
+                        "_sampling_priority_v1": 2
+                    }
+                }
+END
+)
+
+    # Add stage spans
+    for stage_info in "${SCRIPT_STAGES[@]}"; do
+        IFS=':' read -r stage_name stage_span_id stage_start stage_duration stage_error stage_metadata <<< "$stage_info"
+
+        # Build stage metadata JSON
+        local stage_meta_json="\"language\": \"shell\", \"stage\": \"${stage_name}\""
+        if [ -n "$stage_metadata" ]; then
+            stage_meta_json="$stage_meta_json, $stage_metadata"
+        fi
+
+        spans_json="$spans_json,
+                {
+                    \"service\": \"datadog-linux-install-script\",
+                    \"name\": \"${stage_name}\",
+                    \"resource\": \"${stage_name}\",
+                    \"trace_id\": ${trace_id},
+                    \"span_id\": ${stage_span_id},
+                    \"parent_id\": ${trace_id},
+                    \"start\": ${stage_start},
+                    \"duration\": ${stage_duration},
+                    \"error\": ${stage_error:-0},
+                    \"meta\": {
+                        ${stage_meta_json}
+                    },
+                    \"metrics\": {
+                        \"_sampling_priority_v1\": 2
+                    }
+                }"
+    done
+
     telemetry_trace=$(cat <<-END
     {
         "api_version": "v2",
@@ -429,34 +512,7 @@ function report_installer_telemetry() {
         },
         "payload": {
             "traces": [[
-                {
-                    "service": "datadog-linux-install-script",
-                    "name": "install_script",
-                    "resource": "install_script",
-                    "trace_id": ${trace_id},
-                    "span_id": ${trace_id},
-                    "parent_id": 0,
-                    "start": ${start_time},
-                    "duration": ${time_since_start},
-                    "error": ${exit_code},
-                    "meta": {
-                        "language": "shell",
-                        "exit_code": ${exit_code},
-                        "version": "${install_script_version}",
-                        "network.gcr_io": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://gcr.io/v2/datadoghq/installer-package/manifests/latest")")",
-                        "network.install_datadoghq_com_install_script": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/scripts/install_script_agent7.sh")")",
-                        "network.install_datadoghq_com_index": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://install.datadoghq.com/index.html")")",
-                        "network.public_ecr_aws": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://public.ecr.aws/datadog/agent/manifests/latest")")",
-                        "network.yum_datadoghq_com": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://yum.datadoghq.com/index.html")")",
-                        "network.apt_datadoghq_com": "$(json_escape "$(curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://apt.datadoghq.com/index.html")")"
-                    },
-                    "metrics": {
-                        "_trace_root": 1,
-                        "_top_level": 1,
-                        "_dd.top_level": 1,
-                        "_sampling_priority_v1": 2
-                    }
-                }
+                ${spans_json}
             ]]
         }
     }
@@ -514,6 +570,61 @@ END
         echo "Unable to send trace telemetry\n"
     fi
     echo "$telemetry_trace" | $sudo_cmd tee /tmp/datadog-installer-trace.json > /dev/null
+    echo "$telemetry_logs" | $sudo_cmd tee /tmp/datadog-installer-log.json > /dev/null
+}
+
+# Begin tracking a new stage
+function start_stage() {
+    local stage_name="$1"
+
+    # End previous stage if one was running
+    if [ -n "$CURRENT_STAGE" ]; then
+        end_stage 0  # Previous stage completed successfully to reach here
+    fi
+
+    CURRENT_STAGE="$stage_name"
+    STAGE_START_TIME=$(date +%s%N)
+    STAGE_COUNTER=$((STAGE_COUNTER + 1))
+    
+    # Generate stage span ID using seconds + counter to avoid trace_id overflow
+    local time_now_seconds
+    time_now_seconds=$(date +%s)
+    CURRENT_STAGE_SPAN_ID=$((time_now_seconds * 1000 + STAGE_COUNTER))
+    
+    # Update parent ID so subprocess spans nest under this stage
+    export DATADOG_PARENT_ID=$CURRENT_STAGE_SPAN_ID
+}
+
+# Complete current stage with result, uses existing ERROR_MESSAGE/ERROR_CODE globals
+function end_stage() {
+    if [ -z "$CURRENT_STAGE" ]; then
+        return  # No active stage to end
+    fi
+    local stage_error # Error code (0 = success)
+    local stage_metadata
+    local current_time
+    local duration
+    local safe_error
+
+    stage_error="${1:-0}"
+    stage_metadata="${2:-}"
+    current_time=$(date +%s%N)
+    duration=$((current_time - STAGE_START_TIME))
+
+    # Build metadata from existing error context if available and no metadata provided
+    if [ -z "$stage_metadata" ] && [ "$stage_error" -ne 0 ]; then
+        safe_error=$(printf '%s' "${ERROR_MESSAGE:-Unknown error}" | tr '"' "'" | tr '\n' ' ' | head -c 200)
+        stage_metadata="\"error\": \"$safe_error\", \"error_code\": \"${ERROR_CODE:-$stage_error}\""
+    fi
+
+    # Store stage info in SCRIPT_STAGES global: "name:span_id:start_time:duration:error:metadata"
+    SCRIPT_STAGES+=("$CURRENT_STAGE:$CURRENT_STAGE_SPAN_ID:$STAGE_START_TIME:$duration:$stage_error:$stage_metadata")
+
+    # Reset stage tracking and restore parent to root trace
+    CURRENT_STAGE=""
+    STAGE_START_TIME=""
+    CURRENT_STAGE_SPAN_ID=""
+    export DATADOG_PARENT_ID=$trace_id
 }
 
 function is_installed_by_installer() {
@@ -522,7 +633,7 @@ function is_installed_by_installer() {
     local command_prefix
     if command -v datadog-installer >/dev/null 2>&1; then
         command_prefix="${sudo_cmd:+$sudo_cmd -E}"
-        $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DATADOG_TRACE_ID=\"${DATADOG_TRACE_ID}\" DATADOG_PARENT_ID=\"${DATADOG_TRACE_ID}\" datadog-installer is-installed \"${package}\""
+        $command_prefix sh -c "DD_API_KEY=\"${apikey}\" DD_SITE=\"${site}\" DATADOG_TRACE_ID=\"${DATADOG_TRACE_ID}\" DATADOG_PARENT_ID=\"${DATADOG_PARENT_ID}\" datadog-installer is-installed \"${package}\""
         local status=$?
         if [ $status -eq 0 ]; then
             return 0
@@ -623,7 +734,7 @@ function _install_installer_script() {
       echo "Error: Unable to download the installer script from $installer_url. HTTP status code: $http_code"
       return 1
     fi
-    if ! bash <(curl -L -s -f --retry 3 "$installer_url") 2> >(tee /tmp/datadog-installer-stderr.log >&2 || true > /dev/null) > >(tee /tmp/datadog-installer-stdout.log || true > /dev/null); then
+    if ! DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} bash <(curl -L -s -f --retry 3 "$installer_url") 2> >(tee /tmp/datadog-installer-stderr.log >&2 || true > /dev/null) > >(tee /tmp/datadog-installer-stdout.log || true > /dev/null); then
       return 1
     fi
   elif command -v wget >/dev/null; then
@@ -632,7 +743,7 @@ function _install_installer_script() {
       echo "Error: Unable to download the installer script from $installer_url. HTTP status code: $http_code"
       return 1
     fi
-    if ! bash <(wget -q --tries=3 -O - "$installer_url") 2> >(tee /tmp/datadog-installer-stderr.log >&2 || true > /dev/null) > >(tee /tmp/datadog-installer-stdout.log || true > /dev/null); then
+    if ! DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} bash <(wget -q --tries=3 -O - "$installer_url") 2> >(tee /tmp/datadog-installer-stderr.log >&2 || true > /dev/null) > >(tee /tmp/datadog-installer-stdout.log || true > /dev/null); then
       return 1
     fi
   else
@@ -661,6 +772,8 @@ function install_apm_ssi() {
   
   _install_installer_script "$installer_url" || true
 }
+
+start_stage "initialization"
 
 echo -e "\033[34m\n* Datadog INSTALL_SCRIPT_REPORT_VERSION_PLACEHOLDER install script v${install_script_version}\n\033[0m"
 
@@ -811,6 +924,18 @@ if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "docker" ] ; then
   install_type="linux_single_step_dkr"
   no_agent=true
 fi
+
+# Complete initialization
+end_stage 0 "$(cat <<-END | tr -d '\n'
+"api_key_provided": "$([ -n "$DD_API_KEY" ] && echo "true" || echo "false")",
+"site": "${DD_SITE:-datadoghq.com}",
+"install_only": "$([ -n "$DD_INSTALL_ONLY" ] && echo "true" || echo "false")",
+"agent_flavor": "${DD_AGENT_FLAVOR:-datadog-agent}",
+"dd_url_override": "$([ -n "$DD_URL" ] && echo "true" || echo "false")",
+"shell_type": "${0##*/}"
+END
+)"
+start_stage "configuration_validation"
 
 ##
 # SETUP & VALIDATE CONFIGURATION
@@ -1102,6 +1227,25 @@ if [ -n "$remote_updates" ] && { [ -n "$agent_minor_version_without_patch" ] && 
   echo -e "\033[33mWarning: Remote Agent Management is not supported for Agent versions less than 7.69 (General Availability).\n\033[0m"
 fi
 
+detected_pkg_mgr="unknown"
+if command -v apt >/dev/null; then
+    detected_pkg_mgr="apt"
+elif command -v yum >/dev/null; then
+    detected_pkg_mgr="yum"
+elif command -v zypper >/dev/null; then
+    detected_pkg_mgr="zypper"
+fi
+
+# Complete configuration_validation
+end_stage 0 "$(cat <<-END | tr -d '\n'
+"agent_major_version": "${agent_major_version}",
+"agent_minor_version": "${agent_minor_version:-latest}",
+"package_manager": "${detected_pkg_mgr}",
+"fips_mode_enabled": "$([ -n "$fips_mode" ] && echo "true" || echo "false")"
+END
+)"
+start_stage "package_sources_setup"
+
 ##
 # INSTALL THE NECESSARY PACKAGE SOURCES
 ##
@@ -1206,6 +1350,13 @@ if [ "$OS" == "Red Hat" ]; then
     fi
     remove_existing_datadog_installer_package "$sudo_cmd" "$OS"
 
+    # Complete package_sources_setup
+    end_stage 0 "$(cat <<-END | tr -d '\n'
+"dnf_mode": "$([ -n "$dnf_flag" ] && echo "true" || echo "false")"
+END
+)"
+    start_stage "install_agent_packages"
+
     # packages can be empty if no_agent is set
     if [ ${#packages[@]} -ne 0 ]; then
       if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
@@ -1215,9 +1366,9 @@ if [ "$OS" == "Red Hat" ]; then
       fi
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
-      $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
+      $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
       if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
-        $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y --disablerepo='*' --enablerepo='datadog-ddot' install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
+        $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} yum -y --disablerepo='*' --enablerepo='datadog-ddot' install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
       fi
 
       ERR_SUMMARY=$(grep "Error Summary" -A3 /tmp/ddog_install_error_msg || true)
@@ -1383,6 +1534,15 @@ If the cause is unclear, please contact Datadog support.
     echo exit 101 > "${POLICYRCD}"
     $sudo_cmd chmod +x "${POLICYRCD}"
 
+    # Complete package_sources_setup
+    end_stage 0 "$(cat <<-END | tr -d '\n'
+"dependencies_installed": "${#APT_DEPS[@]}",
+"apt_version": "${apt_version}",
+"https_transport_required": "$(printf "${apt_version}\n1.4.9" | sort -V -C && echo 'false' || echo 'true')"
+END
+)"
+    start_stage "install_agent_packages"
+
     $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
       $sudo_cmd mv /etc/apt/sources.list.d/datadog-ddot.list.disabled /etc/apt/sources.list.d/datadog-ddot.list
@@ -1540,6 +1700,12 @@ elif [ "$OS" == "SUSE" ]; then
     fi
     remove_existing_datadog_installer_package "$sudo_cmd" "$OS"
 
+  # Complete package_sources_setup
+  end_stage 0 "$(cat <<-END | tr -d '\n'
+"suse11_mode": "$([ "$SUSE11" == "yes" ] && echo 'true' || echo 'false')"
+END
+)"
+  start_stage "install_agent_packages"
   if [ ${#packages[@]} -ne 0 ]; then
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
       echo -e "  \033[33mInstalling package(s): ${packages[*]} ${ddot_package}\n\033[0m"
@@ -1591,6 +1757,17 @@ https://app.datadoghq.com/account/settings/agent/latest?platform=overview"
     exit;
 fi
 
+# Complete install_agent_packages
+end_stage 0 "$(cat <<-END | tr -d '\n'
+"packages_requested": "${#packages[@]}",
+"fips_mode_enabled": "$([ -n "$fips_mode" ] && echo "true" || echo "false")",
+"ddot_enabled": "$([ -n "$DD_OTELCOLLECTOR_ENABLED" ] && echo "true" || echo "false")",
+"no_agent_mode": "$([ -n "$no_agent" ] && echo "true" || echo "false")",
+"agent_flavor_installed": "${agent_flavor:-datadog-agent}"
+END
+)"
+start_stage "agent5_upgrade"
+
 ##
 # UPGRADE FROM AGENT 5
 ##
@@ -1607,6 +1784,16 @@ if [ -n "$upgrade" ] && [ "$agent_flavor" != "datadog-dogstatsd" ]; then
     printf "\033[31mYou don't have a datadog.conf file to convert.\n\033[0m\n"
   fi
 fi
+
+# Complete agent5_upgrade
+end_stage 0 "$(cat <<-END | tr -d '\n'
+"upgrade_requested": "$([ -n "$upgrade" ] && echo "true" || echo "false")",
+"legacy_config_exists": "$([ -e "$LEGACY_CONF" ] && echo "true" || echo "false")",
+"legacy_config_path": "${LEGACY_CONF}",
+"import_script_available": "$([ -f "/opt/datadog-agent/bin/import" ] && echo "true" || echo "false")"
+END
+)"
+start_stage "configuration_setup"
 
 ##
 # SET THE CONFIGURATION
@@ -2056,6 +2243,22 @@ fi
 declare -a monitoring_services
 monitoring_services=( "datadog-agent" )
 
+# Complete configuration_setup
+end_stage 0 "$(cat <<-END | tr -d '\n'
+"config_file_path": "${config_file}",
+"apm_enabled": "$([ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] && echo "$DD_APM_INSTRUMENTATION_ENABLED" || echo "false")",
+"security_enabled": "$([ -n "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" ] && echo "true" || echo "false")",
+"compliance_enabled": "$([ -n "$DD_COMPLIANCE_CONFIG_ENABLED" ] && echo "true" || echo "false")",
+"logs_collection_enabled": "$([ "$DD_LOGS_CONFIG_PROCESS_COLLECT_ALL" == "true" ] && echo "true" || echo "false")",
+"hostname_override": "$([ -n "$hostname" ] && echo "true" || echo "false")",
+"tags_configured": "$([ -n "$host_tags" ] && echo "true" || echo "false")",
+"ddot_configured": "$([ -n "$DD_OTELCOLLECTOR_ENABLED" ] && echo "true" || echo "false")",
+"infrastructure_mode": "$([ -n "$infrastructure_mode" ] && echo "true" || echo "false")"
+
+END
+)"
+start_stage "service_management"
+
 ##
 # START THE AGENT
 ##
@@ -2145,5 +2348,14 @@ for current_service in "${services[@]}"; do
       sudo usermod -a -G docker dd-agent\033[0m\n\n"
   fi
 done
+# Complete service_management (final stage)
+end_stage 0 "$(cat <<-END | tr -d '\n'
+"services_count": "${#services[@]}",
+"no_start_mode": "$([ -n "$no_start" ] && echo "true" || echo "false")",
+"init_system": "$([ -d /run/systemd/system ] && echo "systemd" || echo "other")",
+"service_command": "${service_cmd}",
+"suse11_mode": "$([ "$SUSE11" == "yes" ] && echo "true" || echo "false")"
+END
+)"
 
 report_telemetry "$install_id" "$install_type" "$install_time"
