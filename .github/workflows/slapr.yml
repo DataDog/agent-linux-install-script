@@ -15,9 +15,9 @@ jobs:
       - uses: DataDog/slapr@4b5efe2ce585e45898bb88c4fa303e226e8199e4 # master
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-          SLACK_CHANNEL_ID: "${{ secrets.SLACK_CHANNEL_ID }}"
+          SLACK_CHANNEL_ID: "${{ vars.SLACK_CHANNEL_ID }}"
           SLACK_API_TOKEN: "${{ secrets.SLACK_API_TOKEN }}"
-          SLAPR_BOT_USER_ID: "${{ secrets.SLAPR_BOT_USER_ID }}"
+          SLAPR_BOT_USER_ID: "${{ vars.SLAPR_BOT_USER_ID }}"
           SLAPR_EMOJI_REVIEW_STARTED: "review_started"
           SLAPR_EMOJI_APPROVED: "approved2"
           SLAPR_EMOJI_CHANGES_REQUESTED: "changes_requested"
