@@ -375,7 +375,7 @@ elif [ "$OS" == "Debian" ]; then
             # $sudo_cmd at all in this case
             DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
         else
-            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2>$DD_APT_INSTALL_ERROR_MSG || apt_exit_code=$?
+            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y apt-transport-https curl gnupg 2> >($sudo_cmd tee $DD_APT_INSTALL_ERROR_MSG >&2) || apt_exit_code=$?
         fi
 
         if grep "Could not get lock" $DD_APT_INSTALL_ERROR_MSG; then
