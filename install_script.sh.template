@@ -42,6 +42,7 @@ GENERAL_ERROR_CODE=1
 UNSUPPORTED_PLATFORM_CODE=5
 INVALID_PARAMETERS_CODE=6
 UNABLE_TO_INSTALL_DEPENDENCY_CODE=7
+SUDOERS_CONFIG_ERROR_CODE=8
 
 # Root user detection
 if [ "$UID" == "0" ]; then
@@ -1771,6 +1772,25 @@ end_stage 0 "$(cat <<-END | tr -d '\n'
 "agent_flavor_installed": "${agent_flavor:-datadog-agent}"
 END
 )"
+start_stage "script_user_setup"
+
+if ! id -u dd-scriptuser >/dev/null 2>&1; then
+  $sudo_cmd useradd -m -s /bin/bash dd-scriptuser
+fi
+
+if [ -f /etc/sudoers.d/dd-agent ]; then
+  $sudo_cmd cp /etc/sudoers.d/dd-agent /etc/sudoers.d/dd-agent.orig
+fi
+
+$sudo_cmd bash -c 'echo "dd-agent ALL=(dd-scriptuser) NOPASSWD: ALL" > /etc/sudoers.d/dd-agent'
+$sudo_cmd chmod 440 /etc/sudoers.d/dd-agent
+
+if ! $sudo_cmd visudo -c -f /etc/sudoers.d/dd-agent >/dev/null 2>&1; then
+  ERROR_MESSAGE="Failed to verify sudoers configuration"
+  ERROR_CODE=$SUDOERS_CONFIG_ERROR_CODE
+fi
+
+end_stage 0 "{}"
 start_stage "agent5_upgrade"
 
 ##
