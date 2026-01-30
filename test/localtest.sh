@@ -259,6 +259,23 @@ else
   fi
 fi
 
+if [ -n "$DD_PRIVATE_ACTION_RUNNER_ENABLED" ]; then
+  if id dd-scriptuser >/dev/null 2>&1; then
+    echo "[OK] dd-scriptuser user exists"
+  else
+    echo "[FAIL] dd-scriptuser user does not exist"
+    RESULT=1
+  fi
+
+  SU_RESULT=$(su dd-scriptuser -c "whoami" 2>/dev/null || true)
+  if [ "$SU_RESULT" = "dd-scriptuser" ]; then
+    echo "[OK] Can su to dd-scriptuser"
+  else
+    echo "[FAIL] Cannot su to dd-scriptuser"
+    RESULT=1
+  fi
+fi
+
 if [ -n "$DD_APM_INSTRUMENTATION_LANGUAGES" ]; then
   test -d /opt/datadog-packages/datadog-apm-library-dotnet/stable
   test -d /opt/datadog-packages/datadog-apm-library-java/stable
