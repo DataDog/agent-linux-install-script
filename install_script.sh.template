@@ -1778,16 +1778,18 @@ if ! id -u dd-scriptuser >/dev/null 2>&1; then
   $sudo_cmd useradd -m -s /bin/bash dd-scriptuser
 fi
 
-if [ -f /etc/sudoers.d/dd-agent ]; then
-  $sudo_cmd cp /etc/sudoers.d/dd-agent /etc/sudoers.d/dd-agent.orig
-fi
-
-$sudo_cmd bash -c 'echo "dd-agent ALL=(dd-scriptuser) NOPASSWD: ALL" > /etc/sudoers.d/dd-agent'
-$sudo_cmd chmod 440 /etc/sudoers.d/dd-agent
-
-if ! $sudo_cmd visudo -c -f /etc/sudoers.d/dd-agent >/dev/null 2>&1; then
-  ERROR_MESSAGE="Failed to verify sudoers configuration"
-  ERROR_CODE=$SUDOERS_CONFIG_ERROR_CODE
+if [ -d /etc/sudoers.d ]; then
+  if [ -f /etc/sudoers.d/dd-agent ]; then
+    $sudo_cmd cp /etc/sudoers.d/dd-agent /etc/sudoers.d/dd-agent.orig
+  fi
+  $sudo_cmd bash -c 'echo "dd-agent ALL=(dd-scriptuser) NOPASSWD: ALL" > /etc/sudoers.d/dd-agent'
+  $sudo_cmd chmod 440 /etc/sudoers.d/dd-agent
+  if ! $sudo_cmd visudo -c -f /etc/sudoers.d/dd-agent >/dev/null 2>&1; then
+    ERROR_MESSAGE="Failed to verify sudoers configuration"
+    ERROR_CODE=$SUDOERS_CONFIG_ERROR_CODE
+  fi
+else
+  echo "/etc/sudoers.d not found, skipping sudoers configuration"
 fi
 
 end_stage 0 "{}"
