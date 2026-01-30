@@ -1792,7 +1792,7 @@ else
   echo "/etc/sudoers.d not found, skipping sudoers configuration"
 fi
 
-end_stage 0 "{}"
+end_stage 0 ""
 start_stage "agent5_upgrade"
 
 ##
