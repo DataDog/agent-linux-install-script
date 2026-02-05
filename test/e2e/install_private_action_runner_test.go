@@ -54,9 +54,10 @@ func (s *installPrivateActionRunnerTestSuite) assertPrivateActionRunnerSetup() {
 	if _, err = vm.Execute("test -d /etc/sudoers.d"); err == nil {
 		t.Log("Checking sudoers configuration for dd-scriptuser")
 
-		assertFileExists(t, vm, "/etc/sudoers.d/dd-agent")
+		_, err = vm.Execute("sudo stat /etc/sudoers.d/dd-agent")
+		assert.NoError(t, err, "/etc/sudoers.d/dd-agent should exist")
 
-		perms := strings.TrimSuffix(vm.MustExecute("stat -c \"%a\" /etc/sudoers.d/dd-agent"), "\n")
+		perms := strings.TrimSuffix(vm.MustExecute("sudo stat -c \"%a\" /etc/sudoers.d/dd-agent"), "\n")
 		assert.Equal(t, "440", perms, "/etc/sudoers.d/dd-agent should have 440 permissions")
 
 		content := strings.TrimSuffix(vm.MustExecute("sudo cat /etc/sudoers.d/dd-agent"), "\n")
@@ -81,7 +82,8 @@ func (s *installPrivateActionRunnerTestSuite) assertUninstall() {
 
 	if _, err = vm.Execute("test -d /etc/sudoers.d"); err == nil {
 		t.Log("Assert sudoers configuration still exists after uninstall")
-		assertFileExists(t, vm, "/etc/sudoers.d/dd-agent")
+		_, err = vm.Execute("sudo stat /etc/sudoers.d/dd-agent")
+		assert.NoError(t, err, "/etc/sudoers.d/dd-agent should still exist after uninstall")
 	}
 }
 
