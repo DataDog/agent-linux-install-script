@@ -1775,16 +1775,18 @@ END
 start_stage "script_user_setup"
 
 if ! id -u dd-scriptuser >/dev/null 2>&1; then
-  $sudo_cmd useradd --no-create-home dd-scriptuser
+  $sudo_cmd useradd --no-create-home dd-scriptuser --system --shell /usr/sbin/nologin --no-user-group
 fi
 
 if [ -d /etc/sudoers.d ]; then
-  if [ -f /etc/sudoers.d/dd-agent ]; then
-    $sudo_cmd cp /etc/sudoers.d/dd-agent /etc/sudoers.d/dd-agent.orig
+  SUDOERS_LINE="dd-agent ALL=(dd-scriptuser) NOPASSWD: ALL"
+  SUDOERS_FILE="/etc/sudoers.d/dd-agent"
+  # Check if file doesn't exist OR doesn't contain our line
+  if [ ! -f "$SUDOERS_FILE" ] || ! grep -Fxq "$SUDOERS_LINE" "$SUDOERS_FILE" 2>/dev/null; then
+    $sudo_cmd bash -c "echo '$SUDOERS_LINE' >> $SUDOERS_FILE"
+    $sudo_cmd chmod 440 "$SUDOERS_FILE"
   fi
-  $sudo_cmd bash -c 'echo "dd-agent ALL=(dd-scriptuser) NOPASSWD: ALL" > /etc/sudoers.d/dd-agent'
-  $sudo_cmd chmod 440 /etc/sudoers.d/dd-agent
-  if ! $sudo_cmd visudo -c -f /etc/sudoers.d/dd-agent >/dev/null 2>&1; then
+  if ! $sudo_cmd visudo -c -f "$SUDOERS_FILE" >/dev/null 2>&1; then
     ERROR_MESSAGE="Failed to verify sudoers configuration"
     ERROR_CODE=$SUDOERS_CONFIG_ERROR_CODE
   fi

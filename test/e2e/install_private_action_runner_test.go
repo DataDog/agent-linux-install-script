@@ -75,6 +75,67 @@ func (s *installPrivateActionRunnerTestSuite) assertPrivateActionRunnerSetup() {
 	}
 }
 
+func (s *installPrivateActionRunnerTestSuite) TestSudoersPreservesExtraContent() {
+	s.InstallAgent(7)
+
+	t := s.T()
+	vm := s.Env().RemoteHost
+
+	if _, err := vm.Execute("test -d /etc/sudoers.d"); err != nil {
+		t.Skip("/etc/sudoers.d does not exist, skipping sudoers preservation test")
+		return
+	}
+
+	t.Log("Adding extra content to sudoers file while keeping required line")
+	vm.MustExecute("sudo bash -c 'echo \"dd-agent ALL=(dd-scriptuser) NOPASSWD: ALL\" > /etc/sudoers.d/dd-agent'")
+	vm.MustExecute("sudo bash -c 'echo \"# Extra comment\" >> /etc/sudoers.d/dd-agent'")
+
+	content := strings.TrimSuffix(vm.MustExecute("sudo cat /etc/sudoers.d/dd-agent"), "\n")
+	assert.Contains(t, content, "# Extra comment", "Extra content should be added")
+
+	t.Log("Running install script again")
+	s.InstallAgent(7)
+
+	t.Log("Checking that file still contains extra content")
+	newContent := strings.TrimSuffix(vm.MustExecute("sudo cat /etc/sudoers.d/dd-agent"), "\n")
+	assert.Contains(t, newContent, "dd-agent ALL=(dd-scriptuser) NOPASSWD: ALL", "Required line should still be present")
+	assert.Contains(t, newContent, "# Extra comment", "Extra content should be preserved when required line exists")
+
+	s.uninstall()
+	s.purge()
+}
+
+func (s *installPrivateActionRunnerTestSuite) TestSudoersAppends() {
+	s.InstallAgent(7)
+
+	t := s.T()
+	vm := s.Env().RemoteHost
+
+	if _, err := vm.Execute("test -d /etc/sudoers.d"); err != nil {
+		t.Skip("/etc/sudoers.d does not exist, skipping sudoers correction test")
+		return
+	}
+
+	t.Log("Setting incorrect content in sudoers file")
+	vm.MustExecute("sudo bash -c 'echo \"# Wrong content\" > /etc/sudoers.d/dd-agent'")
+	vm.MustExecute("sudo chmod 440 /etc/sudoers.d/dd-agent")
+
+	content := strings.TrimSuffix(vm.MustExecute("sudo cat /etc/sudoers.d/dd-agent"), "\n")
+	assert.NotContains(t, content, "dd-agent ALL=(dd-scriptuser) NOPASSWD: ALL", "File should not contain required line initially")
+
+	t.Log("Running install script again")
+	s.InstallAgent(7)
+
+	t.Log("Checking that file was corrected")
+	newContent := strings.TrimSuffix(vm.MustExecute("sudo cat /etc/sudoers.d/dd-agent"), "\n")
+	assert.Contains(t, content, newContent, "File should preserve previous content")
+	assert.Contains(t, "dd-agent ALL=(dd-scriptuser) NOPASSWD: ALL", newContent, "File should contain new line")
+
+	s.uninstall()
+	s.purge()
+}
+
+
 func (s *installPrivateActionRunnerTestSuite) assertUninstall() {
 	s.linuxInstallerTestSuite.assertUninstall()
 }
