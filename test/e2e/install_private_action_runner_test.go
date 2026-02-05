@@ -128,8 +128,8 @@ func (s *installPrivateActionRunnerTestSuite) TestSudoersAppends() {
 
 	t.Log("Checking that file was corrected")
 	newContent := strings.TrimSuffix(vm.MustExecute("sudo cat /etc/sudoers.d/dd-agent"), "\n")
-	assert.Contains(t, content, newContent, "File should preserve previous content")
-	assert.Contains(t, "dd-agent ALL=(dd-scriptuser) NOPASSWD: ALL", newContent, "File should contain new line")
+	assert.Contains(t, newContent, "# Wrong content", "File should preserve previous content")
+	assert.Contains(t, newContent, "dd-agent ALL=(dd-scriptuser) NOPASSWD: ALL", "File should contain new line")
 
 	s.uninstall()
 	s.purge()
