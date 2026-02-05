@@ -1775,7 +1775,7 @@ END
 start_stage "script_user_setup"
 
 if ! id -u dd-scriptuser >/dev/null 2>&1; then
-  $sudo_cmd useradd -m -s /bin/bash dd-scriptuser
+  $sudo_cmd useradd --no-create-home dd-scriptuser
 fi
 
 if [ -d /etc/sudoers.d ]; then
