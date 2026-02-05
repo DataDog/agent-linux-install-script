@@ -42,6 +42,7 @@ GENERAL_ERROR_CODE=1
 UNSUPPORTED_PLATFORM_CODE=5
 INVALID_PARAMETERS_CODE=6
 UNABLE_TO_INSTALL_DEPENDENCY_CODE=7
+SUDOERS_CONFIG_ERROR_CODE=8
 
 # Root user detection
 if [ "$UID" == "0" ]; then
@@ -1771,6 +1772,29 @@ end_stage 0 "$(cat <<-END | tr -d '\n'
 "agent_flavor_installed": "${agent_flavor:-datadog-agent}"
 END
 )"
+start_stage "script_user_setup"
+
+if ! id -u dd-scriptuser >/dev/null 2>&1; then
+  $sudo_cmd useradd --no-create-home dd-scriptuser --system --shell /usr/sbin/nologin --no-user-group
+fi
+
+if [ -d /etc/sudoers.d ]; then
+  SUDOERS_LINE="dd-agent ALL=(dd-scriptuser) NOPASSWD: ALL"
+  SUDOERS_FILE="/etc/sudoers.d/dd-agent"
+  # Check if file doesn't exist OR doesn't contain our line
+  if [ ! -f "$SUDOERS_FILE" ] || ! grep -Fxq "$SUDOERS_LINE" "$SUDOERS_FILE" 2>/dev/null; then
+    $sudo_cmd bash -c "echo '$SUDOERS_LINE' >> $SUDOERS_FILE"
+    $sudo_cmd chmod 440 "$SUDOERS_FILE"
+  fi
+  if ! $sudo_cmd visudo -c -f "$SUDOERS_FILE" >/dev/null 2>&1; then
+    ERROR_MESSAGE="Failed to verify sudoers configuration"
+    ERROR_CODE=$SUDOERS_CONFIG_ERROR_CODE
+  fi
+else
+  echo "/etc/sudoers.d not found, skipping sudoers configuration"
+fi
+
+end_stage 0 ""
 start_stage "agent5_upgrade"
 
 ##
