@@ -65,6 +65,10 @@ func (s *installPrivateActionRunnerTestSuite) assertPrivateActionRunnerSetup() {
 
 		_, err = vm.Execute("sudo visudo -c -f /etc/sudoers.d/dd-agent")
 		assert.NoError(t, err, "/etc/sudoers.d/dd-agent should have valid sudoers syntax")
+
+		t.Log("Testing that dd-agent can execute commands as dd-scriptuser")
+		result := strings.TrimSuffix(vm.MustExecute("sudo -u dd-agent sudo -u dd-scriptuser whoami"), "\n")
+		assert.Equal(t, "dd-scriptuser", result, "dd-agent should be able to run commands as dd-scriptuser")
 	} else {
 		t.Log("/etc/sudoers.d does not exist, skipping sudoers checks")
 	}
