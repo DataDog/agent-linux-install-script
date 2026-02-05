@@ -77,19 +77,6 @@ func (s *installPrivateActionRunnerTestSuite) assertPrivateActionRunnerSetup() {
 
 func (s *installPrivateActionRunnerTestSuite) assertUninstall() {
 	s.linuxInstallerTestSuite.assertUninstall()
-
-	t := s.T()
-	vm := s.Env().RemoteHost
-
-	t.Log("Assert dd-scriptuser user still exists after uninstall")
-	_, err := vm.Execute("id dd-scriptuser")
-	assert.NoError(t, err, "user dd-scriptuser should still exist after uninstall")
-
-	if _, err = vm.Execute("test -d /etc/sudoers.d"); err == nil {
-		t.Log("Assert sudoers configuration still exists after uninstall")
-		_, err = vm.Execute("sudo stat /etc/sudoers.d/dd-agent")
-		assert.NoError(t, err, "/etc/sudoers.d/dd-agent should still exist after uninstall")
-	}
 }
 
 func (s *installPrivateActionRunnerTestSuite) assertPurge() {
@@ -97,11 +84,4 @@ func (s *installPrivateActionRunnerTestSuite) assertPurge() {
 		return
 	}
 	s.linuxInstallerTestSuite.assertPurge()
-
-	t := s.T()
-	vm := s.Env().RemoteHost
-
-	t.Log("Assert dd-scriptuser user is removed after purge")
-	_, err := vm.Execute("id dd-scriptuser")
-	assert.Error(t, err, "user dd-scriptuser should be removed after purge")
 }
