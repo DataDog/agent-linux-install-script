@@ -35,6 +35,7 @@ func TestInstallPrivateActionRunnerSuite(t *testing.T) {
 func (s *installPrivateActionRunnerTestSuite) TestInstallWithPrivateActionRunner() {
 	s.InstallAgent(7)
 	s.assertPrivateActionRunnerSetup()
+	s.addExtraIntegration()
 	s.uninstall()
 	s.assertUninstall()
 	s.purge()
