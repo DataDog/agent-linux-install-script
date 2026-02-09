@@ -47,6 +47,34 @@ testNoKey() {
   assertEquals 0 $?
 }
 
+}
+testUpdateAppKey() {
+  sudo cp ${config_file}.example $config_file
+  update_api_key "sudo" "testapikey" $config_file
+  update_app_key "sudo" "testappkey123" $config_file
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  sudo grep -w "^app_key: testappkey123$" $config_file | sudo tee tmp > /dev/null
+  assertEquals 0 $?
+  nb_match=$(sudo cat tmp | wc -l)
+  assertEquals 1 "$nb_match"
+}
+testNoAppKey() {
+  sudo cp ${config_file}.example $config_file
+  update_app_key "sudo" "" $config_file
+  sudo grep -wq "^app_key:" $config_file
+  assertEquals 1 $?
+}
+testUpdateAppKeyWhenExists() {
+  sudo cp ${config_file}.example $config_file
+  update_api_key "sudo" "testapikey" $config_file
+  update_app_key "sudo" "firstappkey" $config_file
+  update_app_key "sudo" "updatedappkey" $config_file
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.app_key' $config_file)" "updatedappkey"
+}
+
 ### update_site
 testUpdateSite() {
   sudo cp ${config_file}.example $config_file

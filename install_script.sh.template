@@ -801,6 +801,11 @@ if [ -n "$DD_API_KEY" ]; then
     apikey=$DD_API_KEY
 fi
 
+appkey=
+if [ -n "$DD_APP_KEY" ]; then
+    appkey=$DD_APP_KEY
+fi
+
 no_start=
 if [ -n "$DD_INSTALL_ONLY" ]; then
     no_start=true
@@ -1831,6 +1836,19 @@ function update_api_key() {
     fi
   fi
 }
+function update_app_key() {
+  local sudo_cmd="$1"
+  local appkey="$2"
+  local config_file="$3"
+  if [ -n "$appkey" ]; then
+    printf "\033[34m\n* Adding your APP key to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    if $sudo_cmd grep -q "^app_key:" "$config_file"; then
+      $sudo_cmd sh -c "sed -i 's/app_key:.*/app_key: $appkey/' $config_file"
+    else
+      $sudo_cmd sh -c "sed -i '/^api_key:.*/a app_key: $appkey' $config_file"
+    fi
+  fi
+}
 function update_site() {
   local sudo_cmd="$1"
   local site="$2"
@@ -2162,6 +2180,7 @@ if [ -e "$config_file" ] && [ -z "$upgrade" ]; then
 elif [ ! "$no_agent" ]; then
   if ensure_config_file_exists "$sudo_cmd" "$config_file" "dd-agent"; then
     update_api_key "$sudo_cmd" "$apikey" "$config_file"
+    update_app_key "$sudo_cmd" "$appkey" "$config_file"
     if [ -z "$fips_mode" ]; then
       update_site "$sudo_cmd" "$site" "$config_file"
       update_url "$sudo_cmd" "$DD_URL" "$config_file"
