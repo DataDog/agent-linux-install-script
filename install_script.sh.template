@@ -2059,29 +2059,24 @@ function update_par(){
     return
   fi
 
-  $sudo_cmd cp "$config_file" "${config_file}.orig"
+  local par_config="private_action_runner:
+  enabled: true"
 
   if [ -n "$par_actions_allowlist" ]; then
-    # Convert comma-separated list to YAML array format
-    local yaml_array=""
+    par_config="${par_config}
+  nodeAgent:
+    actions_allowlist:"
     IFS=',' read -ra ACTIONS <<< "$par_actions_allowlist"
     for action in "${ACTIONS[@]}"; do
-      yaml_array="${yaml_array}    - ${action}
-"
+      par_config="${par_config}
+      - ${action}"
     done
-
-    $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
-private_action_runner:
-  enabled: true
-  actions_allowlist:
-${yaml_array}
-EOF
-  else
-    $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
-private_action_runner:
-  enabled: true
-EOF
   fi
+
+  $sudo_cmd cp "$config_file" "${config_file}.orig"
+  $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+${par_config}
+EOF
 }
 function manage_security_config(){
   local sudo_cmd="$1"
