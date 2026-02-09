@@ -2091,8 +2091,8 @@ function update_par(){
     done
   fi
 
-  $sudo_cmd cp "$config_file" "${config_file}.orig"
-  $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+  $sudo_cmd sh -c "cat >> '$config_file'" <<EOF
+
 ${par_config}
 EOF
 }
