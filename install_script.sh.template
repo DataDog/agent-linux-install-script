@@ -876,6 +876,16 @@ if [ -n "$DD_REMOTE_UPDATES" ]; then
   remote_updates=$DD_REMOTE_UPDATES
 fi
 
+par_enabled=
+if [ -n "$DD_PAR_ENABLED" ]; then
+  par_enabled=$DD_PAR_ENABLED
+fi
+
+par_actions_allowlist=
+if [ -n "$DD_PAR_ACTIONS_ALLOWLIST" ]; then
+  par_actions_allowlist=$DD_PAR_ACTIONS_ALLOWLIST
+fi
+
 ##
 # INSTALL SCRIPT CONFIGURATION OPTIONS
 # Technical options to test with non-production values for signature keys, packages or reporting telemetry.
@@ -2031,6 +2041,48 @@ EOF
     printf "\033[34m\n* agent_ipc configuration already exists in $config_file, skipping the update.\n\033[0m\n"
   fi
 }
+function update_par(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+  local par_enabled="$3"
+  local par_actions_allowlist="$4"
+
+  if [ "$par_enabled" != "true" ]; then
+    return
+  fi
+
+  printf "\033[34m\n* Setting $nice_flavor configuration for Private Action Runner: $config_file\n\033[0m\n"
+
+  # Check if private_action_runner section already exists
+  if $sudo_cmd grep -q "^private_action_runner:" "$config_file"; then
+    printf "\033[34m\n* private_action_runner configuration already exists in $config_file, skipping the update.\n\033[0m\n"
+    return
+  fi
+
+  $sudo_cmd cp "$config_file" "${config_file}.orig"
+
+  if [ -n "$par_actions_allowlist" ]; then
+    # Convert comma-separated list to YAML array format
+    local yaml_array=""
+    IFS=',' read -ra ACTIONS <<< "$par_actions_allowlist"
+    for action in "${ACTIONS[@]}"; do
+      yaml_array="${yaml_array}    - ${action}
+"
+    done
+
+    $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+private_action_runner:
+  enabled: true
+  actions_allowlist:
+${yaml_array}
+EOF
+  else
+    $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+private_action_runner:
+  enabled: true
+EOF
+  fi
+}
 function manage_security_config(){
   local sudo_cmd="$1"
   local security_config_file="$2"
@@ -2132,6 +2184,7 @@ elif [ ! "$no_agent" ]; then
       update_logs_config_process_collect_all "$sudo_cmd" "$config_file"
     fi
     update_remote_updates "$sudo_cmd" "$remote_updates" "$config_file"
+    update_par "$sudo_cmd" "$config_file" "$par_enabled" "$par_actions_allowlist"
   fi
 
   # DD_LOGS_CONFIG_PROCESS_COLLECT_ALL needs discovery to be enabled

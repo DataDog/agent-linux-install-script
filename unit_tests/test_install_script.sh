@@ -326,5 +326,54 @@ testLogsConfigProcessCollectAll() {
   assertEquals "$(sudo yq eval '.logs_config.auto_multi_line_detection' $config_file)" "true"
 }
 
+### Test update_par function
+testParDisabled() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_par "sudo" $config_file "false" ""
+  # Should not add private_action_runner section
+  sudo grep -q "^private_action_runner:" $config_file
+  assertEquals 1 $?
+}
+testParEnabledNoActions() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_par "sudo" $config_file "true" ""
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.private_action_runner.actions_allowlist' $config_file)" "null"
+}
+testParEnabledWithSingleAction() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_par "sudo" $config_file "true" "com.datadoghq.script.runPredefinedScript"
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.private_action_runner.actions_allowlist[0]' $config_file)" "com.datadoghq.script.runPredefinedScript"
+}
+testParEnabledWithMultipleActions() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_par "sudo" $config_file "true" "com.datadoghq.script.runPredefinedScript,com.datadoghq.script.runShellScript"
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.private_action_runner.actions_allowlist[0]' $config_file)" "com.datadoghq.script.runPredefinedScript"
+  assertEquals "$(sudo yq eval '.private_action_runner.actions_allowlist[1]' $config_file)" "com.datadoghq.script.runShellScript"
+}
+testParConfigAlreadyExists() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  # Add existing PAR config
+  echo "private_action_runner:" | sudo tee -a $config_file > /dev/null
+  echo "  enabled: false" | sudo tee -a $config_file > /dev/null
+  # Try to update PAR config
+  update_par "sudo" $config_file "true" "com.datadoghq.test.action"
+  # Should not modify existing config
+  assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "false"
+}
+
 # shellcheck source=/dev/null
 . shunit2
