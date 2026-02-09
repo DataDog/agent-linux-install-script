@@ -1843,9 +1843,9 @@ function update_app_key() {
   if [ -n "$appkey" ]; then
     printf "\033[34m\n* Adding your APP key to the $nice_flavor configuration: $config_file\n\033[0m\n"
     if $sudo_cmd grep -q "^app_key:" "$config_file"; then
-      $sudo_cmd sh -c "sed -i 's/app_key:.*/app_key: $appkey/' $config_file"
-    else
-      $sudo_cmd sh -c "sed -i '/^api_key:.*/a app_key: $appkey' $config_file"
+      $sudo_cmd sh -c "sed -i 's/^app_key:.*/app_key: $appkey/' $config_file"
+    elif $sudo_cmd grep -q "^# app_key:" "$config_file"; then
+      $sudo_cmd sh -c "sed -i 's/^# app_key:.*/app_key: $appkey/' $config_file"
     fi
   fi
 }
