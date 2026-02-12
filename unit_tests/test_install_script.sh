@@ -370,7 +370,7 @@ testParEnabledNoActions() {
   yamllint -c "$yaml_config" --no-warnings $config_file
   assertEquals 0 $?
   assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "true"
-  assertEquals "$(sudo yq eval '.private_action_runner.nodeAgent' $config_file)" "null"
+  assertEquals "$(sudo yq eval '.private_action_runner.node_agent' $config_file)" "null"
 }
 testParEnabledWithSingleAction() {
   sudo rm $config_file 2> /dev/null
@@ -379,7 +379,7 @@ testParEnabledWithSingleAction() {
   yamllint -c "$yaml_config" --no-warnings $config_file
   assertEquals 0 $?
   assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "true"
-  assertEquals "$(sudo yq eval '.private_action_runner.nodeAgent.actions_allowlist[0]' $config_file)" "com.datadoghq.script.runPredefinedScript"
+  assertEquals "$(sudo yq eval '.private_action_runner.node_agent.actions_allowlist[0]' $config_file)" "com.datadoghq.script.runPredefinedScript"
 }
 testParEnabledWithMultipleActions() {
   sudo rm $config_file 2> /dev/null
@@ -388,8 +388,8 @@ testParEnabledWithMultipleActions() {
   yamllint -c "$yaml_config" --no-warnings $config_file
   assertEquals 0 $?
   assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "true"
-  assertEquals "$(sudo yq eval '.private_action_runner.nodeAgent.actions_allowlist[0]' $config_file)" "com.datadoghq.script.runPredefinedScript"
-  assertEquals "$(sudo yq eval '.private_action_runner.nodeAgent.actions_allowlist[1]' $config_file)" "com.datadoghq.script.runShellScript"
+  assertEquals "$(sudo yq eval '.private_action_runner.node_agent.actions_allowlist[0]' $config_file)" "com.datadoghq.script.runPredefinedScript"
+  assertEquals "$(sudo yq eval '.private_action_runner.node_agent.actions_allowlist[1]' $config_file)" "com.datadoghq.script.runShellScript"
 }
 testParConfigAlreadyExists() {
   sudo rm $config_file 2> /dev/null

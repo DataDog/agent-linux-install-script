@@ -882,13 +882,13 @@ if [ -n "$DD_REMOTE_UPDATES" ]; then
 fi
 
 par_enabled=
-if [ -n "$DD_PAR_ENABLED" ]; then
-  par_enabled=$DD_PAR_ENABLED
+if [ -n "$DD_PRIVATE_ACTION_RUNNER_ENABLED" ]; then
+  par_enabled=$DD_PRIVATE_ACTION_RUNNER_ENABLED
 fi
 
 par_actions_allowlist=
-if [ -n "$DD_PAR_ACTIONS_ALLOWLIST" ]; then
-  par_actions_allowlist=$DD_PAR_ACTIONS_ALLOWLIST
+if [ -n "$DD_PRIVATE_ACTION_RUNNER_ACTIONS_ALLOWLIST" ]; then
+  par_actions_allowlist=$DD_PRIVATE_ACTION_RUNNER_ACTIONS_ALLOWLIST
 fi
 
 ##
@@ -2082,7 +2082,7 @@ function update_par(){
 
   if [ -n "$par_actions_allowlist" ]; then
     par_config="${par_config}
-  nodeAgent:
+  node_agent:
     actions_allowlist:"
     IFS=',' read -ra ACTIONS <<< "$par_actions_allowlist"
     for action in "${ACTIONS[@]}"; do
