@@ -2082,8 +2082,7 @@ function update_par(){
 
   if [ -n "$par_actions_allowlist" ]; then
     par_config="${par_config}
-  node_agent:
-    actions_allowlist:"
+  actions_allowlist:"
     IFS=',' read -ra ACTIONS <<< "$par_actions_allowlist"
     for action in "${ACTIONS[@]}"; do
       par_config="${par_config}
