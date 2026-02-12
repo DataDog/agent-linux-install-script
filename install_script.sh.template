@@ -2086,7 +2086,7 @@ function update_par(){
     IFS=',' read -ra ACTIONS <<< "$par_actions_allowlist"
     for action in "${ACTIONS[@]}"; do
       par_config="${par_config}
-      - ${action}"
+    - ${action}"
     done
   fi
 
