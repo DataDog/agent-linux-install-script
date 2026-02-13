@@ -8,8 +8,8 @@ require (
 	github.com/DataDog/datadog-agent/test/new-e2e v0.69.0-devel.0.20250623144139-35f8f2ceef31
 	github.com/DataDog/test-infra-definitions v0.0.4-0.20250804151413-3b64b3917189
 	github.com/hashicorp/go-envparse v0.1.0
-	github.com/hashicorp/go-version v1.6.0
-	github.com/stretchr/testify v1.10.0
+	github.com/hashicorp/go-version v1.8.0
+	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v2 v2.4.0
 )
 
