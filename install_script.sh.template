@@ -2070,26 +2070,40 @@ function update_par(){
   fi
 
   printf "\033[34m\n* Setting $nice_flavor configuration for Private Action Runner: $config_file\n\033[0m\n"
-
-  # Check if private_action_runner section already exists
   if $sudo_cmd grep -q "^private_action_runner:" "$config_file"; then
     printf "\033[34m\n* private_action_runner configuration already exists in $config_file, skipping the update.\n\033[0m\n"
     return
   fi
 
-  local par_config="private_action_runner:
-  enabled: true"
-
+  local actions_sed_insert=""
+  local actions_append=""
   if [ -n "$par_actions_allowlist" ]; then
-    par_config="${par_config}
-  actions_allowlist:"
     IFS=',' read -ra ACTIONS <<< "$par_actions_allowlist"
     for action in "${ACTIONS[@]}"; do
-      par_config="${par_config}
+      actions_sed_insert="${actions_sed_insert}    - ${action}\n"
+      actions_append="${actions_append}
     - ${action}"
     done
   fi
 
+  if $sudo_cmd grep -q "^# private_action_runner:" "$config_file"; then
+    $sudo_cmd sh -c "sed -i 's/^# private_action_runner:/private_action_runner:/' '$config_file'"
+    $sudo_cmd sh -c "sed -i '/^private_action_runner:/,\$ s/^  # enabled:.*/  enabled: true/' '$config_file'"
+
+    if [ -n "$par_actions_allowlist" ]; then
+      $sudo_cmd sh -c "sed -i '/^private_action_runner:/,\$ s/^  # actions_allowlist:.*/  actions_allowlist:/' '$config_file'"
+      $sudo_cmd sh -c "sed -i '/^private_action_runner:/,\$ { /^  #   - /d; }' '$config_file'"
+      $sudo_cmd sh -c "sed -i '/^  actions_allowlist:\$/a\\${actions_sed_insert}' '$config_file'"
+    fi
+    return
+  fi
+
+  local par_config="private_action_runner:
+  enabled: true"
+  if [ -n "$par_actions_allowlist" ]; then
+    par_config="${par_config}
+  actions_allowlist:${actions_append}"
+  fi
   $sudo_cmd sh -c "cat >> '$config_file'" <<EOF
 
 ${par_config}
