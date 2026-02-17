@@ -2088,12 +2088,16 @@ function update_par(){
 
   if $sudo_cmd grep -q "^# private_action_runner:" "$config_file"; then
     $sudo_cmd sh -c "sed -i 's/^# private_action_runner:/private_action_runner:/' '$config_file'"
-    $sudo_cmd sh -c "sed -i '/^private_action_runner:/,\$ s/^  # enabled:.*/  enabled: true/' '$config_file'"
-
+    $sudo_cmd sh -c "sed -i '/^private_action_runner:/,/^[^[:space:]]/ s/^  # enabled:.*/  enabled: true/' '$config_file'"
     if [ -n "$par_actions_allowlist" ]; then
-      $sudo_cmd sh -c "sed -i '/^private_action_runner:/,\$ s/^  # actions_allowlist:.*/  actions_allowlist:/' '$config_file'"
-      $sudo_cmd sh -c "sed -i '/^private_action_runner:/,\$ { /^  #   - /d; }' '$config_file'"
-      $sudo_cmd sh -c "sed -i '/^  actions_allowlist:\$/a\\${actions_sed_insert}' '$config_file'"
+      $sudo_cmd sh -c "sed -i '/^private_action_runner:/,/^[^[:space:]]/ s/^  # actions_allowlist:.*/  actions_allowlist:/' '$config_file'"
+      $sudo_cmd sh -c "sed -i '/^private_action_runner:/,/^[^[:space:]]/ { /^[[:space:]]*actions_allowlist:/,/^[[:space:]]*[^[:space:]]/ { /^[[:space:]]*#   - /d; } }' '$config_file'"
+      $sudo_cmd sh -c "sed -i '
+      /^private_action_runner:/,/^[^[:space:]]/ {
+        /^  actions_allowlist:\$/a\\
+${actions_sed_insert}
+      }
+    ' '$config_file'"
     fi
     return
   fi
