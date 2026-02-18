@@ -2075,6 +2075,13 @@ function update_par(){
     return
   fi
 
+  if [ -n "$par_actions_allowlist" ]; then
+    if ! echo "$par_actions_allowlist" | grep -qE '^[a-zA-Z0-9._]+(,[a-zA-Z0-9._]+)*$'; then
+      printf "\033[31m\nError: DD_PRIVATE_ACTION_RUNNER_ACTIONS_ALLOWLIST must be a comma-separated list of actions containing only letters, digits, dots and underscores\n\033[0m\n"
+      return
+    fi
+  fi
+
   local actions_sed_insert=""
   local actions_append=""
   if [ -n "$par_actions_allowlist" ]; then
