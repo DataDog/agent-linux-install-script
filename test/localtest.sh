@@ -267,7 +267,7 @@ if [ -n "$DD_PRIVATE_ACTION_RUNNER_ENABLED" ]; then
     RESULT=1
   fi
 
-  SU_RESULT=$(bin/sh -c "su dd-agent -s /bin/sh -c \"su dd-scriptuser -c whoami\"" 2>/dev/null || true)
+  SU_RESULT=$(runuser -u dd-agent -- su dd-scriptuser -c whoami 2>/dev/null || true)
   if [ "$SU_RESULT" = "dd-scriptuser" ]; then
     echo "[OK] Can su to dd-scriptuser"
   else
@@ -334,4 +334,4 @@ fi
   echo "=== END TRACE VALIDATION ==="
 fi
 
-/bin/bash
+exit ${RESULT}
