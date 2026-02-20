@@ -57,6 +57,9 @@ while [[ $# -gt 0 ]]; do
     --vector)
       VECTOR="$2"
       ;;
+    --private-action-runner)
+      DD_PRIVATE_ACTION_RUNNER_ENABLED="$2"
+      ;;
     -*)
       echo "Unknown option $1"
       exit 1
@@ -102,4 +105,5 @@ docker run --rm --platform "$PLATFORM" \
   -e TESTING_YUM_URL="$TESTING_YUM_URL" \
   -e TESTING_YUM_VERSION_PATH="$TESTING_YUM_VERSION_PATH" \
   -e SHOW_TRACE="$SHOW_TRACE" \
+  -e DD_PRIVATE_ACTION_RUNNER_ENABLED="$DD_PRIVATE_ACTION_RUNNER_ENABLED" \
   --entrypoint "$ENTRYPOINT_PATH" "$IMAGE"

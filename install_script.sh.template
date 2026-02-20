@@ -42,6 +42,7 @@ GENERAL_ERROR_CODE=1
 UNSUPPORTED_PLATFORM_CODE=5
 INVALID_PARAMETERS_CODE=6
 UNABLE_TO_INSTALL_DEPENDENCY_CODE=7
+SCRIPT_USER_SETUP_ERROR_CODE=8
 
 # Root user detection
 if [ "$UID" == "0" ]; then
@@ -1786,6 +1787,59 @@ end_stage 0 "$(cat <<-END | tr -d '\n'
 "agent_flavor_installed": "${agent_flavor:-datadog-agent}"
 END
 )"
+start_stage "script_user_setup"
+
+if [ -n "$DD_PRIVATE_ACTION_RUNNER_ENABLED" ]; then
+  # Ensure su is available
+  if ! command -v su >/dev/null 2>&1; then
+    if command -v apt >/dev/null 2>&1; then
+      $sudo_cmd apt-get install -y login >/dev/null 2>&1
+    elif command -v yum >/dev/null 2>&1; then
+      $sudo_cmd yum install -y util-linux >/dev/null 2>&1
+    fi
+  fi
+
+  if ! id -u dd-scriptuser >/dev/null 2>&1; then
+    if command -v adduser >/dev/null 2>&1 && command -v apt >/dev/null 2>&1; then
+      $sudo_cmd adduser --system --no-create-home --disabled-password dd-scriptuser --shell /bin/sh
+    else
+      $sudo_cmd useradd --no-create-home dd-scriptuser --system --shell /bin/sh --no-user-group
+    fi
+  fi
+
+  # Configure PAM to allow dd-agent to su to dd-scriptuser without password.
+  # Insert the rule before the auth include that triggers password checking.
+  PAM_SU_FILE="/etc/pam.d/su"
+  PAM_LINE="auth sufficient pam_succeed_if.so user = dd-scriptuser ruser = dd-agent"
+  if [ -f "$PAM_SU_FILE" ] && ! grep -qF "$PAM_LINE" "$PAM_SU_FILE" 2>/dev/null; then
+    if grep -q '@include common-auth' "$PAM_SU_FILE" 2>/dev/null; then
+      # Debian/Ubuntu
+      $sudo_cmd sed -i '/@include common-auth/i '"$PAM_LINE" "$PAM_SU_FILE"
+    elif grep -qE '^[[:space:]]*auth[[:space:]].*substack' "$PAM_SU_FILE" 2>/dev/null; then
+      # RHEL/CentOS/Amazon Linux
+      SUBSTACK_LINE="$(grep -nEm1 '^[[:space:]]*auth[[:space:]].*substack' "$PAM_SU_FILE" | cut -d: -f1)"
+      $sudo_cmd sed -i "${SUBSTACK_LINE}i $PAM_LINE" "$PAM_SU_FILE"
+    elif grep -qE '^[[:space:]]*auth[[:space:]].*include' "$PAM_SU_FILE" 2>/dev/null; then
+      # Other distros (e.g. SUSE)
+      INCLUDE_LINE="$(grep -nEm1 '^[[:space:]]*auth[[:space:]].*include' "$PAM_SU_FILE" | cut -d: -f1)"
+      $sudo_cmd sed -i "${INCLUDE_LINE}i $PAM_LINE" "$PAM_SU_FILE"
+    fi
+  fi
+
+  # Verify that dd-agent can su to dd-scriptuser.
+  # systemd-run creates a daemon context with unset loginuid.
+  # Falls back to runuser for systems with systemd < 236 (no --pipe support).
+  SU_OUTPUT=$($sudo_cmd systemd-run --quiet --wait --pipe -- runuser -u dd-agent -- su dd-scriptuser -c whoami 2>/dev/null) || true
+  if [ "$SU_OUTPUT" != "dd-scriptuser" ]; then
+    SU_OUTPUT=$($sudo_cmd runuser -u dd-agent -- su dd-scriptuser -c whoami 2>&1) || true
+  fi
+  if [ "$SU_OUTPUT" != "dd-scriptuser" ]; then
+    ERROR_MESSAGE="Failed to verify that dd-agent can su to dd-scriptuser"
+    ERROR_CODE=$SCRIPT_USER_SETUP_ERROR_CODE
+  fi
+fi
+
+end_stage 0 ""
 start_stage "agent5_upgrade"
 
 ##
