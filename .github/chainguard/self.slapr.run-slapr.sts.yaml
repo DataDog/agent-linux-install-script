@@ -1,0 +1,11 @@
+---
+issuer: https://token.actions.githubusercontent.com
+
+subject: repo:DataDog/agent-linux-install-script:pull_request
+
+claim_pattern:
+  event_name: (pull_request|pull_request_review)
+  job_workflow_ref: DataDog/agent-linux-install-script/\.github/workflows/slapr\.yml@refs/(heads/main|pull/\d+/merge)
+
+permissions:
+  pull_requests: read

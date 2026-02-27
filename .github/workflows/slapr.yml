@@ -11,10 +11,17 @@ permissions: {}
 jobs:
   run_slapr:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
+      - uses: DataDog/dd-octo-sts-action@acaa02eee7e3bb0839e4272dacb37b8f3b58ba80 # v1.0.3
+        id: octo-sts
+        with:
+          scope: DataDog/agent-linux-install-script
+          policy: self.slapr.run-slapr
       - uses: DataDog/slapr@4b5efe2ce585e45898bb88c4fa303e226e8199e4 # master
         env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          GITHUB_TOKEN: "${{ steps.octo-sts.outputs.token }}"
           SLACK_CHANNEL_ID: "${{ vars.SLACK_CHANNEL_ID }}"
           SLACK_API_TOKEN: "${{ secrets.SLACK_API_TOKEN }}"
           SLAPR_BOT_USER_ID: "${{ vars.SLAPR_BOT_USER_ID }}"
