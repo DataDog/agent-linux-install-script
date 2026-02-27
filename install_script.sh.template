@@ -801,6 +801,11 @@ if [ -n "$DD_API_KEY" ]; then
     apikey=$DD_API_KEY
 fi
 
+appkey=
+if [ -n "$DD_APP_KEY" ]; then
+    appkey=$DD_APP_KEY
+fi
+
 no_start=
 if [ -n "$DD_INSTALL_ONLY" ]; then
     no_start=true
@@ -874,6 +879,16 @@ fi
 remote_updates=
 if [ -n "$DD_REMOTE_UPDATES" ]; then
   remote_updates=$DD_REMOTE_UPDATES
+fi
+
+par_enabled=
+if [ -n "$DD_PRIVATE_ACTION_RUNNER_ENABLED" ]; then
+  par_enabled=$DD_PRIVATE_ACTION_RUNNER_ENABLED
+fi
+
+par_actions_allowlist=
+if [ -n "$DD_PRIVATE_ACTION_RUNNER_ACTIONS_ALLOWLIST" ]; then
+  par_actions_allowlist=$DD_PRIVATE_ACTION_RUNNER_ACTIONS_ALLOWLIST
 fi
 
 ##
@@ -1821,6 +1836,19 @@ function update_api_key() {
     fi
   fi
 }
+function update_app_key() {
+  local sudo_cmd="$1"
+  local appkey="$2"
+  local config_file="$3"
+  if [ -n "$appkey" ]; then
+    printf "\033[34m\n* Adding your APP key to the $nice_flavor configuration: $config_file\n\033[0m\n"
+    if $sudo_cmd grep -q "^app_key:" "$config_file"; then
+      $sudo_cmd sh -c "sed -i 's/^app_key:.*/app_key: $appkey/' $config_file"
+    elif $sudo_cmd grep -q "^# app_key:" "$config_file"; then
+      $sudo_cmd sh -c "sed -i 's/^# app_key:.*/app_key: $appkey/' $config_file"
+    fi
+  fi
+}
 function update_site() {
   local sudo_cmd="$1"
   local site="$2"
@@ -2031,6 +2059,67 @@ EOF
     printf "\033[34m\n* agent_ipc configuration already exists in $config_file, skipping the update.\n\033[0m\n"
   fi
 }
+function update_par(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+  local par_enabled="$3"
+  local par_actions_allowlist="$4"
+
+  if [ "$par_enabled" != "true" ]; then
+    return
+  fi
+
+  printf "\033[34m\n* Setting $nice_flavor configuration for Private Action Runner: $config_file\n\033[0m\n"
+  if $sudo_cmd grep -q "^private_action_runner:" "$config_file"; then
+    printf "\033[34m\n* private_action_runner configuration already exists in $config_file, skipping the update.\n\033[0m\n"
+    return
+  fi
+
+  if [ -n "$par_actions_allowlist" ]; then
+    if ! echo "$par_actions_allowlist" | grep -qE '^[a-zA-Z0-9._]+(,[a-zA-Z0-9._]+)*$'; then
+      printf "\033[31m\nError: DD_PRIVATE_ACTION_RUNNER_ACTIONS_ALLOWLIST must be a comma-separated list of actions containing only letters, digits, dots and underscores\n\033[0m\n"
+      return
+    fi
+  fi
+
+  local actions_sed_insert=""
+  local actions_append=""
+  if [ -n "$par_actions_allowlist" ]; then
+    IFS=',' read -ra ACTIONS <<< "$par_actions_allowlist"
+    for action in "${ACTIONS[@]}"; do
+      actions_sed_insert="${actions_sed_insert}    - ${action}\n"
+      actions_append="${actions_append}
+    - ${action}"
+    done
+  fi
+
+  if $sudo_cmd grep -q "^# private_action_runner:" "$config_file"; then
+    $sudo_cmd sh -c "sed -i 's/^# private_action_runner:/private_action_runner:/' '$config_file'"
+    $sudo_cmd sh -c "sed -i '/^private_action_runner:/,/^[^[:space:]]/ s/^  # enabled:.*/  enabled: true/' '$config_file'"
+    if [ -n "$par_actions_allowlist" ]; then
+      $sudo_cmd sh -c "sed -i '/^private_action_runner:/,/^[^[:space:]]/ s/^  # actions_allowlist:.*/  actions_allowlist:/' '$config_file'"
+      $sudo_cmd sh -c "sed -i '/^private_action_runner:/,/^[^[:space:]]/ { /^[[:space:]]*actions_allowlist:/,/^[[:space:]]*[^[:space:]]/ { /^[[:space:]]*#   - /d; } }' '$config_file'"
+      $sudo_cmd sh -c "sed -i '
+      /^private_action_runner:/,/^[^[:space:]]/ {
+        /^  actions_allowlist:\$/a\\
+${actions_sed_insert}
+      }
+    ' '$config_file'"
+    fi
+    return
+  fi
+
+  local par_config="private_action_runner:
+  enabled: true"
+  if [ -n "$par_actions_allowlist" ]; then
+    par_config="${par_config}
+  actions_allowlist:${actions_append}"
+  fi
+  $sudo_cmd sh -c "cat >> '$config_file'" <<EOF
+
+${par_config}
+EOF
+}
 function manage_security_config(){
   local sudo_cmd="$1"
   local security_config_file="$2"
@@ -2115,6 +2204,7 @@ if [ -e "$config_file" ] && [ -z "$upgrade" ]; then
 elif [ ! "$no_agent" ]; then
   if ensure_config_file_exists "$sudo_cmd" "$config_file" "dd-agent"; then
     update_api_key "$sudo_cmd" "$apikey" "$config_file"
+    update_app_key "$sudo_cmd" "$appkey" "$config_file"
     if [ -z "$fips_mode" ]; then
       update_site "$sudo_cmd" "$site" "$config_file"
       update_url "$sudo_cmd" "$DD_URL" "$config_file"
@@ -2132,6 +2222,7 @@ elif [ ! "$no_agent" ]; then
       update_logs_config_process_collect_all "$sudo_cmd" "$config_file"
     fi
     update_remote_updates "$sudo_cmd" "$remote_updates" "$config_file"
+    update_par "$sudo_cmd" "$config_file" "$par_enabled" "$par_actions_allowlist"
   fi
 
   # DD_LOGS_CONFIG_PROCESS_COLLECT_ALL needs discovery to be enabled
