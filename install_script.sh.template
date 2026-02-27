@@ -2082,36 +2082,15 @@ function update_par(){
     fi
   fi
 
-  local actions_sed_insert=""
-  local actions_append=""
-  if [ -n "$par_actions_allowlist" ]; then
-    IFS=',' read -ra ACTIONS <<< "$par_actions_allowlist"
-    for action in "${ACTIONS[@]}"; do
-      actions_sed_insert="${actions_sed_insert}    - ${action}\n"
-      actions_append="${actions_append}
-    - ${action}"
-    done
-  fi
-
-  if $sudo_cmd grep -q "^# private_action_runner:" "$config_file"; then
-    $sudo_cmd sh -c "sed -i 's/^# private_action_runner:/private_action_runner:/' '$config_file'"
-    $sudo_cmd sh -c "sed -i '/^private_action_runner:/,/^[^[:space:]]/ s/^  # enabled:.*/  enabled: true/' '$config_file'"
-    if [ -n "$par_actions_allowlist" ]; then
-      $sudo_cmd sh -c "sed -i '/^private_action_runner:/,/^[^[:space:]]/ s/^  # actions_allowlist:.*/  actions_allowlist:/' '$config_file'"
-      $sudo_cmd sh -c "sed -i '/^private_action_runner:/,/^[^[:space:]]/ { /^[[:space:]]*actions_allowlist:/,/^[[:space:]]*[^[:space:]]/ { /^[[:space:]]*#   - /d; } }' '$config_file'"
-      $sudo_cmd sh -c "sed -i '
-      /^private_action_runner:/,/^[^[:space:]]/ {
-        /^  actions_allowlist:\$/a\\
-${actions_sed_insert}
-      }
-    ' '$config_file'"
-    fi
-    return
-  fi
-
   local par_config="private_action_runner:
   enabled: true"
   if [ -n "$par_actions_allowlist" ]; then
+    local actions_append=""
+    IFS=',' read -ra ACTIONS <<< "$par_actions_allowlist"
+    for action in "${ACTIONS[@]}"; do
+      actions_append="${actions_append}
+    - ${action}"
+    done
     par_config="${par_config}
   actions_allowlist:${actions_append}"
   fi
