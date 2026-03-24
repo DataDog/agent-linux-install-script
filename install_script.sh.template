@@ -1688,7 +1688,16 @@ elif [ "$OS" == "SUSE" ]; then
       $sudo_cmd curl -sSL --retry 5 -o "/tmp/${key_path}" "https://${keys_url}/${key_path}" &
       suse_pids+=($!)
     done
-    wait "${suse_pids[@]}"
+    key_fail=0
+    for pid in "${suse_pids[@]}"; do
+        if ! wait "$pid"; then
+            key_fail=1
+        fi
+    done
+    if [ "$key_fail" -ne 0 ]; then
+        echo "Error: Failed to download one or more RPM GPG keys"
+        exit 1
+    fi
     for key_path in "${RPM_GPG_KEYS[@]}"; do
       $sudo_cmd rpm --import "/tmp/${key_path}"
     done
