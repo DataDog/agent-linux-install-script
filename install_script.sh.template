@@ -1472,7 +1472,7 @@ elif [ "$OS" == "Debian" ]; then
     # Check if all dependencies are already installed to skip apt-get update + install
     all_deps_installed=true
     for dep in "${APT_DEPS[@]}"; do
-        if ! dpkg -s "$dep" >/dev/null 2>&1; then
+        if ! dpkg -s "$dep" 2>/dev/null | grep -q "Status: install ok installed"; then
             all_deps_installed=false
             break
         fi
