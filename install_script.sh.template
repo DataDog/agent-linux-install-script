@@ -1247,7 +1247,11 @@ if [ -n "$DD_OTELCOLLECTOR_ENABLED" ]; then
     if [ -z "$agent_minor_version_without_patch" ] || [ "${agent_minor_version_without_patch}" -ge 78 ]; then
         ddot_use_installer=true
         if [ -n "$agent_minor_version_without_patch" ]; then
-            ddot_oci_tag="${agent_major_version}.${clean_agent_minor_version}-1"
+            if echo "${agent_minor_version}" | grep -q '~'; then
+                ddot_oci_tag="${agent_major_version}.$(echo "${agent_minor_version}" | sed 's/~/-/')"
+            else
+                ddot_oci_tag="${agent_major_version}.${agent_minor_version}-1"
+            fi
         fi
     fi
 fi
