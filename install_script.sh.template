@@ -1392,6 +1392,12 @@ END
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
       $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} DD_OTELCOLLECTOR_ENABLED=${DD_OTELCOLLECTOR_ENABLED} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DD_OTELCOLLECTOR_ENABLED=${DD_OTELCOLLECTOR_ENABLED} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
+      if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$agent_minor_version_without_patch" ]; then
+        installed_minor=$($sudo_cmd rpm -q --queryformat '%{VERSION}' datadog-agent 2>/dev/null | cut -d. -f2)
+        if [ -n "$installed_minor" ] && [ "$installed_minor" -ge 78 ]; then
+          skip_ddot_package_install=true
+        fi
+      fi
       if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$skip_ddot_package_install" ]; then
         $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} yum -y --disablerepo='*' --enablerepo='datadog-ddot' install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
       fi
@@ -1569,6 +1575,12 @@ END
     start_stage "install_agent_packages"
 
     $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
+    if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$agent_minor_version_without_patch" ]; then
+      installed_minor=$(dpkg-query -W -f='${Version}' datadog-agent 2>/dev/null | grep -oE '7\.[0-9]+' | head -1 | cut -d. -f2)
+      if [ -n "$installed_minor" ] && [ "$installed_minor" -ge 78 ]; then
+        skip_ddot_package_install=true
+      fi
+    fi
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$skip_ddot_package_install" ]; then
       $sudo_cmd mv /etc/apt/sources.list.d/datadog-ddot.list.disabled /etc/apt/sources.list.d/datadog-ddot.list
       $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${ddot_package} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
@@ -1744,6 +1756,12 @@ END
       $sudo_cmd DD_OTELCOLLECTOR_ENABLED="${DD_OTELCOLLECTOR_ENABLED}" ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE="${SYSTEMD_OFFLINE:-0}" zypper --non-interactive --no-refresh install "${packages[@]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
     fi
 
+    if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$agent_minor_version_without_patch" ]; then
+      installed_minor=$($sudo_cmd rpm -q --queryformat '%{VERSION}' datadog-agent 2>/dev/null | cut -d. -f2)
+      if [ -n "$installed_minor" ] && [ "$installed_minor" -ge 78 ]; then
+        skip_ddot_package_install=true
+      fi
+    fi
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$skip_ddot_package_install" ]; then
       if [ -z "$sudo_cmd" ]; then
         ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} zypper --non-interactive --no-refresh install "${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
