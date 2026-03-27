@@ -1391,7 +1391,7 @@ END
       fi
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
-      $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} DD_OTELCOLLECTOR_ENABLED=${DD_OTELCOLLECTOR_ENABLED} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DD_OTELCOLLECTOR_ENABLED=${DD_OTELCOLLECTOR_ENABLED} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
+      $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} DD_OTELCOLLECTOR_ENABLED=${DD_OTELCOLLECTOR_ENABLED} DD_INSTALLER_REGISTRY_URL=${DD_INSTALLER_REGISTRY_URL} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DD_OTELCOLLECTOR_ENABLED=${DD_OTELCOLLECTOR_ENABLED} DD_INSTALLER_REGISTRY_URL=${DD_INSTALLER_REGISTRY_URL} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
       if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$agent_minor_version_without_patch" ]; then
         installed_minor=$($sudo_cmd rpm -q --queryformat '%{VERSION}' datadog-agent 2>/dev/null | cut -d. -f2)
         if [ -n "$installed_minor" ] && [ "$installed_minor" -ge 78 ]; then
@@ -1574,7 +1574,7 @@ END
 )"
     start_stage "install_agent_packages"
 
-    $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
+    $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_INSTALLER_REGISTRY_URL='${DD_INSTALLER_REGISTRY_URL}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$agent_minor_version_without_patch" ]; then
       installed_minor=$(dpkg-query -W -f='${Version}' datadog-agent 2>/dev/null | grep -oE '7\.[0-9]+' | head -1 | cut -d. -f2)
       if [ -n "$installed_minor" ] && [ "$installed_minor" -ge 78 ]; then
@@ -1751,9 +1751,9 @@ END
     fi
     # Not yet retry mechanism in zypper, see https://github.com/openSUSE/zypper/issues/420
     if [ -z "$sudo_cmd" ]; then
-      DD_OTELCOLLECTOR_ENABLED="${DD_OTELCOLLECTOR_ENABLED}" ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} zypper --non-interactive --no-refresh install "${packages[@]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
+      DD_OTELCOLLECTOR_ENABLED="${DD_OTELCOLLECTOR_ENABLED}" DD_INSTALLER_REGISTRY_URL="${DD_INSTALLER_REGISTRY_URL}" ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} zypper --non-interactive --no-refresh install "${packages[@]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
     else
-      $sudo_cmd DD_OTELCOLLECTOR_ENABLED="${DD_OTELCOLLECTOR_ENABLED}" ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE="${SYSTEMD_OFFLINE:-0}" zypper --non-interactive --no-refresh install "${packages[@]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
+      $sudo_cmd DD_OTELCOLLECTOR_ENABLED="${DD_OTELCOLLECTOR_ENABLED}" DD_INSTALLER_REGISTRY_URL="${DD_INSTALLER_REGISTRY_URL}" ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE="${SYSTEMD_OFFLINE:-0}" zypper --non-interactive --no-refresh install "${packages[@]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
     fi
 
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$agent_minor_version_without_patch" ]; then
