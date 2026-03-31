@@ -463,7 +463,11 @@ function report_installer_telemetry() {
     net_pids+=($!)
     curl -I --max-time 5 -s -o /dev/null -w "%{http_code}" "https://apt.datadoghq.com/index.html" > "$net_tmpdir/apt" 2>/dev/null &
     net_pids+=($!)
-    wait "${net_pids[@]}"
+    # Don't let failed network probes abort telemetry reporting — these
+    # probes are diagnostic data, not prerequisites.
+    for pid in "${net_pids[@]}"; do
+        wait "$pid" || true
+    done
 
     spans_json=$(cat <<-END
                 {
