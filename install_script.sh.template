@@ -1393,7 +1393,7 @@ END
       fi
 
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
-      $sudo_cmd bash -c "DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
+      $sudo_cmd bash -c "DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' DD_INSTALLER_REGISTRY_URL='${DD_INSTALLER_REGISTRY_URL}' SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' DD_INSTALLER_REGISTRY_URL='${DD_INSTALLER_REGISTRY_URL}' SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
       if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$ddot_installed_by_agent" ]; then
         $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} yum -y --disablerepo='*' --enablerepo='datadog-ddot' install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${ddot_package}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
       fi
@@ -1570,7 +1570,7 @@ END
 )"
     start_stage "install_agent_packages"
 
-    $sudo_cmd bash -c "DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
+    $sudo_cmd bash -c "DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' DD_INSTALLER_REGISTRY_URL='${DD_INSTALLER_REGISTRY_URL}' POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$ddot_installed_by_agent" ]; then
       $sudo_cmd mv /etc/apt/sources.list.d/datadog-ddot.list.disabled /etc/apt/sources.list.d/datadog-ddot.list
       $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${ddot_package} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
@@ -1741,9 +1741,9 @@ END
     fi
     # Not yet retry mechanism in zypper, see https://github.com/openSUSE/zypper/issues/420
     if [ -z "$sudo_cmd" ]; then
-      DD_OTELCOLLECTOR_ENABLED="${DD_OTELCOLLECTOR_ENABLED}" DD_API_KEY="${apikey}" DD_SITE="${site}" ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} zypper --non-interactive --no-refresh install "${packages[@]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
+      DD_OTELCOLLECTOR_ENABLED="${DD_OTELCOLLECTOR_ENABLED}" DD_API_KEY="${apikey}" DD_SITE="${site}" DD_INSTALLER_REGISTRY_URL="${DD_INSTALLER_REGISTRY_URL}" ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} zypper --non-interactive --no-refresh install "${packages[@]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
     else
-      $sudo_cmd DD_OTELCOLLECTOR_ENABLED="${DD_OTELCOLLECTOR_ENABLED}" DD_API_KEY="${apikey}" DD_SITE="${site}" ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE="${SYSTEMD_OFFLINE:-0}" zypper --non-interactive --no-refresh install "${packages[@]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
+      $sudo_cmd DD_OTELCOLLECTOR_ENABLED="${DD_OTELCOLLECTOR_ENABLED}" DD_API_KEY="${apikey}" DD_SITE="${site}" DD_INSTALLER_REGISTRY_URL="${DD_INSTALLER_REGISTRY_URL}" ZYPP_RPM_DEBUG="${ZYPP_RPM_DEBUG:-0}" SYSTEMD_OFFLINE="${SYSTEMD_OFFLINE:-0}" zypper --non-interactive --no-refresh install "${packages[@]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) ||:
     fi
 
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$ddot_installed_by_agent" ]; then
