@@ -4,10 +4,10 @@ go 1.25.7
 
 require (
 	github.com/DataDog/datadog-agent/test/new-e2e v0.69.0-devel.0.20250623144139-35f8f2ceef31
-	github.com/DataDog/test-infra-definitions v0.0.4-0.20250804151413-3b64b3917189
+	github.com/DataDog/test-infra-definitions v0.0.6
 	github.com/hashicorp/go-envparse v0.1.0
-	github.com/hashicorp/go-version v1.6.0
-	github.com/stretchr/testify v1.10.0
+	github.com/hashicorp/go-version v1.9.0
+	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -143,18 +143,18 @@ require (
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
-	github.com/pulumi/esc v0.11.1 // indirect
+	github.com/pulumi/esc v0.17.0 // indirect
 	github.com/pulumi/pulumi-aws/sdk/v6 v6.66.2 // indirect
 	github.com/pulumi/pulumi-awsx/sdk/v2 v2.19.0 // indirect
 	github.com/pulumi/pulumi-azure-native-sdk/v2 v2.81.0 // indirect
 	github.com/pulumi/pulumi-command/sdk v1.0.1 // indirect
-	github.com/pulumi/pulumi-docker/sdk/v4 v4.5.8 // indirect
+	github.com/pulumi/pulumi-docker/sdk/v4 v4.9.0 // indirect
 	github.com/pulumi/pulumi-eks/sdk/v3 v3.7.0 // indirect
 	github.com/pulumi/pulumi-gcp/sdk/v7 v7.38.0 // indirect
-	github.com/pulumi/pulumi-kubernetes/sdk/v4 v4.19.0 // indirect
-	github.com/pulumi/pulumi-random/sdk/v4 v4.16.8 // indirect
+	github.com/pulumi/pulumi-kubernetes/sdk/v4 v4.23.0 // indirect
+	github.com/pulumi/pulumi-random/sdk/v4 v4.18.4 // indirect
 	github.com/pulumi/pulumi-tls/sdk/v4 v4.11.1 // indirect
-	github.com/pulumi/pulumi/sdk/v3 v3.145.0 // indirect
+	github.com/pulumi/pulumi/sdk/v3 v3.190.0 // indirect
 	github.com/pulumiverse/pulumi-time/sdk v0.1.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
