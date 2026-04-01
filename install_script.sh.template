@@ -1392,6 +1392,14 @@ END
         echo -e "  \033[33mInstalling package(s): ${packages[*]}\n\033[0m"
       fi
 
+      # When upgrading to 7.78+, DDOT is managed via OCI extension install.
+      # Remove the legacy datadog-agent-ddot RPM first to avoid strict version
+      # dependency conflict that prevent yum from upgrading datadog-agent.
+      if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -n "$ddot_installed_by_agent" ] && rpm -q datadog-agent-ddot &>/dev/nul; then
+        echo -e "  \033[33mRemoving legacy datadog-agent-ddot RPM package before upgrade...\n\033[0m"
+        $sudo_cmd yum -y remove datadog-agent-ddot
+      fi
+
       # yum has a default retry of 10 https://github.com/Distrotech/yum/blob/f4e54aeed297158c563828aa3ebb93d0c8ce7e38/docs/yum.conf.5#L364-L366
       $sudo_cmd bash -c "DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' DD_INSTALLER_REGISTRY_URL='${DD_INSTALLER_REGISTRY_URL}' SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} yum -y --disablerepo='*' --enablerepo='datadog' install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2) || $sudo_cmd bash -c "DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' DD_INSTALLER_REGISTRY_URL='${DD_INSTALLER_REGISTRY_URL}' SYSTEMD_OFFLINE=${SYSTEMD_OFFLINE:-0} yum -y install $dnf_flag ${packages[*]}" 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)
       if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$ddot_installed_by_agent" ]; then
