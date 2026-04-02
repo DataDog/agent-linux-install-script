@@ -5,6 +5,16 @@ Release Notes
 Unreleased
 ================
 
+1.43.0
+================
+
+- Ignore DD_OTELCOLLECTOR_ENABLED for Agent >= 7.78.0 (#406)
+- fix par_actions_allowlist bug (#407)
+- [ACTP] Add PAR config (#402)
+- [OP] ensure we can write to the log files (#400)
+- fix(fleet): Support ubuntu 25.04 & sudo-rs (#398)
+- chore(installer): Remove unused is_installed_by_installer (#399)
+
 1.42.0
 ================
 
