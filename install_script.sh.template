@@ -1395,7 +1395,7 @@ END
       # When upgrading to 7.78+, DDOT is managed via OCI extension install.
       # Remove the legacy datadog-agent-ddot RPM first to avoid strict version
       # dependency conflict that prevent yum from upgrading datadog-agent.
-      if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -n "$ddot_installed_by_agent" ] && rpm -q datadog-agent-ddot &>/dev/nul; then
+      if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -n "$ddot_installed_by_agent" ] && rpm -q datadog-agent-ddot &>/dev/null; then
         echo -e "  \033[33mRemoving legacy datadog-agent-ddot RPM package before upgrade...\n\033[0m"
         $sudo_cmd yum -y remove datadog-agent-ddot
       fi
