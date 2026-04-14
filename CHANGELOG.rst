@@ -5,6 +5,14 @@ Release Notes
 Unreleased
 ================
 
+.
+
+1.44.0
+================
+
+- Update libdatadog-build image tags to 100425777 (#417)
+- perf: parallelize network calls and skip redundant operations (#409)
+
 1.43.0
 ================
 
