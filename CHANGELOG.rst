@@ -2,10 +2,10 @@
 Release Notes
 =============
 
-Unreleased
+1.45.0
 ================
 
-.
+- Remove ddot install if version >=7.78 (installer side) (#415)
 
 1.44.0
 ================
