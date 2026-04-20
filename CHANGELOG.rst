@@ -5,6 +5,8 @@ Release Notes
 Unreleased
 ================
 
+- Forward ``DATADOG_TRACE_ID`` and ``DATADOG_PARENT_ID`` through the ``sudo apt-get install`` invocation so the agent's ``postinst`` hook (which runs ``datadog-installer``) inherits the install-script trace context. Previously only the yum path forwarded these variables, causing apt-based ``datadog-installer`` spans to appear as a separate trace detached from the install-script root span.
+
 1.45.0
 ================
 
