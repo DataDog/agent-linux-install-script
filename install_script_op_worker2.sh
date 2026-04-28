@@ -514,17 +514,33 @@ fi
 restart_cmd="$sudo_cmd $service_cmd $worker_flavor restart"
 stop_instructions="$sudo_cmd $service_cmd $worker_flavor stop"
 start_instructions="$sudo_cmd $service_cmd $worker_flavor start"
+# `service` only forwards runtime actions (start/stop/restart) to the init script;
+# it cannot register a service to start on boot. Boot-time registration is owned by
+# the init system itself, so we pick the right tool below per init system:
+#   - systemd                       -> systemctl enable          (see further down)
+#   - SysV on Debian/Ubuntu         -> update-rc.d <svc> defaults
+#   - SysV on RHEL/CentOS/Amazon    -> chkconfig <svc> on
+#   - Upstart                       -> nothing to do; the package's .conf file is
+#                                      picked up at boot automatically
+if [ "$OS" == "Debian" ]; then
+  enable_cmd="$sudo_cmd update-rc.d $worker_flavor defaults"
+else
+  enable_cmd="$sudo_cmd chkconfig $worker_flavor on"
+fi
 
 if [[ `$sudo_cmd ps --no-headers -o comm 1 2>&1` == "systemd" ]] && command -v systemctl >/dev/null 2>&1; then
   # Use systemd if systemctl binary exists and systemd is the init process
   restart_cmd="$sudo_cmd systemctl restart ${worker_flavor}.service"
   stop_instructions="$sudo_cmd systemctl stop $worker_flavor"
   start_instructions="$sudo_cmd systemctl start $worker_flavor"
+  enable_cmd="$sudo_cmd systemctl enable ${worker_flavor}.service"
 elif /sbin/init --version 2>&1 | grep -q upstart; then
   # Try to detect Upstart, this works most of the times but still a best effort
   restart_cmd="$sudo_cmd stop $worker_flavor || true ; sleep 2s ; $sudo_cmd start $worker_flavor"
   stop_instructions="$sudo_cmd stop $worker_flavor"
   start_instructions="$sudo_cmd start $worker_flavor"
+  # Upstart services installed via the package are enabled on boot by default.
+  enable_cmd=""
 fi
 
 if [ $no_start ]; then
@@ -534,6 +550,11 @@ if [ $no_start ]; then
   $start_instructions\033[0m\n\n"
 
 else
+  if [ -n "$enable_cmd" ]; then
+    printf "\033[34m* Enabling the ${nice_flavor} to start on host reboot...\n\033[0m\n"
+    eval "$enable_cmd" || printf "\033[33m  Warning: failed to enable the ${nice_flavor} on boot. You may need to enable it manually.\n\033[0m\n"
+  fi
+
   printf "\033[34m* Starting the ${nice_flavor}...\n\033[0m\n"
   ERROR_MESSAGE="Error starting ${nice_flavor}"
 
