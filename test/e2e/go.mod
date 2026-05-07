@@ -2,6 +2,8 @@ module github.com/DataDog/agent-linux-install-script/test/e2e
 
 go 1.25.7
 
+toolchain go1.26.2
+
 require (
 	github.com/DataDog/datadog-agent/test/new-e2e v0.69.0-devel.0.20250623144139-35f8f2ceef31
 	github.com/DataDog/test-infra-definitions v0.0.4-0.20250804151413-3b64b3917189
