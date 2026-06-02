@@ -2147,12 +2147,16 @@ function update_usm(){
   local sudo_cmd="$1"
   local config_file="$2"
 
-  printf "\033[34m\n* Setting $nice_flavor configuration to enable Universal Service Monitoring: $config_file\n\033[0m\n"
-  $sudo_cmd cp "$config_file" "${config_file}.orig"
-  $sudo_cmd sed -i \
-    -e 's/^# service_monitoring_config:/service_monitoring_config:/' \
-    -e '/^service_monitoring_config:/,/^$/s/^\s*#\s*enabled: false/  enabled: true/' \
-    "$config_file"
+  if ! $sudo_cmd grep -q "^service_monitoring_config:" "$config_file"; then
+    $sudo_cmd cp "$config_file" "${config_file}.orig"
+    $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+service_monitoring_config:
+  enabled: true
+EOF
+    printf "\033[34m\n* Adding service_monitoring_config to the Datadog Agent configuration: $config_file\n\033[0m\n"
+  else
+    printf "\033[34m\n* service_monitoring_config configuration already exists in $config_file, skipping the update.\n\033[0m\n"
+  fi
 }
 function update_logs_config_process_collect_all(){
   local sudo_cmd="$1"
