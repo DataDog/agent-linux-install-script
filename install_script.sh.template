@@ -2076,6 +2076,12 @@ function update_remote_updates(){
     else
       echo "remote_updates: $remote_updates" | $sudo_cmd tee -a "$config_file" > /dev/null
     fi
+    # On GovCloud (ddog-gov.com), remote_configuration.enabled defaults to false and must be
+    # explicitly set. Without it the installer daemon crashes at startup with
+    # "remote config is required to create the updater".
+    if ! $sudo_cmd grep -qE "^remote_configuration:" "$config_file"; then
+      printf "remote_configuration:\n  enabled: true\n" | $sudo_cmd tee -a "$config_file" > /dev/null
+    fi
   fi
 }
 function update_security_and_or_compliance(){
