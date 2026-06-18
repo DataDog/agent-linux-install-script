@@ -88,7 +88,7 @@ testUpdateSite() {
 testNoSite() {
   sudo cp ${config_file}.example $config_file
   update_site "sudo" "" $config_file
-  sudo grep -wq "^# site: \"datadoghq.com\"$" $config_file
+  sudo grep -wq "^# site: datadoghq.com$" $config_file || sudo grep -wq "^# site: \"datadoghq.com\"$" $config_file
   assertEquals 0 $?
 }
 
@@ -106,7 +106,7 @@ testUrlUpdated() {
 testNoUrl() {
   sudo cp ${config_file}.example $config_file
   update_url "sudo" "" $config_file
-  sudo grep -wq "^# dd_url: \"https:\/\/app.datadoghq.com\"$" $config_file
+  sudo grep -wq "^# dd_url: https:\/\/app.datadoghq.com$" $config_file || sudo grep -wq "^# dd_url: \"https:\/\/app.datadoghq.com\"$" $config_file
   assertEquals 0 $?
 }
 
