@@ -401,6 +401,22 @@ testParConfigAlreadyExists() {
   # Should not modify existing config
   assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "false"
 }
+testParEnabledWithApiKeyOnlyEnrollment() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_par "sudo" $config_file "true" "" "true"
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.private_action_runner.api_key_only_enrollment' $config_file)" "true"
+}
+testParEnabledWithoutApiKeyOnlyEnrollment() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_par "sudo" $config_file "true" ""
+  # Should not add api_key_only_enrollment when not provided
+  assertEquals "$(sudo yq eval '.private_action_runner.api_key_only_enrollment' $config_file)" "null"
+}
 
 # shellcheck source=/dev/null
 . shunit2
