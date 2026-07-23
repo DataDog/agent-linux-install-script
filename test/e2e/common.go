@@ -109,7 +109,7 @@ func (s *linuxInstallerTestSuite) InstallAgent(agentVersion int, extraParam ...s
 	}
 
 	extraParamLength := len(extraParam)
-	if agentVersion == 7 && !strings.Contains(strings.Join(extraParam, " "), "DD_AGENT_MINOR_VERSION") { // If DD_AGENT_MINOR_VERSION is set, we need to not set the testing variables
+	if agentVersion == 7 && extraParamLength == 0 {
 		if val, ok := os.LookupEnv("TESTING_YUM_VERSION_PATH"); ok {
 			scriptEnvVariable = scriptEnvVariable + fmt.Sprintf(" TESTING_YUM_VERSION_PATH='%s'", val)
 		}
