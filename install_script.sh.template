@@ -9,7 +9,7 @@ set -e
 
 DEPRECATION_MESSAGE_PLACEHOLDER
 
-install_script_version=1.45.0.post
+install_script_version=1.46.0.post
 logfile="ddagent-install.log"
 support_email=support@datadoghq.com
 variant=install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
@@ -974,6 +974,11 @@ fi
 par_actions_allowlist=
 if [ -n "$DD_PRIVATE_ACTION_RUNNER_ACTIONS_ALLOWLIST" ]; then
   par_actions_allowlist=$DD_PRIVATE_ACTION_RUNNER_ACTIONS_ALLOWLIST
+fi
+
+par_api_key_only_enrollment=
+if [ -n "$DD_PRIVATE_ACTION_RUNNER_API_KEY_ONLY_ENROLLMENT" ]; then
+  par_api_key_only_enrollment=$DD_PRIVATE_ACTION_RUNNER_API_KEY_ONLY_ENROLLMENT
 fi
 
 ##
@@ -2211,6 +2216,7 @@ function update_par(){
   local config_file="$2"
   local par_enabled="$3"
   local par_actions_allowlist="$4"
+  local par_api_key_only_enrollment="$5"
 
   if [ "$par_enabled" != "true" ]; then
     return
@@ -2240,6 +2246,10 @@ function update_par(){
     done
     par_config="${par_config}
   actions_allowlist:${actions_append}"
+  fi
+  if [ -n "$par_api_key_only_enrollment" ]; then
+    par_config="${par_config}
+  api_key_only_enrollment: ${par_api_key_only_enrollment}"
   fi
   $sudo_cmd sh -c "cat >> '$config_file'" <<EOF
 
@@ -2348,7 +2358,7 @@ elif [ ! "$no_agent" ]; then
       update_logs_config_process_collect_all "$sudo_cmd" "$config_file"
     fi
     update_remote_updates "$sudo_cmd" "$remote_updates" "$config_file"
-    update_par "$sudo_cmd" "$config_file" "$par_enabled" "$par_actions_allowlist"
+    update_par "$sudo_cmd" "$config_file" "$par_enabled" "$par_actions_allowlist" "$par_api_key_only_enrollment"
   fi
 
   # DD_LOGS_CONFIG_PROCESS_COLLECT_ALL needs discovery to be enabled

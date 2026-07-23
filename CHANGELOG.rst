@@ -5,6 +5,18 @@ Release Notes
 Unreleased
 ================
 
+1.46.0
+================
+
+- Add DD_PRIVATE_ACTION_RUNNER_API_KEY_ONLY_ENROLLMENT env var (#437)
+- Add quote around expected site and dd_url value to match new example (#433)
+- Make sure we keep the testing params when extra params does not override minor version (#430)
+- ADMS: vuln minor upgrades — 5 packages (minor: 5) [test/e2e] (#434)
+- Executing automated changes (#429)
+- Fleet-automation exclusive ownership of agent linux install script (#427)
+- transfer code ownership to fleet-automation (#423)
+- fix(usm): prepend service_monitoring_config via heredoc (#431)
+
 1.45.0
 ================
 
