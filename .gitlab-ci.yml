@@ -12,10 +12,9 @@ stages:
 
 variables:
   AWS_MAX_ATTEMPTS: 5 # retry AWS operations 5 times if they fail on network errors
-  CI_IMAGE_AGENT_DEPLOY: v47979770-a5a4cfd0
-  CI_IMAGE_DEB_X64: v47979770-a5a4cfd0
+  CI_IMAGE_AGENT_DEPLOY: v128862929-880822bc
+  CI_IMAGE_LINUX: v128862929-880822bc
   S3_CP_CMD: aws s3 cp --only-show-errors --region us-east-1 --sse AES256
-  TEST_INFRA_DEFINITIONS_BUILDIMAGES: 3b64b3917189
   DEFAULT_MAJOR_VERSION: 7
   TESTING_DIR: ${CI_PROJECT_DIR}
   DD_INSTALL_ONLY: "true"
@@ -42,7 +41,7 @@ default:
     - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_APT_REPO_VERSION="stable-x86_64 ${MAJOR_VERSION}"'
 
 generate-scripts:
-  image: registry.ddbuild.io/ci/datadog-agent-buildimages/deb_x64:$CI_IMAGE_DEB_X64
+  image: registry.ddbuild.io/ci/datadog-agent-buildimages/linux:$CI_IMAGE_LINUX
   tags: [arch:amd64]
   stage: generate
   script:
@@ -61,7 +60,7 @@ generate-scripts:
 # Common fetching step to avoid having every e2e test job re-fetch everything over the net
 go_e2e_deps:
   stage: deps_fetch
-  image: registry.ddbuild.io/ci/datadog-agent-buildimages/deb_x64:$CI_IMAGE_DEB_X64
+  image: registry.ddbuild.io/ci/datadog-agent-buildimages/linux:$CI_IMAGE_LINUX
   tags: ["arch:amd64"]
   variables:
     KUBERNETES_CPU_REQUEST: 16
@@ -313,11 +312,15 @@ test-vector:
 
 e2e:
   stage: e2e
-  image: registry.ddbuild.io/ci/test-infra-definitions/runner:$TEST_INFRA_DEFINITIONS_BUILDIMAGES
+  image: registry.ddbuild.io/ci/datadog-agent-buildimages/linux:$CI_IMAGE_LINUX
   tags: ["arch:amd64"]
   dependencies:
     - generate-scripts
     - go_e2e_deps
+  variables:
+    GOPROXY: "https://depot-read-api-go.rapid-dependency-management-depot.all-clusters.local-dc.fabric.dog:8443/magicmirror/magicmirror/@current/|https://depot-read-api-go.us1.ddbuild.io/magicmirror/magicmirror/@current/|https://depot-read-api-go.us1.ddbuild.io/magicmirror/testing/@current/|https://depot-read-api-go.us1.ddbuild.io/magicmirror/magicmirror/@current/|https://depot-read-api-go.us1.ddbuild.io/magicmirror/testing/@current/|https://depot-read-api-go.us1.ddbuild.io/magicmirror/magicmirror/@current/|https://depot-read-api-go.us1.ddbuild.io/magicmirror/testing/@current/|direct"
+    GONOSUMDB: "github.com/DataDog,go.ddbuild.io"
+    GOPRIVATE: ""
   before_script:
     # Default before_script
     - '[ -z "$MAJOR_VERSION" ] && export MAJOR_VERSION=${DEFAULT_MAJOR_VERSION}'
@@ -337,6 +340,7 @@ e2e:
     # Retrieve common go deps
     - mkdir -p $GOPATH/pkg/mod && tar xJf modcache_e2e.tar.xz -C $GOPATH/pkg/mod && rm -f modcache_e2e.tar.xz
   script:
+    - go install gotest.tools/gotestsum@latest
     - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_ID}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} --scriptPath ${SCRIPT_PATH} ${EXTRA_PARAMS}
   after_script:
     - set +x
