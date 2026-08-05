@@ -19,7 +19,7 @@ jobs:
         with:
           scope: DataDog/agent-linux-install-script
           policy: self.slapr.run-slapr
-      - uses: DataDog/slapr@4b5efe2ce585e45898bb88c4fa303e226e8199e4 # master
+      - uses: DataDog/slapr@4b5efe2ce585e45898bb88c4fa303e226e8199e4 # 1.0.0
         env:
           GITHUB_TOKEN: "${{ steps.octo-sts.outputs.token }}"
           SLACK_CHANNEL_ID: "${{ vars.SLACK_CHANNEL_ID }}"
