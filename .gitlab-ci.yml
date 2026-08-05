@@ -317,6 +317,10 @@ e2e:
   dependencies:
     - generate-scripts
     - go_e2e_deps
+  variables:
+    GOPROXY: "https://depot-read-api-go.rapid-dependency-management-depot.all-clusters.local-dc.fabric.dog:8443/magicmirror/magicmirror/@current/|https://depot-read-api-go.us1.ddbuild.io/magicmirror/magicmirror/@current/|https://depot-read-api-go.us1.ddbuild.io/magicmirror/testing/@current/|https://depot-read-api-go.us1.ddbuild.io/magicmirror/magicmirror/@current/|https://depot-read-api-go.us1.ddbuild.io/magicmirror/testing/@current/|https://depot-read-api-go.us1.ddbuild.io/magicmirror/magicmirror/@current/|https://depot-read-api-go.us1.ddbuild.io/magicmirror/testing/@current/|direct"
+    GONOSUMDB: "github.com/DataDog,go.ddbuild.io"
+    GOPRIVATE: ""
   before_script:
     # Default before_script
     - '[ -z "$MAJOR_VERSION" ] && export MAJOR_VERSION=${DEFAULT_MAJOR_VERSION}'
@@ -336,6 +340,7 @@ e2e:
     # Retrieve common go deps
     - mkdir -p $GOPATH/pkg/mod && tar xJf modcache_e2e.tar.xz -C $GOPATH/pkg/mod && rm -f modcache_e2e.tar.xz
   script:
+    - go install gotest.tools/gotestsum@latest
     - cd test/e2e && gotestsum --format standard-verbose --junitfile "junit-${CI_JOB_ID}.xml" -- -timeout 0s . -v --flavor ${FLAVOR} --platform ${PLATFORM} --scriptPath ${SCRIPT_PATH} ${EXTRA_PARAMS}
   after_script:
     - set +x
