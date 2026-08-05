@@ -15,7 +15,6 @@ variables:
   CI_IMAGE_AGENT_DEPLOY: v128862929-880822bc
   CI_IMAGE_LINUX: v128862929-880822bc
   S3_CP_CMD: aws s3 cp --only-show-errors --region us-east-1 --sse AES256
-  TEST_INFRA_DEFINITIONS_BUILDIMAGES: c7949bda0498 # Taken from ops-specific branch https://github.com/DataDog/test-infra-definitions/pull/1856
   DEFAULT_MAJOR_VERSION: 7
   TESTING_DIR: ${CI_PROJECT_DIR}
   DD_INSTALL_ONLY: "true"
@@ -313,7 +312,7 @@ test-vector:
 
 e2e:
   stage: e2e
-  image: registry.ddbuild.io/ci/test-infra-definitions/runner:$TEST_INFRA_DEFINITIONS_BUILDIMAGES
+  image: registry.ddbuild.io/ci/datadog-agent-buildimages/linux:$CI_IMAGE_LINUX
   tags: ["arch:amd64"]
   dependencies:
     - generate-scripts
