@@ -13,7 +13,7 @@ stages:
 variables:
   AWS_MAX_ATTEMPTS: 5 # retry AWS operations 5 times if they fail on network errors
   CI_IMAGE_AGENT_DEPLOY: v29037187-880822bc
-  CI_IMAGE_DEB_X64: v29037187-880822bc
+  CI_IMAGE_LINUX: v29037187-880822bc
   S3_CP_CMD: aws s3 cp --only-show-errors --region us-east-1 --sse AES256
   TEST_INFRA_DEFINITIONS_BUILDIMAGES: c7949bda0498 # Taken from ops-specific branch https://github.com/DataDog/test-infra-definitions/pull/1856
   DEFAULT_MAJOR_VERSION: 7
@@ -42,7 +42,7 @@ default:
     - '[ ! -z "$TEST_PIPELINE_ID" ] && export TESTING_APT_REPO_VERSION="stable-x86_64 ${MAJOR_VERSION}"'
 
 generate-scripts:
-  image: registry.ddbuild.io/ci/datadog-agent-buildimages/deb_x64:$CI_IMAGE_DEB_X64
+  image: registry.ddbuild.io/ci/datadog-agent-buildimages/linux:$CI_IMAGE_LINUX
   tags: [arch:amd64]
   stage: generate
   script:
@@ -61,7 +61,7 @@ generate-scripts:
 # Common fetching step to avoid having every e2e test job re-fetch everything over the net
 go_e2e_deps:
   stage: deps_fetch
-  image: registry.ddbuild.io/ci/datadog-agent-buildimages/deb_x64:$CI_IMAGE_DEB_X64
+  image: registry.ddbuild.io/ci/datadog-agent-buildimages/linux:$CI_IMAGE_LINUX
   tags: ["arch:amd64"]
   variables:
     KUBERNETES_CPU_REQUEST: 16
