@@ -349,6 +349,351 @@ function remove_rpm_gpg_keys() {
     done
 }
 
+function validate_iot_installer_options() {
+    local agent_flavor="${1-}"
+    local agent_major_version="${2-}"
+    local infrastructure_mode="${3-}"
+    local -a incompatible_option_names=(
+        DD_FIPS_MODE
+        DD_APM_INSTRUMENTATION_ENABLED
+        DD_APM_INSTRUMENTATION_LIBRARIES
+        DD_OTELCOLLECTOR_ENABLED
+        DD_REMOTE_UPDATES
+        DD_NO_AGENT_INSTALL
+        DD_UPGRADE
+        DD_RUNTIME_SECURITY_CONFIG_ENABLED
+        DD_COMPLIANCE_CONFIG_ENABLED
+        DD_DISCOVERY_ENABLED
+        DD_SYSTEM_PROBE_SERVICE_MONITORING_ENABLED
+        DD_PRIVILEGED_LOGS_ENABLED
+        DD_PRIVATE_ACTION_RUNNER_ENABLED
+    )
+    local -a incompatible_option_values=(
+        "${4-}"
+        "${5-}"
+        "${6-}"
+        "${7-}"
+        "${8-}"
+        "${9-}"
+        "${10-}"
+        "${11-}"
+        "${12-}"
+        "${13-}"
+        "${14-}"
+        "${15-}"
+        "${16-}"
+    )
+    local option_index
+
+    if [ -n "$agent_flavor" ] && [ "$agent_flavor" != "datadog-agent" ]; then
+        printf 'Filtered IoT installation requires the normal datadog-agent package; set DD_AGENT_FLAVOR=datadog-agent or unset it.\n' >&2
+        return 1
+    fi
+    if [ "$agent_major_version" != "7" ]; then
+        printf 'Filtered IoT installation requires Agent 7; set DD_AGENT_MAJOR_VERSION=7.\n' >&2
+        return 1
+    fi
+    if [ -n "$infrastructure_mode" ] && [ "$infrastructure_mode" != "iot" ]; then
+        printf 'Filtered IoT installation requires infrastructure mode iot; set DD_INFRASTRUCTURE_MODE=iot or unset it.\n' >&2
+        return 1
+    fi
+
+    for option_index in "${!incompatible_option_names[@]}"; do
+        if [ -n "${incompatible_option_values[$option_index]}" ]; then
+            printf 'Filtered IoT installation is incompatible with %s; unset this option and retry.\n' "${incompatible_option_names[$option_index]}" >&2
+            return 1
+        fi
+    done
+}
+
+function write_deb_iot_filter_config() {
+    local destination_path="${1-}"
+
+    if [ -z "$destination_path" ]; then
+        printf 'A destination path is required for the filtered IoT dpkg configuration.\n' >&2
+        return 1
+    fi
+
+    cat > "$destination_path" <<'EOF'
+path-exclude=/opt/datadog-agent/bin/*
+path-exclude=/opt/datadog-agent/embedded/*
+path-exclude=/opt/datadog-agent/python-scripts/*
+path-exclude=/opt/datadog-agent/requirements/*
+path-exclude=/opt/datadog-agent/requirements*.txt
+path-exclude=/opt/datadog-agent/compliance/*
+path-exclude=/opt/datadog-agent/runtime-security.d/*
+path-exclude=/etc/datadog-agent/compliance.d/*
+path-exclude=/etc/datadog-agent/runtime-security.d/*
+path-exclude=/etc/datadog-agent/conf.d/*
+path-include=/opt/datadog-agent/bin/agent/agent
+path-include=/opt/datadog-agent/embedded/bin/agent-data-plane
+path-include=/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*
+path-include=/opt/datadog-agent/bin/agent/dist/views/*
+path-include=/etc/datadog-agent/conf.d/cpu.d/*
+path-include=/etc/datadog-agent/conf.d/disk.d/*
+path-include=/etc/datadog-agent/conf.d/io.d/*
+path-include=/etc/datadog-agent/conf.d/load.d/*
+path-include=/etc/datadog-agent/conf.d/memory.d/*
+path-include=/etc/datadog-agent/conf.d/network.d/*
+path-include=/etc/datadog-agent/conf.d/ntp.d/*
+path-include=/etc/datadog-agent/conf.d/uptime.d/*
+path-include=/etc/datadog-agent/conf.d/system_swap.d/*
+path-include=/etc/datadog-agent/conf.d/systemd.d/*
+path-include=/etc/datadog-agent/conf.d/jetson.d/*
+EOF
+}
+
+function rpm_iot_exclude_paths() {
+    local package_path="${1-}"
+    local package_listing
+    local package_entry
+    local relative_path
+    local child_path
+    local exclusion_prefix
+    local prefix_count=0
+    local -a exclusion_prefixes=()
+    local -A seen_prefixes=()
+
+    if [ -z "$package_path" ]; then
+        printf 'An Agent RPM path is required to derive filtered IoT exclusions.\n' >&2
+        return 1
+    fi
+    if ! package_listing="$(rpm -qpl "$package_path")"; then
+        printf 'Unable to query the Agent RPM file list: %s\n' "$package_path" >&2
+        return 1
+    fi
+
+    while IFS= read -r package_entry || [ -n "$package_entry" ]; do
+        exclusion_prefix=""
+        case "$package_entry" in
+            /etc/datadog-agent/conf.d/*)
+                relative_path=${package_entry#/etc/datadog-agent/conf.d/}
+                child_path=${relative_path%%/*}
+                case "$child_path" in
+                    cpu.d|disk.d|io.d|load.d|memory.d|network.d|ntp.d|uptime.d|system_swap.d|systemd.d|jetson.d)
+                        ;;
+                    ?*)
+                        exclusion_prefix="/etc/datadog-agent/conf.d/$child_path"
+                        ;;
+                esac
+                ;;
+            /etc/datadog-agent/compliance.d|/etc/datadog-agent/compliance.d/*)
+                exclusion_prefix="/etc/datadog-agent/compliance.d/"
+                ;;
+            /etc/datadog-agent/runtime-security.d|/etc/datadog-agent/runtime-security.d/*)
+                exclusion_prefix="/etc/datadog-agent/runtime-security.d/"
+                ;;
+            /opt/datadog-agent/bin/agent/dist/*)
+                relative_path=${package_entry#/opt/datadog-agent/bin/agent/dist/}
+                child_path=${relative_path%%/*}
+                if [ -n "$child_path" ] && [ "$child_path" != "views" ]; then
+                    exclusion_prefix="/opt/datadog-agent/bin/agent/dist/$child_path"
+                fi
+                ;;
+            /opt/datadog-agent/bin/agent/jmxfetch*)
+                exclusion_prefix="/opt/datadog-agent/bin/agent/jmxfetch"
+                ;;
+            /opt/datadog-agent/bin/*)
+                relative_path=${package_entry#/opt/datadog-agent/bin/}
+                child_path=${relative_path%%/*}
+                if [ -n "$child_path" ] && [ "$child_path" != "agent" ]; then
+                    exclusion_prefix="/opt/datadog-agent/bin/$child_path"
+                fi
+                ;;
+            /opt/datadog-agent/embedded/bin/*)
+                relative_path=${package_entry#/opt/datadog-agent/embedded/bin/}
+                child_path=${relative_path%%/*}
+                if [ -n "$child_path" ] && [ "$child_path" != "agent-data-plane" ]; then
+                    exclusion_prefix="/opt/datadog-agent/embedded/bin/$child_path"
+                fi
+                ;;
+            /opt/datadog-agent/embedded/lib/*)
+                relative_path=${package_entry#/opt/datadog-agent/embedded/lib/}
+                child_path=${relative_path%%/*}
+                case "$child_path" in
+                    libdatadog-agent-rtloader.so*)
+                        ;;
+                    ?*)
+                        exclusion_prefix="/opt/datadog-agent/embedded/lib/$child_path"
+                        ;;
+                esac
+                ;;
+            /opt/datadog-agent/embedded/msodbcsql|/opt/datadog-agent/embedded/msodbcsql/*)
+                exclusion_prefix="/opt/datadog-agent/embedded/msodbcsql/"
+                ;;
+            /opt/datadog-agent/embedded/sbin|/opt/datadog-agent/embedded/sbin/*)
+                exclusion_prefix="/opt/datadog-agent/embedded/sbin/"
+                ;;
+            /opt/datadog-agent/embedded/include|/opt/datadog-agent/embedded/include/*)
+                exclusion_prefix="/opt/datadog-agent/embedded/include/"
+                ;;
+            /opt/datadog-agent/embedded/share/system-probe|/opt/datadog-agent/embedded/share/system-probe/*)
+                exclusion_prefix="/opt/datadog-agent/embedded/share/system-probe/"
+                ;;
+            /opt/datadog-agent/embedded/share/ebpf|/opt/datadog-agent/embedded/share/ebpf/*)
+                exclusion_prefix="/opt/datadog-agent/embedded/share/ebpf/"
+                ;;
+            /opt/datadog-agent/embedded/share/msodbcsql*)
+                relative_path=${package_entry#/opt/datadog-agent/embedded/share/}
+                child_path=${relative_path%%/*}
+                exclusion_prefix="/opt/datadog-agent/embedded/share/$child_path/"
+                ;;
+            /opt/datadog-agent/python-scripts|/opt/datadog-agent/python-scripts/*)
+                exclusion_prefix="/opt/datadog-agent/python-scripts/"
+                ;;
+            /opt/datadog-agent/requirements|/opt/datadog-agent/requirements/*)
+                exclusion_prefix="/opt/datadog-agent/requirements/"
+                ;;
+            /opt/datadog-agent/requirements*.txt)
+                exclusion_prefix="$package_entry"
+                ;;
+            /opt/datadog-agent/compliance|/opt/datadog-agent/compliance/*)
+                exclusion_prefix="/opt/datadog-agent/compliance/"
+                ;;
+            /opt/datadog-agent/runtime-security.d|/opt/datadog-agent/runtime-security.d/*)
+                exclusion_prefix="/opt/datadog-agent/runtime-security.d/"
+                ;;
+        esac
+
+        if [ -n "$exclusion_prefix" ] && [ -z "${seen_prefixes[$exclusion_prefix]+present}" ]; then
+            seen_prefixes["$exclusion_prefix"]=1
+            exclusion_prefixes+=("$exclusion_prefix")
+            prefix_count=$((prefix_count + 1))
+            if [ "$prefix_count" -gt 1024 ]; then
+                printf 'Filtered IoT RPM installation requires more than 1024 exclusion prefixes; refusing the package.\n' >&2
+                return 1
+            fi
+        fi
+    done <<< "$package_listing"
+
+    if [ "$prefix_count" -gt 0 ]; then
+        printf '%s\n' "${exclusion_prefixes[@]}" | LC_ALL=C sort -u
+    fi
+}
+
+function validate_iot_install_layout() {
+    local root_prefix="${1-}"
+    local rtloader_found=""
+    local candidate_path
+    local logical_path
+    local -a failures=()
+    local -a required_paths=(
+        /opt/datadog-agent/bin/agent/agent
+        /opt/datadog-agent/embedded/bin/agent-data-plane
+    )
+    local -a disallowed_paths=(
+        /opt/datadog-agent/embedded/bin/process-agent
+        /opt/datadog-agent/embedded/bin/python3
+        /opt/datadog-agent/embedded/bin/system-probe
+        /opt/datadog-agent/bin/agent/dist/jmx/jmxfetch.jar
+        /etc/datadog-agent/conf.d/docker.d/conf.yaml.example
+    )
+
+    if [ "$root_prefix" = "/" ]; then
+        root_prefix=""
+    else
+        root_prefix=${root_prefix%/}
+    fi
+
+    for logical_path in "${required_paths[@]}"; do
+        if [ ! -e "$root_prefix$logical_path" ]; then
+            failures+=("missing required path: $logical_path")
+        fi
+    done
+
+    for candidate_path in "$root_prefix"/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*; do
+        if [ -e "$candidate_path" ]; then
+            rtloader_found=true
+            break
+        fi
+    done
+    if [ -z "$rtloader_found" ]; then
+        failures+=("missing required path: /opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*")
+    fi
+
+    for logical_path in "${disallowed_paths[@]}"; do
+        if [ -e "$root_prefix$logical_path" ] || [ -L "$root_prefix$logical_path" ]; then
+            failures+=("disallowed path remains: $logical_path")
+        fi
+    done
+
+    if [ "${#failures[@]}" -ne 0 ]; then
+        printf 'Filtered IoT layout validation failed:\n' >&2
+        printf ' - %s\n' "${failures[@]}" >&2
+        return 1
+    fi
+}
+
+function write_iot_install_profile() {
+    local destination_path="${1-}"
+    local package_version="${2-}"
+    local destination_directory
+    local temporary_path
+
+    if [ -z "$destination_path" ]; then
+        printf 'A destination path is required for the filtered IoT install profile.\n' >&2
+        return 1
+    fi
+    if [ -z "$package_version" ] || [[ "$package_version" == *"'"* ]] || [[ "$package_version" == *$'\n'* ]]; then
+        printf 'A nonempty package version without quotes or newlines is required for the filtered IoT install profile.\n' >&2
+        return 1
+    fi
+
+    case "$destination_path" in
+        */*)
+            destination_directory=${destination_path%/*}
+            [ -n "$destination_directory" ] || destination_directory="/"
+            ;;
+        *)
+            destination_directory="."
+            ;;
+    esac
+
+    if ! temporary_path="$(mktemp "$destination_directory/.install_profile.tmp.XXXXXX")"; then
+        printf 'Unable to create a temporary filtered IoT install profile in %s.\n' "$destination_directory" >&2
+        return 1
+    fi
+
+    if ! printf '%s\n' \
+        'version: 1' \
+        'profile: iot-filtered' \
+        'manifest: iot-v1' \
+        'package: datadog-agent' \
+        "package_version: '$package_version'" \
+        'installer: install_script_agent7_iot' > "$temporary_path"; then
+        rm -f "$temporary_path"
+        printf 'Unable to write the temporary filtered IoT install profile.\n' >&2
+        return 1
+    fi
+    if ! chmod 0644 "$temporary_path"; then
+        rm -f "$temporary_path"
+        printf 'Unable to set permissions on the temporary filtered IoT install profile.\n' >&2
+        return 1
+    fi
+    if ! mv -f -- "$temporary_path" "$destination_path"; then
+        rm -f "$temporary_path"
+        printf 'Unable to atomically replace the filtered IoT install profile at %s.\n' "$destination_path" >&2
+        return 1
+    fi
+}
+
+function get_installed_agent_package_version() {
+    local package_family="${1-}"
+
+    case "$package_family" in
+        deb)
+            dpkg-query --show '--showformat=${Version}\n' datadog-agent
+            ;;
+        rpm)
+            rpm -q --queryformat '%{VERSION}-%{RELEASE}\n' datadog-agent
+            ;;
+        *)
+            printf 'Unsupported package family for Agent version query: %s (expected deb or rpm).\n' "$package_family" >&2
+            return 1
+            ;;
+    esac
+}
+
 # Emulate hashmap with simple switch case
 function getMapData() {
 
