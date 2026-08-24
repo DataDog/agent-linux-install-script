@@ -6,6 +6,7 @@ install_script.sh
 install_script_docker_injection.sh
 install_script_agent6.sh
 install_script_agent7.sh
+install_script_agent7_iot.sh
 .vscode/launch.json
 .vscode/settings.json
 .idea/*

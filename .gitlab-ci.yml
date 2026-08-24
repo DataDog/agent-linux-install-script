@@ -52,6 +52,7 @@ generate-scripts:
       - install_script.sh
       - install_script_agent6.sh
       - install_script_agent7.sh
+      - install_script_agent7_iot.sh
       - install_script_docker_injection.sh
       - install_script_op_worker1.sh
       - install_script_op_worker2.sh
@@ -459,6 +460,7 @@ deploy:
     matrix:
       - SCRIPT: install_script_agent6.sh
       - SCRIPT: install_script_agent7.sh
+      - SCRIPT: install_script_agent7_iot.sh
       - SCRIPT: install_script_docker_injection.sh
       - SCRIPT: install_script_op_worker1.sh
       - SCRIPT: install_script_op_worker2.sh

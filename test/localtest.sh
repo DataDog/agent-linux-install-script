@@ -15,8 +15,11 @@ elif [[ "${IMAGE}" =~ "debian:11" ]]; then
   cp ./test/sources11.list /etc/apt/sources.list
 fi
 
-EXPECTED_FLAVOR=${DD_AGENT_FLAVOR:-datadog-agent}
 SCRIPT_FLAVOR=$(echo "${SCRIPT}" | sed "s|.*install_script_\(.*\).sh|\1|")
+EXPECTED_FLAVOR=${DD_AGENT_FLAVOR:-datadog-agent}
+if [ "${SCRIPT_FLAVOR}" == "agent7_iot" ]; then
+    EXPECTED_FLAVOR=datadog-agent
+fi
 if [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] && echo "${SCRIPT}" | grep "agent6.sh$" >/dev/null; then
     echo "[PASS] Can't install flavor '${DD_AGENT_FLAVOR}' with install_script_agent6.sh"
     exit 0
@@ -92,7 +95,7 @@ OS_TYPE=$(get_os_type)
 INSTALLED_VERSION=
 RESULT=0
 EXPECTED_MAJOR_VERSION=6
-if [ "${SCRIPT_FLAVOR}" == "agent7" ] || [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] ; then
+if [ "${SCRIPT_FLAVOR}" == "agent7" ] || [ "${SCRIPT_FLAVOR}" == "agent7_iot" ] || [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] ; then
     EXPECTED_MAJOR_VERSION=7
 fi
 if [ "${SCRIPT_FLAVOR}" == "docker_injection" ]; then
@@ -153,6 +156,8 @@ if [ "${SCRIPT_FLAVOR}" == "agent6" ]; then
     EXPECTED_TOOL_VERSION="install_script_agent6"
 elif [ "${SCRIPT_FLAVOR}" == "agent7" ]; then
     EXPECTED_TOOL_VERSION="install_script_agent7"
+elif [ "${SCRIPT_FLAVOR}" == "agent7_iot" ]; then
+    EXPECTED_TOOL_VERSION="install_script_agent7_iot"
 elif [ "${SCRIPT_FLAVOR}" == "install_script.sh" ]; then
     EXPECTED_TOOL_VERSION="install_script"
 elif [ "${SCRIPT_FLAVOR}" == "docker_injection" ]; then

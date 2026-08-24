@@ -13,6 +13,8 @@ install_script_version=1.46.0.post
 logfile="ddagent-install.log"
 support_email=support@datadoghq.com
 variant=install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
+# shellcheck disable=SC2034
+iot_filtered_install=IOT_FILTERED_INSTALL_PLACEHOLDER
 
 LEGACY_ETCDIR="/etc/dd-agent"
 LEGACY_CONF="$LEGACY_ETCDIR/datadog.conf"
