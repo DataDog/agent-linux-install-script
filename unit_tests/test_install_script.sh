@@ -465,15 +465,27 @@ iotDpkgPathIsIncluded() {
 
 createIotRetainedLayout() {
   local root="$1"
+  local check_name
+  local -a check_names=(
+    cpu disk io load memory network ntp uptime system_swap systemd jetson
+  )
 
   mkdir -p \
-    "$root/opt/datadog-agent/bin/agent" \
+    "$root/opt/datadog-agent/bin/agent/dist/views" \
     "$root/opt/datadog-agent/embedded/bin" \
-    "$root/opt/datadog-agent/embedded/lib"
+    "$root/opt/datadog-agent/embedded/lib" \
+    "$root/etc/datadog-agent/conf.d"
   touch \
     "$root/opt/datadog-agent/bin/agent/agent" \
+    "$root/opt/datadog-agent/bin/agent/dist/views/index.html" \
     "$root/opt/datadog-agent/embedded/bin/agent-data-plane" \
-    "$root/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so"
+    "$root/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so" \
+    "$root/etc/datadog-agent/datadog.yaml.example"
+
+  for check_name in "${check_names[@]}"; do
+    mkdir -p "$root/etc/datadog-agent/conf.d/$check_name.d"
+    touch "$root/etc/datadog-agent/conf.d/$check_name.d/conf.yaml.example"
+  done
 }
 
 testIotOptionsAcceptSupportedMode() {
@@ -560,7 +572,16 @@ testDebIotFilterConfigIsDeterministicAndUnique() {
   assertEquals "filter writer should succeed" 0 $?
 
   expected='path-exclude=/opt/datadog-agent/bin/*
-path-exclude=/opt/datadog-agent/embedded/*
+path-exclude=/opt/datadog-agent/embedded/bin/*
+path-exclude=/opt/datadog-agent/embedded/include/*
+path-exclude=/opt/datadog-agent/embedded/lib/libodbc*
+path-exclude=/opt/datadog-agent/embedded/lib/libpython*
+path-exclude=/opt/datadog-agent/embedded/lib/libtdsodbc*
+path-exclude=/opt/datadog-agent/embedded/lib/python*
+path-exclude=/opt/datadog-agent/embedded/msodbcsql/*
+path-exclude=/opt/datadog-agent/embedded/sbin/*
+path-exclude=/opt/datadog-agent/embedded/share/ebpf/*
+path-exclude=/opt/datadog-agent/embedded/share/system-probe/*
 path-exclude=/opt/datadog-agent/python-scripts/*
 path-exclude=/opt/datadog-agent/requirements/*
 path-exclude=/opt/datadog-agent/requirements*.txt
@@ -569,20 +590,38 @@ path-exclude=/opt/datadog-agent/runtime-security.d/*
 path-exclude=/etc/datadog-agent/compliance.d/*
 path-exclude=/etc/datadog-agent/runtime-security.d/*
 path-exclude=/etc/datadog-agent/conf.d/*
+path-include=/opt/datadog-agent/bin
+path-include=/opt/datadog-agent/bin/agent
 path-include=/opt/datadog-agent/bin/agent/agent
-path-include=/opt/datadog-agent/embedded/bin/agent-data-plane
-path-include=/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*
+path-include=/opt/datadog-agent/bin/agent/dist
+path-include=/opt/datadog-agent/bin/agent/dist/views
 path-include=/opt/datadog-agent/bin/agent/dist/views/*
+path-include=/opt/datadog-agent/embedded/bin
+path-include=/opt/datadog-agent/embedded/bin/agent-data-plane
+path-include=/opt/datadog-agent/embedded/lib
+path-include=/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*
+path-include=/etc/datadog-agent/conf.d
+path-include=/etc/datadog-agent/conf.d/cpu.d
 path-include=/etc/datadog-agent/conf.d/cpu.d/*
+path-include=/etc/datadog-agent/conf.d/disk.d
 path-include=/etc/datadog-agent/conf.d/disk.d/*
+path-include=/etc/datadog-agent/conf.d/io.d
 path-include=/etc/datadog-agent/conf.d/io.d/*
+path-include=/etc/datadog-agent/conf.d/load.d
 path-include=/etc/datadog-agent/conf.d/load.d/*
+path-include=/etc/datadog-agent/conf.d/memory.d
 path-include=/etc/datadog-agent/conf.d/memory.d/*
+path-include=/etc/datadog-agent/conf.d/network.d
 path-include=/etc/datadog-agent/conf.d/network.d/*
+path-include=/etc/datadog-agent/conf.d/ntp.d
 path-include=/etc/datadog-agent/conf.d/ntp.d/*
+path-include=/etc/datadog-agent/conf.d/uptime.d
 path-include=/etc/datadog-agent/conf.d/uptime.d/*
+path-include=/etc/datadog-agent/conf.d/system_swap.d
 path-include=/etc/datadog-agent/conf.d/system_swap.d/*
+path-include=/etc/datadog-agent/conf.d/systemd.d
 path-include=/etc/datadog-agent/conf.d/systemd.d/*
+path-include=/etc/datadog-agent/conf.d/jetson.d
 path-include=/etc/datadog-agent/conf.d/jetson.d/*'
   assertEquals "DEB filter content and order" "$expected" "$(cat "$filter_path")"
 
@@ -591,13 +630,37 @@ path-include=/etc/datadog-agent/conf.d/jetson.d/*'
   rm -rf "$test_dir"
 }
 
-testDebIotFilterConfigUsesLastMatchingRule() {
+testDebIotFilterConfigExplicitlyIncludesParentsBeforeLeaves() {
   local test_dir
   local filter_path
+  local package_path
+  local check_name
+  local -a parent_paths=(
+    /opt/datadog-agent/bin
+    /opt/datadog-agent/bin/agent
+    /opt/datadog-agent/bin/agent/dist
+    /opt/datadog-agent/bin/agent/dist/views
+    /opt/datadog-agent/embedded/bin
+    /opt/datadog-agent/embedded/lib
+    /etc/datadog-agent/conf.d
+  )
+  local -a check_names=(
+    cpu disk io load memory network ntp uptime system_swap systemd jetson
+  )
 
   test_dir=$(mktemp -d)
   filter_path="$test_dir/99-datadog-iot"
   write_deb_iot_filter_config "$filter_path"
+
+  for package_path in "${parent_paths[@]}"; do
+    iotDpkgPathIsIncluded "$filter_path" "$package_path"
+    assertEquals "$package_path parent should be explicitly retained" 0 $?
+  done
+  for check_name in "${check_names[@]}"; do
+    package_path="/etc/datadog-agent/conf.d/$check_name.d"
+    iotDpkgPathIsIncluded "$filter_path" "$package_path"
+    assertEquals "$package_path parent should be explicitly retained" 0 $?
+  done
 
   iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/bin/agent/agent"
   assertEquals "normal Agent should be retained" 0 $?
@@ -609,11 +672,31 @@ testDebIotFilterConfigUsesLastMatchingRule() {
   assertEquals "rtloader shim should be re-included" 0 $?
   iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/bin/agent/dist/views/flare.html"
   assertEquals "support views should be re-included" 0 $?
-  iotDpkgPathIsIncluded "$filter_path" "/etc/datadog-agent/conf.d/systemd.d/conf.yaml.example"
-  assertEquals "IoT check configuration should be re-included" 0 $?
+  for check_name in "${check_names[@]}"; do
+    package_path="/etc/datadog-agent/conf.d/$check_name.d/conf.yaml.example"
+    iotDpkgPathIsIncluded "$filter_path" "$package_path"
+    assertEquals "$package_path payload should be retained" 0 $?
+  done
+
+  iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/embedded/ssl/certs/cacert.pem"
+  assertEquals "embedded SSL data should remain available to the Agent" 0 $?
+  iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/embedded/lib/libssl.so.3"
+  assertEquals "embedded SSL libraries should remain available to the Agent" 0 $?
+  iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/embedded/share/openscap/cpe.xml"
+  assertEquals "non-system-probe support data should remain available" 0 $?
 
   iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/embedded/bin/python3"
   assertNotEquals "Python should remain excluded" 0 $?
+  iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/embedded/lib/libpython3.13.so.1.0"
+  assertNotEquals "libpython should remain excluded" 0 $?
+  iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/embedded/lib/python3.13/site-packages/yaml.py"
+  assertNotEquals "Python site-packages should remain excluded" 0 $?
+  iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/embedded/include/Python.h"
+  assertNotEquals "headers should remain excluded" 0 $?
+  iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/embedded/lib/libodbc.so.2"
+  assertNotEquals "ODBC libraries should remain excluded" 0 $?
+  iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/embedded/share/system-probe/ebpf.o"
+  assertNotEquals "system-probe support data should remain excluded" 0 $?
   iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/bin/process-agent/process-agent"
   assertNotEquals "process-agent should remain excluded" 0 $?
   iotDpkgPathIsIncluded "$filter_path" "/etc/datadog-agent/conf.d/docker.d/conf.yaml.example"
@@ -654,6 +737,9 @@ testRpmIotExcludePathsDerivesSortedUniquePrefixes() {
 /opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so.1
 /opt/datadog-agent/embedded/lib/libpython3.12.so
 /opt/datadog-agent/embedded/lib/python3.12/site-packages/yaml.py
+/opt/datadog-agent/embedded/lib/libssl.so.3
+/opt/datadog-agent/embedded/ssl/certs/cacert.pem
+/opt/datadog-agent/embedded/share/openscap/cpe.xml
 /opt/datadog-agent/embedded/sbin/chroot
 /opt/datadog-agent/embedded/include/Python.h
 /opt/datadog-agent/embedded/share/system-probe/ebpf.o
@@ -705,6 +791,66 @@ $package_path"
   rm -rf "$test_dir"
 }
 
+testRpmIotExcludePathsRejectsAgentDataPlanePrefixCollisionWithoutOutput() {
+  local test_dir
+  local output_path
+  local error_path
+  local status
+
+  test_dir=$(mktemp -d)
+  output_path="$test_dir/output"
+  error_path="$test_dir/error"
+  # shellcheck disable=SC2329
+  rpm() {
+    cat <<'EOF'
+/opt/datadog-agent/embedded/bin/agent-data
+/opt/datadog-agent/embedded/bin/agent-data-plane
+/opt/datadog-agent/embedded/bin/process-agent
+EOF
+  }
+
+  rpm_iot_exclude_paths "$test_dir/agent.rpm" > "$output_path" 2> "$error_path"
+  status=$?
+  unset -f rpm
+
+  assertNotEquals "an exclusion prefix that matches agent-data-plane should fail" 0 "$status"
+  assertEquals "a collision should not emit any partial exclusion output" "" "$(cat "$output_path")"
+  assertIotContains "collision error should identify the unsafe prefix" "$(cat "$error_path")" "/opt/datadog-agent/embedded/bin/agent-data"
+  assertIotContains "collision error should identify agent-data-plane" "$(cat "$error_path")" "/opt/datadog-agent/embedded/bin/agent-data-plane"
+  assertIotNotContains "unrelated exclusions should not leak to stderr" "$(cat "$error_path")" "/opt/datadog-agent/embedded/bin/process-agent"
+  rm -rf "$test_dir"
+}
+
+testRpmIotExcludePathsRejectsSupportViewsPrefixCollisionWithoutOutput() {
+  local test_dir
+  local output_path
+  local error_path
+  local status
+
+  test_dir=$(mktemp -d)
+  output_path="$test_dir/output"
+  error_path="$test_dir/error"
+  # shellcheck disable=SC2329
+  rpm() {
+    cat <<'EOF'
+/opt/datadog-agent/bin/agent/dist/view/index.html
+/opt/datadog-agent/bin/agent/dist/views/index.html
+/opt/datadog-agent/bin/agent/dist/checks/check.py
+EOF
+  }
+
+  rpm_iot_exclude_paths "$test_dir/agent.rpm" > "$output_path" 2> "$error_path"
+  status=$?
+  unset -f rpm
+
+  assertNotEquals "an exclusion prefix that matches support views should fail" 0 "$status"
+  assertEquals "a collision should not emit any partial exclusion output" "" "$(cat "$output_path")"
+  assertIotContains "collision error should identify the unsafe prefix" "$(cat "$error_path")" "/opt/datadog-agent/bin/agent/dist/view"
+  assertIotContains "collision error should identify support views" "$(cat "$error_path")" "/opt/datadog-agent/bin/agent/dist/views"
+  assertIotNotContains "unrelated exclusions should not leak to stderr" "$(cat "$error_path")" "/opt/datadog-agent/bin/agent/dist/checks"
+  rm -rf "$test_dir"
+}
+
 testRpmIotExcludePathsRejectsMoreThan1024Prefixes() {
   local test_dir
   local output
@@ -740,37 +886,131 @@ testValidateIotInstallLayoutAcceptsFilteredLayout() {
   rm -rf "$root"
 }
 
-testValidateIotInstallLayoutAggregatesFailures() {
+testValidateIotInstallLayoutAggregatesMissingRetainedClasses() {
   local root
   local output
   local status
+  local check_name
+  local -a check_names=(
+    cpu disk io load memory network ntp uptime system_swap systemd jetson
+  )
+
+  root=$(mktemp -d)
+  output=$(validate_iot_install_layout "$root" 2>&1)
+  status=$?
+
+  assertNotEquals "a layout missing retained classes should fail" 0 "$status"
+  assertIotContains "normal Agent should be required" "$output" "/opt/datadog-agent/bin/agent/agent"
+  assertIotContains "agent-data-plane should be required" "$output" "/opt/datadog-agent/embedded/bin/agent-data-plane"
+  assertIotContains "rtloader should be required" "$output" "/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*"
+  assertIotContains "support views should be required" "$output" "/opt/datadog-agent/bin/agent/dist/views"
+  assertIotContains "Agent configuration example should be required" "$output" "/etc/datadog-agent/datadog.yaml.example"
+  for check_name in "${check_names[@]}"; do
+    assertIotContains "$check_name configuration directory should be required" "$output" "/etc/datadog-agent/conf.d/$check_name.d"
+  done
+  rm -rf "$root"
+}
+
+testValidateIotInstallLayoutRequiresRetainedDirectoryContent() {
+  local root
+  local output
+  local status
+  local check_name
+  local -a check_names=(
+    cpu disk io load memory network ntp uptime system_swap systemd jetson
+  )
 
   root=$(mktemp -d)
   createIotRetainedLayout "$root"
-  rm \
-    "$root/opt/datadog-agent/embedded/bin/agent-data-plane" \
-    "$root/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so"
-  mkdir -p \
-    "$root/opt/datadog-agent/embedded/bin" \
-    "$root/opt/datadog-agent/bin/agent/dist/jmx" \
-    "$root/etc/datadog-agent/conf.d/docker.d"
-  touch \
-    "$root/opt/datadog-agent/embedded/bin/process-agent" \
-    "$root/opt/datadog-agent/embedded/bin/python3" \
-    "$root/opt/datadog-agent/embedded/bin/system-probe" \
-    "$root/opt/datadog-agent/bin/agent/dist/jmx/jmxfetch.jar" \
-    "$root/etc/datadog-agent/conf.d/docker.d/conf.yaml.example"
+  rm "$root/opt/datadog-agent/bin/agent/dist/views/index.html"
+  for check_name in "${check_names[@]}"; do
+    rm "$root/etc/datadog-agent/conf.d/$check_name.d/conf.yaml.example"
+  done
 
   output=$(validate_iot_install_layout "$root" 2>&1)
   status=$?
-  assertNotEquals "invalid filtered layout should fail" 0 "$status"
-  assertIotContains "missing ADP should be reported" "$output" "missing required path: /opt/datadog-agent/embedded/bin/agent-data-plane"
-  assertIotContains "missing rtloader should be reported" "$output" "missing required path: /opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*"
-  assertIotContains "process-agent should be reported" "$output" "disallowed path remains: /opt/datadog-agent/embedded/bin/process-agent"
-  assertIotContains "Python should be reported" "$output" "disallowed path remains: /opt/datadog-agent/embedded/bin/python3"
-  assertIotContains "system-probe should be reported" "$output" "disallowed path remains: /opt/datadog-agent/embedded/bin/system-probe"
-  assertIotContains "JMX should be reported" "$output" "disallowed path remains: /opt/datadog-agent/bin/agent/dist/jmx/jmxfetch.jar"
-  assertIotContains "non-IoT config should be reported" "$output" "disallowed path remains: /etc/datadog-agent/conf.d/docker.d/conf.yaml.example"
+  assertNotEquals "empty retained directories should fail" 0 "$status"
+  assertIotContains "support view content should be required" "$output" "/opt/datadog-agent/bin/agent/dist/views/*"
+  for check_name in "${check_names[@]}"; do
+    assertIotContains "$check_name configuration content should be required" "$output" "/etc/datadog-agent/conf.d/$check_name.d/*"
+  done
+  rm -rf "$root"
+}
+
+testValidateIotInstallLayoutAggregatesPrunedPayloadClasses() {
+  local root
+  local output
+  local status
+  local payload_path
+  local -a disallowed_payloads=(
+    /opt/datadog-agent/embedded/bin/process-agent
+    /opt/datadog-agent/embedded/bin/trace-agent
+    /opt/datadog-agent/embedded/bin/security-agent
+    /opt/datadog-agent/embedded/bin/privateactionrunner
+    /opt/datadog-agent/embedded/bin/installer
+    /opt/datadog-agent/embedded/bin/system-probe
+    /opt/datadog-agent/embedded/bin/python3
+    /opt/datadog-agent/embedded/lib/libpython3.13.so.1.0
+    /opt/datadog-agent/embedded/lib/python3.13/site-packages/yaml/__init__.py
+    /opt/datadog-agent/bin/agent/dist/jmx/jmxfetch.jar
+    /opt/datadog-agent/embedded/share/system-probe/ebpf.o
+    /opt/datadog-agent/embedded/share/ebpf/co-re.o
+    /opt/datadog-agent/embedded/include/Python.h
+    /opt/datadog-agent/embedded/lib/libodbc.so.2
+    /opt/datadog-agent/embedded/msodbcsql/lib64/libmsodbcsql.so
+    /opt/datadog-agent/embedded/sbin/chroot
+    /opt/datadog-agent/compliance/rules.json
+    /etc/datadog-agent/compliance.d/default.rego
+    /opt/datadog-agent/runtime-security.d/policy.policy
+    /etc/datadog-agent/runtime-security.d/default.policy
+    /etc/datadog-agent/conf.d/docker.d/conf.yaml.example
+  )
+
+  root=$(mktemp -d)
+  createIotRetainedLayout "$root"
+  for payload_path in "${disallowed_payloads[@]}"; do
+    mkdir -p "$(dirname "$root$payload_path")"
+    touch "$root$payload_path"
+  done
+
+  output=$(validate_iot_install_layout "$root" 2>&1)
+  status=$?
+  assertNotEquals "a layout containing pruned payload classes should fail" 0 "$status"
+  for payload_path in "${disallowed_payloads[@]}"; do
+    assertIotContains "$payload_path should be reported" "$output" "$payload_path"
+  done
+  rm -rf "$root"
+}
+
+testValidateIotInstallLayoutAllowsEmptyExcludedDirectoriesAndDanglingLinks() {
+  local root
+  local excluded_directory
+  local -a excluded_directories=(
+    /opt/datadog-agent/bin/agent/dist/jmx
+    /opt/datadog-agent/embedded/include
+    /opt/datadog-agent/embedded/lib/python3.13/site-packages
+    /opt/datadog-agent/embedded/msodbcsql
+    /opt/datadog-agent/embedded/sbin
+    /opt/datadog-agent/embedded/share/ebpf
+    /opt/datadog-agent/embedded/share/system-probe
+    /opt/datadog-agent/compliance
+    /opt/datadog-agent/runtime-security.d
+    /etc/datadog-agent/compliance.d
+    /etc/datadog-agent/runtime-security.d
+    /etc/datadog-agent/conf.d/docker.d
+  )
+
+  root=$(mktemp -d)
+  createIotRetainedLayout "$root"
+  for excluded_directory in "${excluded_directories[@]}"; do
+    mkdir -p "$root$excluded_directory"
+  done
+  ln -s python3.13 "$root/opt/datadog-agent/embedded/bin/python3"
+  ln -s libpython3.13.so.1.0 "$root/opt/datadog-agent/embedded/lib/libpython3.13.so"
+  ln -s missing-extension.so "$root/opt/datadog-agent/embedded/lib/python3.13/site-packages/native-extension.so"
+
+  validate_iot_install_layout "$root"
+  assertEquals "empty excluded directories and dangling links should be harmless" 0 $?
   rm -rf "$root"
 }
 

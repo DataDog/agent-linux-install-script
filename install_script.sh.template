@@ -416,7 +416,16 @@ function write_deb_iot_filter_config() {
 
     cat > "$destination_path" <<'EOF'
 path-exclude=/opt/datadog-agent/bin/*
-path-exclude=/opt/datadog-agent/embedded/*
+path-exclude=/opt/datadog-agent/embedded/bin/*
+path-exclude=/opt/datadog-agent/embedded/include/*
+path-exclude=/opt/datadog-agent/embedded/lib/libodbc*
+path-exclude=/opt/datadog-agent/embedded/lib/libpython*
+path-exclude=/opt/datadog-agent/embedded/lib/libtdsodbc*
+path-exclude=/opt/datadog-agent/embedded/lib/python*
+path-exclude=/opt/datadog-agent/embedded/msodbcsql/*
+path-exclude=/opt/datadog-agent/embedded/sbin/*
+path-exclude=/opt/datadog-agent/embedded/share/ebpf/*
+path-exclude=/opt/datadog-agent/embedded/share/system-probe/*
 path-exclude=/opt/datadog-agent/python-scripts/*
 path-exclude=/opt/datadog-agent/requirements/*
 path-exclude=/opt/datadog-agent/requirements*.txt
@@ -425,20 +434,38 @@ path-exclude=/opt/datadog-agent/runtime-security.d/*
 path-exclude=/etc/datadog-agent/compliance.d/*
 path-exclude=/etc/datadog-agent/runtime-security.d/*
 path-exclude=/etc/datadog-agent/conf.d/*
+path-include=/opt/datadog-agent/bin
+path-include=/opt/datadog-agent/bin/agent
 path-include=/opt/datadog-agent/bin/agent/agent
-path-include=/opt/datadog-agent/embedded/bin/agent-data-plane
-path-include=/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*
+path-include=/opt/datadog-agent/bin/agent/dist
+path-include=/opt/datadog-agent/bin/agent/dist/views
 path-include=/opt/datadog-agent/bin/agent/dist/views/*
+path-include=/opt/datadog-agent/embedded/bin
+path-include=/opt/datadog-agent/embedded/bin/agent-data-plane
+path-include=/opt/datadog-agent/embedded/lib
+path-include=/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*
+path-include=/etc/datadog-agent/conf.d
+path-include=/etc/datadog-agent/conf.d/cpu.d
 path-include=/etc/datadog-agent/conf.d/cpu.d/*
+path-include=/etc/datadog-agent/conf.d/disk.d
 path-include=/etc/datadog-agent/conf.d/disk.d/*
+path-include=/etc/datadog-agent/conf.d/io.d
 path-include=/etc/datadog-agent/conf.d/io.d/*
+path-include=/etc/datadog-agent/conf.d/load.d
 path-include=/etc/datadog-agent/conf.d/load.d/*
+path-include=/etc/datadog-agent/conf.d/memory.d
 path-include=/etc/datadog-agent/conf.d/memory.d/*
+path-include=/etc/datadog-agent/conf.d/network.d
 path-include=/etc/datadog-agent/conf.d/network.d/*
+path-include=/etc/datadog-agent/conf.d/ntp.d
 path-include=/etc/datadog-agent/conf.d/ntp.d/*
+path-include=/etc/datadog-agent/conf.d/uptime.d
 path-include=/etc/datadog-agent/conf.d/uptime.d/*
+path-include=/etc/datadog-agent/conf.d/system_swap.d
 path-include=/etc/datadog-agent/conf.d/system_swap.d/*
+path-include=/etc/datadog-agent/conf.d/systemd.d
 path-include=/etc/datadog-agent/conf.d/systemd.d/*
+path-include=/etc/datadog-agent/conf.d/jetson.d
 path-include=/etc/datadog-agent/conf.d/jetson.d/*
 EOF
 }
@@ -450,8 +477,26 @@ function rpm_iot_exclude_paths() {
     local relative_path
     local child_path
     local exclusion_prefix
+    local retained_path
     local prefix_count=0
     local -a exclusion_prefixes=()
+    local -a retained_paths=(
+        /opt/datadog-agent/bin/agent/agent
+        /opt/datadog-agent/bin/agent/dist/views
+        /opt/datadog-agent/embedded/bin/agent-data-plane
+        /opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so
+        /etc/datadog-agent/conf.d/cpu.d
+        /etc/datadog-agent/conf.d/disk.d
+        /etc/datadog-agent/conf.d/io.d
+        /etc/datadog-agent/conf.d/load.d
+        /etc/datadog-agent/conf.d/memory.d
+        /etc/datadog-agent/conf.d/network.d
+        /etc/datadog-agent/conf.d/ntp.d
+        /etc/datadog-agent/conf.d/uptime.d
+        /etc/datadog-agent/conf.d/system_swap.d
+        /etc/datadog-agent/conf.d/systemd.d
+        /etc/datadog-agent/conf.d/jetson.d
+    )
     local -A seen_prefixes=()
 
     if [ -z "$package_path" ]; then
@@ -511,9 +556,7 @@ function rpm_iot_exclude_paths() {
                 relative_path=${package_entry#/opt/datadog-agent/embedded/lib/}
                 child_path=${relative_path%%/*}
                 case "$child_path" in
-                    libdatadog-agent-rtloader.so*)
-                        ;;
-                    ?*)
+                    libodbc*|libpython*|libtdsodbc*|python*)
                         exclusion_prefix="/opt/datadog-agent/embedded/lib/$child_path"
                         ;;
                 esac
@@ -566,6 +609,15 @@ function rpm_iot_exclude_paths() {
         fi
     done <<< "$package_listing"
 
+    for exclusion_prefix in "${exclusion_prefixes[@]}"; do
+        for retained_path in "${retained_paths[@]}"; do
+            if [ "${retained_path:0:${#exclusion_prefix}}" = "$exclusion_prefix" ]; then
+                printf 'Filtered IoT RPM exclusion prefix %s would also exclude retained path %s; refusing the package.\n' "$exclusion_prefix" "$retained_path" >&2
+                return 1
+            fi
+        done
+    done
+
     if [ "$prefix_count" -gt 0 ]; then
         printf '%s\n' "${exclusion_prefixes[@]}" | LC_ALL=C sort -u
     fi
@@ -575,18 +627,58 @@ function validate_iot_install_layout() {
     local root_prefix="${1-}"
     local rtloader_found=""
     local candidate_path
+    local candidate_root
     local logical_path
+    local logical_pattern
     local -a failures=()
     local -a required_paths=(
         /opt/datadog-agent/bin/agent/agent
         /opt/datadog-agent/embedded/bin/agent-data-plane
+        /etc/datadog-agent/datadog.yaml.example
+    )
+    local -a required_content_directories=(
+        /opt/datadog-agent/bin/agent/dist/views
+        /etc/datadog-agent/conf.d/cpu.d
+        /etc/datadog-agent/conf.d/disk.d
+        /etc/datadog-agent/conf.d/io.d
+        /etc/datadog-agent/conf.d/load.d
+        /etc/datadog-agent/conf.d/memory.d
+        /etc/datadog-agent/conf.d/network.d
+        /etc/datadog-agent/conf.d/ntp.d
+        /etc/datadog-agent/conf.d/uptime.d
+        /etc/datadog-agent/conf.d/system_swap.d
+        /etc/datadog-agent/conf.d/systemd.d
+        /etc/datadog-agent/conf.d/jetson.d
     )
     local -a disallowed_paths=(
         /opt/datadog-agent/embedded/bin/process-agent
-        /opt/datadog-agent/embedded/bin/python3
+        /opt/datadog-agent/embedded/bin/trace-agent
+        /opt/datadog-agent/embedded/bin/trace-loader
+        /opt/datadog-agent/embedded/bin/security-agent
+        /opt/datadog-agent/embedded/bin/privateactionrunner
+        /opt/datadog-agent/embedded/bin/installer
         /opt/datadog-agent/embedded/bin/system-probe
-        /opt/datadog-agent/bin/agent/dist/jmx/jmxfetch.jar
+        /opt/datadog-agent/embedded/bin/system-probe-lite
         /etc/datadog-agent/conf.d/docker.d/conf.yaml.example
+    )
+    local -a disallowed_file_patterns=(
+        '/opt/datadog-agent/embedded/bin/python*'
+        '/opt/datadog-agent/embedded/lib/libpython*'
+        '/opt/datadog-agent/embedded/lib/libodbc*'
+        '/opt/datadog-agent/embedded/lib/libtdsodbc*'
+    )
+    local -a disallowed_tree_patterns=(
+        '/opt/datadog-agent/bin/agent/dist/jmx'
+        '/opt/datadog-agent/embedded/lib/python*/site-packages'
+        '/opt/datadog-agent/embedded/share/system-probe'
+        '/opt/datadog-agent/embedded/share/ebpf'
+        '/opt/datadog-agent/embedded/include'
+        '/opt/datadog-agent/embedded/msodbcsql'
+        '/opt/datadog-agent/embedded/sbin'
+        '/opt/datadog-agent/compliance'
+        '/opt/datadog-agent/runtime-security.d'
+        '/etc/datadog-agent/compliance.d'
+        '/etc/datadog-agent/runtime-security.d'
     )
 
     if [ "$root_prefix" = "/" ]; then
@@ -602,7 +694,7 @@ function validate_iot_install_layout() {
     done
 
     for candidate_path in "$root_prefix"/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*; do
-        if [ -e "$candidate_path" ]; then
+        if [ -f "$candidate_path" ]; then
             rtloader_found=true
             break
         fi
@@ -611,10 +703,44 @@ function validate_iot_install_layout() {
         failures+=("missing required path: /opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*")
     fi
 
-    for logical_path in "${disallowed_paths[@]}"; do
-        if [ -e "$root_prefix$logical_path" ] || [ -L "$root_prefix$logical_path" ]; then
-            failures+=("disallowed path remains: $logical_path")
+    for logical_path in "${required_content_directories[@]}"; do
+        if [ ! -d "$root_prefix$logical_path" ]; then
+            failures+=("missing required directory: $logical_path")
+            continue
         fi
+        candidate_path=$(find "$root_prefix$logical_path" -type f -print -quit 2>/dev/null)
+        if [ -z "$candidate_path" ]; then
+            failures+=("missing required content: $logical_path/*")
+        fi
+    done
+
+    for logical_path in "${disallowed_paths[@]}"; do
+        candidate_path="$root_prefix$logical_path"
+        if [ -f "$candidate_path" ]; then
+            failures+=("disallowed payload remains: $logical_path")
+        fi
+    done
+
+    for logical_pattern in "${disallowed_file_patterns[@]}"; do
+        while IFS= read -r candidate_path; do
+            if [ -f "$candidate_path" ]; then
+                failures+=("disallowed payload remains: ${candidate_path#"$root_prefix"}")
+                break
+            fi
+        done < <(compgen -G "$root_prefix$logical_pattern" || true)
+    done
+
+    for logical_pattern in "${disallowed_tree_patterns[@]}"; do
+        while IFS= read -r candidate_root; do
+            if [ ! -d "$candidate_root" ] && [ ! -L "$candidate_root" ]; then
+                continue
+            fi
+            candidate_path=$(find "$candidate_root" -type f -print -quit 2>/dev/null)
+            if [ -n "$candidate_path" ]; then
+                failures+=("disallowed payload remains: ${candidate_path#"$root_prefix"}")
+                break
+            fi
+        done < <(compgen -G "$root_prefix$logical_pattern" || true)
     done
 
     if [ "${#failures[@]}" -ne 0 ]; then
