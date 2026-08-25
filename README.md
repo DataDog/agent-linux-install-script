@@ -79,6 +79,26 @@ This repository contains 2 basic files, `install_script.sh.template` and `Makefi
 * `install_script.sh` - Install script that uses `DD_AGENT_MAJOR_VERSION=6` by default and also emits a deprecation warning when run.
 * `install_script_agent6.sh` - Install script that uses `DD_AGENT_MAJOR_VERSION=6` by default.
 * `install_script_agent7.sh` - Install script that uses `DD_AGENT_MAJOR_VERSION=7` by default.
+* `install_script_agent7_iot.sh` - Experimental Agent 7 variant that installs a filesystem-filtered normal `datadog-agent` DEB for IoT deployments.
+
+The filtered IoT installer currently supports Debian and Ubuntu only. RPM installation remains unsupported because the Agent RPM post-install scriptlet needs the embedded installer while the final filtered layout removes it; reconciling that transient requirement with RPM's recorded file state needs a separate design.
+
+The filtered IoT installer is fresh-install-only: it rejects an existing Agent package or configuration. Ordinary APT upgrades of a filtered installation are not supported yet. The dedicated dpkg path-filter policy intentionally remains installed after a successful DEB installation so that unsupported upgrades cannot silently restore the excluded payload.
+
+After package, layout, configuration, and service handling succeed, the installer publishes `/etc/datadog-agent/install_profile` as root-owned mode `0644` with this schema (using the exact installed DEB version):
+
+```yaml
+version: 1
+profile: iot-filtered
+manifest: iot-v1
+package: datadog-agent
+package_version: '1:7.82.0-1'
+installer: install_script_agent7_iot
+```
+
+This marker is the installer-side contract for the normal Agent's filtered-IoT companion-process guard; the Agent-side guard is maintained in the `datadog-agent` repository rather than in this install script.
+
+For scale only, a same-version Agent 7.82 DEB comparison on the validated test layout showed about a 77% reduction in installed logical bytes. This result is experimental and varies with package and platform; CI does not enforce a hard disk-reduction threshold.
 
 The generated files must never be committed to this repository. All changes must be done by modifications of the template file and Makefile.
 
