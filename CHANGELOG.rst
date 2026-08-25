@@ -5,6 +5,8 @@ Release Notes
 Unreleased
 ================
 
+- Add an experimental Debian/Ubuntu installer for a filesystem-filtered IoT Agent profile.
+
 1.46.0
 ================
 
