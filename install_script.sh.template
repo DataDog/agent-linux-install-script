@@ -442,6 +442,7 @@ path-exclude=/opt/datadog-agent/embedded/lib/python*
 path-exclude=/opt/datadog-agent/embedded/msodbcsql/*
 path-exclude=/opt/datadog-agent/embedded/sbin/*
 path-exclude=/opt/datadog-agent/embedded/share/ebpf/*
+path-exclude=/opt/datadog-agent/embedded/share/msodbcsql*
 path-exclude=/opt/datadog-agent/embedded/share/system-probe/*
 path-exclude=/opt/datadog-agent/python-scripts/*
 path-exclude=/opt/datadog-agent/requirements/*
@@ -678,6 +679,7 @@ function validate_iot_install_layout() {
     local child_path
     local logical_path
     local disallowed_tree
+    local traversal_path=""
     local -a failures=()
     local -a required_executable_files=(
         /opt/datadog-agent/bin/agent/agent
@@ -706,6 +708,8 @@ function validate_iot_install_layout() {
         /opt/datadog-agent/embedded/include
         /opt/datadog-agent/embedded/msodbcsql
         /opt/datadog-agent/embedded/sbin
+        /opt/datadog-agent/python-scripts
+        /opt/datadog-agent/requirements
         /opt/datadog-agent/compliance
         /opt/datadog-agent/runtime-security.d
         /etc/datadog-agent/compliance.d
@@ -742,105 +746,166 @@ function validate_iot_install_layout() {
         failures+=("missing required regular file: /opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*")
     fi
 
+    if ! traversal_path="$(mktemp "${TMPDIR:-/tmp}/datadog-iot-layout.XXXXXX")"; then
+        failures+=("unable to inspect installed payload: could not create a temporary path listing")
+    fi
+
     for logical_path in "${required_content_directories[@]}"; do
         candidate_root="$root_prefix$logical_path"
         if [ ! -d "$candidate_root" ] || [ -L "$candidate_root" ]; then
             failures+=("missing required directory: $logical_path")
             continue
         fi
-        candidate_path=$(find "$candidate_root" -type f -print -quit 2>/dev/null)
-        if [ -z "$candidate_path" ]; then
+        [ -n "$traversal_path" ] || continue
+        if ! find "$candidate_root" -type f -print0 -quit > "$traversal_path" 2>/dev/null; then
+            failures+=("unable to inspect required content directory: $logical_path")
+        elif [ ! -s "$traversal_path" ]; then
             failures+=("missing required content: $logical_path/*")
         fi
     done
 
     candidate_root="$root_prefix/opt/datadog-agent/bin"
-    if [ -d "$candidate_root" ] || [ -L "$candidate_root" ]; then
-        while IFS= read -r candidate_path; do
-            if [ -L "$candidate_path" ]; then
-                [ -e "$candidate_path" ] || continue
-            elif [ ! -f "$candidate_path" ]; then
-                continue
-            fi
-            logical_path=${candidate_path#"$root_prefix"}
-            case "$logical_path" in
-                /opt/datadog-agent/bin/agent/agent|/opt/datadog-agent/bin/agent/dist/views/*)
-                    ;;
-                *)
-                    failures+=("disallowed payload remains: $logical_path")
-                    ;;
-            esac
-        done < <(find "$candidate_root" \( -type f -o -type l \) -print 2>/dev/null)
+    logical_path=/opt/datadog-agent/bin
+    if [ -n "$traversal_path" ] && { [ -d "$candidate_root" ] || [ -L "$candidate_root" ]; }; then
+        if ! find "$candidate_root" \( -type f -o -type l \) -print0 > "$traversal_path" 2>/dev/null; then
+            failures+=("unable to inspect payload tree: $logical_path")
+        else
+            while IFS= read -r -d '' candidate_path; do
+                if [ -L "$candidate_path" ]; then
+                    [ -e "$candidate_path" ] || continue
+                elif [ ! -f "$candidate_path" ]; then
+                    continue
+                fi
+                logical_path=${candidate_path#"$root_prefix"}
+                case "$logical_path" in
+                    /opt/datadog-agent/bin/agent/agent|/opt/datadog-agent/bin/agent/dist/views/*)
+                        ;;
+                    *)
+                        failures+=("disallowed payload remains: $logical_path")
+                        ;;
+                esac
+            done < "$traversal_path"
+        fi
     fi
 
     candidate_root="$root_prefix/opt/datadog-agent/embedded/bin"
-    if [ -d "$candidate_root" ] || [ -L "$candidate_root" ]; then
-        while IFS= read -r candidate_path; do
-            if [ -L "$candidate_path" ]; then
-                [ -e "$candidate_path" ] || continue
-            elif [ ! -f "$candidate_path" ]; then
-                continue
-            fi
-            logical_path=${candidate_path#"$root_prefix"}
-            if [ "$logical_path" != "/opt/datadog-agent/embedded/bin/agent-data-plane" ]; then
-                failures+=("disallowed payload remains: $logical_path")
-            fi
-        done < <(find "$candidate_root" \( -type f -o -type l \) -print 2>/dev/null)
+    logical_path=/opt/datadog-agent/embedded/bin
+    if [ -n "$traversal_path" ] && { [ -d "$candidate_root" ] || [ -L "$candidate_root" ]; }; then
+        if ! find "$candidate_root" \( -type f -o -type l \) -print0 > "$traversal_path" 2>/dev/null; then
+            failures+=("unable to inspect payload tree: $logical_path")
+        else
+            while IFS= read -r -d '' candidate_path; do
+                if [ -L "$candidate_path" ]; then
+                    [ -e "$candidate_path" ] || continue
+                elif [ ! -f "$candidate_path" ]; then
+                    continue
+                fi
+                logical_path=${candidate_path#"$root_prefix"}
+                if [ "$logical_path" != "/opt/datadog-agent/embedded/bin/agent-data-plane" ]; then
+                    failures+=("disallowed payload remains: $logical_path")
+                fi
+            done < "$traversal_path"
+        fi
     fi
 
     candidate_root="$root_prefix/opt/datadog-agent/embedded/lib"
-    if [ -d "$candidate_root" ] || [ -L "$candidate_root" ]; then
-        while IFS= read -r candidate_path; do
-            if [ -L "$candidate_path" ]; then
-                [ -e "$candidate_path" ] || continue
-            elif [ ! -f "$candidate_path" ]; then
-                continue
-            fi
-            logical_path=${candidate_path#"$root_prefix"}
-            relative_path=${logical_path#/opt/datadog-agent/embedded/lib/}
-            child_path=${relative_path%%/*}
-            case "$child_path" in
-                python*|libpython*|libodbc*|libtdsodbc*)
-                    failures+=("disallowed payload remains: $logical_path")
-                    ;;
-            esac
-        done < <(find "$candidate_root" \( -type f -o -type l \) -print 2>/dev/null)
+    logical_path=/opt/datadog-agent/embedded/lib
+    if [ -n "$traversal_path" ] && { [ -d "$candidate_root" ] || [ -L "$candidate_root" ]; }; then
+        if ! find "$candidate_root" \( -type f -o -type l \) -print0 > "$traversal_path" 2>/dev/null; then
+            failures+=("unable to inspect payload tree: $logical_path")
+        else
+            while IFS= read -r -d '' candidate_path; do
+                if [ -L "$candidate_path" ]; then
+                    [ -e "$candidate_path" ] || continue
+                elif [ ! -f "$candidate_path" ]; then
+                    continue
+                fi
+                logical_path=${candidate_path#"$root_prefix"}
+                relative_path=${logical_path#/opt/datadog-agent/embedded/lib/}
+                child_path=${relative_path%%/*}
+                case "$child_path" in
+                    python*|libpython*|libodbc*|libtdsodbc*)
+                        failures+=("disallowed payload remains: $logical_path")
+                        ;;
+                esac
+            done < "$traversal_path"
+        fi
     fi
 
     candidate_root="$root_prefix/etc/datadog-agent/conf.d"
-    if [ -d "$candidate_root" ] || [ -L "$candidate_root" ]; then
-        while IFS= read -r candidate_path; do
-            if [ -L "$candidate_path" ]; then
-                [ -e "$candidate_path" ] || continue
-            elif [ ! -f "$candidate_path" ]; then
-                continue
-            fi
-            logical_path=${candidate_path#"$root_prefix"}
-            case "$logical_path" in
-                /etc/datadog-agent/conf.d/cpu.d/*|/etc/datadog-agent/conf.d/disk.d/*|/etc/datadog-agent/conf.d/io.d/*|/etc/datadog-agent/conf.d/load.d/*|/etc/datadog-agent/conf.d/memory.d/*|/etc/datadog-agent/conf.d/network.d/*|/etc/datadog-agent/conf.d/ntp.d/*|/etc/datadog-agent/conf.d/uptime.d/*|/etc/datadog-agent/conf.d/system_swap.d/*|/etc/datadog-agent/conf.d/systemd.d/*|/etc/datadog-agent/conf.d/jetson.d/*)
-                    ;;
-                *)
-                    failures+=("disallowed payload remains: $logical_path")
-                    ;;
-            esac
-        done < <(find "$candidate_root" \( -type f -o -type l \) -print 2>/dev/null)
+    logical_path=/etc/datadog-agent/conf.d
+    if [ -n "$traversal_path" ] && { [ -d "$candidate_root" ] || [ -L "$candidate_root" ]; }; then
+        if ! find "$candidate_root" \( -type f -o -type l \) -print0 > "$traversal_path" 2>/dev/null; then
+            failures+=("unable to inspect payload tree: $logical_path")
+        else
+            while IFS= read -r -d '' candidate_path; do
+                if [ -L "$candidate_path" ]; then
+                    [ -e "$candidate_path" ] || continue
+                elif [ ! -f "$candidate_path" ]; then
+                    continue
+                fi
+                logical_path=${candidate_path#"$root_prefix"}
+                case "$logical_path" in
+                    /etc/datadog-agent/conf.d/cpu.d/*|/etc/datadog-agent/conf.d/disk.d/*|/etc/datadog-agent/conf.d/io.d/*|/etc/datadog-agent/conf.d/load.d/*|/etc/datadog-agent/conf.d/memory.d/*|/etc/datadog-agent/conf.d/network.d/*|/etc/datadog-agent/conf.d/ntp.d/*|/etc/datadog-agent/conf.d/uptime.d/*|/etc/datadog-agent/conf.d/system_swap.d/*|/etc/datadog-agent/conf.d/systemd.d/*|/etc/datadog-agent/conf.d/jetson.d/*)
+                        ;;
+                    *)
+                        failures+=("disallowed payload remains: $logical_path")
+                        ;;
+                esac
+            done < "$traversal_path"
+        fi
     fi
 
-    for disallowed_tree in "${disallowed_trees[@]}"; do
-        candidate_root="$root_prefix$disallowed_tree"
+    for candidate_path in "$root_prefix"/opt/datadog-agent/requirements*.txt; do
+        if [ -L "$candidate_path" ]; then
+            [ -e "$candidate_path" ] || continue
+        elif [ ! -f "$candidate_path" ]; then
+            continue
+        fi
+        failures+=("disallowed payload remains: ${candidate_path#"$root_prefix"}")
+    done
+
+    for candidate_root in "$root_prefix"/opt/datadog-agent/embedded/share/msodbcsql*; do
         if [ ! -d "$candidate_root" ] && [ ! -f "$candidate_root" ] && [ ! -L "$candidate_root" ]; then
             continue
         fi
-        while IFS= read -r candidate_path; do
+        [ -n "$traversal_path" ] || continue
+        logical_path=${candidate_root#"$root_prefix"}
+        if ! find "$candidate_root" \( -type f -o -type l \) -print0 > "$traversal_path" 2>/dev/null; then
+            failures+=("unable to inspect disallowed payload tree: $logical_path")
+            continue
+        fi
+        while IFS= read -r -d '' candidate_path; do
             if [ -L "$candidate_path" ]; then
                 [ -e "$candidate_path" ] || continue
             elif [ ! -f "$candidate_path" ]; then
                 continue
             fi
             failures+=("disallowed payload remains: ${candidate_path#"$root_prefix"}")
-        done < <(find "$candidate_root" \( -type f -o -type l \) -print 2>/dev/null)
+        done < "$traversal_path"
     done
 
+    for disallowed_tree in "${disallowed_trees[@]}"; do
+        candidate_root="$root_prefix$disallowed_tree"
+        if [ ! -d "$candidate_root" ] && [ ! -f "$candidate_root" ] && [ ! -L "$candidate_root" ]; then
+            continue
+        fi
+        [ -n "$traversal_path" ] || continue
+        if ! find "$candidate_root" \( -type f -o -type l \) -print0 > "$traversal_path" 2>/dev/null; then
+            failures+=("unable to inspect disallowed payload tree: $disallowed_tree")
+            continue
+        fi
+        while IFS= read -r -d '' candidate_path; do
+            if [ -L "$candidate_path" ]; then
+                [ -e "$candidate_path" ] || continue
+            elif [ ! -f "$candidate_path" ]; then
+                continue
+            fi
+            failures+=("disallowed payload remains: ${candidate_path#"$root_prefix"}")
+        done < "$traversal_path"
+    done
+
+    [ -z "$traversal_path" ] || rm -f "$traversal_path"
     if [ "${#failures[@]}" -ne 0 ]; then
         printf 'Filtered IoT layout validation failed:\n' >&2
         printf ' - %s\n' "${failures[@]}" >&2

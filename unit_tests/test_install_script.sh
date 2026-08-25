@@ -584,6 +584,7 @@ path-exclude=/opt/datadog-agent/embedded/lib/python*
 path-exclude=/opt/datadog-agent/embedded/msodbcsql/*
 path-exclude=/opt/datadog-agent/embedded/sbin/*
 path-exclude=/opt/datadog-agent/embedded/share/ebpf/*
+path-exclude=/opt/datadog-agent/embedded/share/msodbcsql*
 path-exclude=/opt/datadog-agent/embedded/share/system-probe/*
 path-exclude=/opt/datadog-agent/python-scripts/*
 path-exclude=/opt/datadog-agent/requirements/*
@@ -783,6 +784,14 @@ testDebIotFilterConfigExplicitlyIncludesParentsBeforeLeaves() {
   assertNotEquals "ODBC libraries should remain excluded" 0 $?
   iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/embedded/share/system-probe/ebpf.o"
   assertNotEquals "system-probe support data should remain excluded" 0 $?
+  iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/embedded/share/msodbcsql18/lib64/libmsodbcsql.so"
+  assertNotEquals "shared MS ODBC payloads should remain excluded" 0 $?
+  iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/python-scripts/post.py"
+  assertNotEquals "Agent Python scripts should remain excluded" 0 $?
+  iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/requirements/base.txt"
+  assertNotEquals "Agent requirement directories should remain excluded" 0 $?
+  iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/requirements-agent-release.txt"
+  assertNotEquals "Agent requirement manifests should remain excluded" 0 $?
   iotDpkgPathIsIncluded "$filter_path" "/opt/datadog-agent/bin/process-agent/process-agent"
   assertNotEquals "process-agent should remain excluded" 0 $?
   iotDpkgPathIsIncluded "$filter_path" "/etc/datadog-agent/conf.d/docker.d/conf.yaml.example"
@@ -830,8 +839,10 @@ testRpmIotExcludePathsDerivesSortedUniquePrefixes() {
 /opt/datadog-agent/embedded/include/Python.h
 /opt/datadog-agent/embedded/share/system-probe/ebpf.o
 /opt/datadog-agent/embedded/share/ebpf/co-re.o
+/opt/datadog-agent/embedded/share/msodbcsql18/lib64/libmsodbcsql.so
 /opt/datadog-agent/embedded/msodbcsql/lib64/libmsodbcsql.so
 /opt/datadog-agent/python-scripts/post.py
+/opt/datadog-agent/requirements/base.txt
 /opt/datadog-agent/requirements-agent-release.txt
 /opt/datadog-agent/compliance/rules.json
 /opt/datadog-agent/runtime-security.d/policy.policy
@@ -865,9 +876,11 @@ EOF
 /opt/datadog-agent/embedded/msodbcsql/
 /opt/datadog-agent/embedded/sbin/
 /opt/datadog-agent/embedded/share/ebpf/
+/opt/datadog-agent/embedded/share/msodbcsql18/
 /opt/datadog-agent/embedded/share/system-probe/
 /opt/datadog-agent/python-scripts/
 /opt/datadog-agent/requirements-agent-release.txt
+/opt/datadog-agent/requirements/
 /opt/datadog-agent/runtime-security.d/'
   assertEquals "RPM exclusions should be sorted, unique, and retain only supported payloads" "$expected" "$output"
 
@@ -1078,10 +1091,14 @@ testValidateIotInstallLayoutAggregatesPrunedPayloadClasses() {
     /opt/datadog-agent/embedded/lib/python3.13/site-packages/yaml/__init__.py
     /opt/datadog-agent/embedded/share/system-probe/ebpf.o
     /opt/datadog-agent/embedded/share/ebpf/co-re.o
+    /opt/datadog-agent/embedded/share/msodbcsql18/lib64/libmsodbcsql.so
     /opt/datadog-agent/embedded/include/Python.h
     /opt/datadog-agent/embedded/lib/libodbc.so.2
     /opt/datadog-agent/embedded/msodbcsql/lib64/libmsodbcsql.so
     /opt/datadog-agent/embedded/sbin/chroot
+    /opt/datadog-agent/python-scripts/post.py
+    /opt/datadog-agent/requirements/base.txt
+    /opt/datadog-agent/requirements-agent-release.txt
     /opt/datadog-agent/compliance/rules.json
     /etc/datadog-agent/compliance.d/default.rego
     /opt/datadog-agent/runtime-security.d/policy.policy
@@ -1169,6 +1186,10 @@ testValidateIotInstallLayoutRejectsLiveLinksInDisallowedTrees() {
     /opt/datadog-agent/embedded/bin/python3
     /opt/datadog-agent/embedded/lib/python3.13/os.py
     /opt/datadog-agent/embedded/share/system-probe/live-data
+    /opt/datadog-agent/embedded/share/msodbcsql18/live-data
+    /opt/datadog-agent/python-scripts/live-script
+    /opt/datadog-agent/requirements/live-requirement
+    /opt/datadog-agent/requirements-agent-release.txt
     /etc/datadog-agent/conf.d/kubelet.d
   )
 
@@ -1177,12 +1198,19 @@ testValidateIotInstallLayoutRejectsLiveLinksInDisallowedTrees() {
   mkdir -p \
     "$root/live-target-directory" \
     "$root/opt/datadog-agent/embedded/lib/python3.13" \
-    "$root/opt/datadog-agent/embedded/share/system-probe"
+    "$root/opt/datadog-agent/embedded/share/system-probe" \
+    "$root/opt/datadog-agent/embedded/share/msodbcsql18" \
+    "$root/opt/datadog-agent/python-scripts" \
+    "$root/opt/datadog-agent/requirements"
   touch "$root/live-target-file"
   ln -s "$root/live-target-file" "$root/opt/datadog-agent/bin/process-agent"
   ln -s "$root/live-target-directory" "$root/opt/datadog-agent/embedded/bin/python3"
   ln -s "$root/live-target-file" "$root/opt/datadog-agent/embedded/lib/python3.13/os.py"
   ln -s "$root/live-target-directory" "$root/opt/datadog-agent/embedded/share/system-probe/live-data"
+  ln -s "$root/live-target-directory" "$root/opt/datadog-agent/embedded/share/msodbcsql18/live-data"
+  ln -s "$root/live-target-file" "$root/opt/datadog-agent/python-scripts/live-script"
+  ln -s "$root/live-target-file" "$root/opt/datadog-agent/requirements/live-requirement"
+  ln -s "$root/live-target-file" "$root/opt/datadog-agent/requirements-agent-release.txt"
   ln -s "$root/live-target-directory" "$root/etc/datadog-agent/conf.d/kubelet.d"
 
   output=$(validate_iot_install_layout "$root" 2>&1)
@@ -1192,6 +1220,34 @@ testValidateIotInstallLayoutRejectsLiveLinksInDisallowedTrees() {
   for link_path in "${link_paths[@]}"; do
     assertIotContains "$link_path should be reported" "$output" "$link_path"
   done
+  rm -rf "$root"
+}
+
+testValidateIotInstallLayoutFailsClosedWhenDisallowedTreeCannotBeInspected() {
+  local root
+  local failing_tree
+  local output
+  local status
+
+  root=$(mktemp -d)
+  createIotRetainedLayout "$root"
+  failing_tree="$root/opt/datadog-agent/embedded/share/system-probe"
+  mkdir -p "$failing_tree"
+  touch "$failing_tree/hidden-payload"
+  # shellcheck disable=SC2329
+  find() {
+    if [ "${1-}" = "$failing_tree" ]; then
+      return 73
+    fi
+    command find "$@"
+  }
+
+  output=$(validate_iot_install_layout "$root" 2>&1)
+  status=$?
+  unset -f find
+
+  assertNotEquals "an unreadable disallowed tree should fail closed" 0 "$status"
+  assertIotContains "inspection failure should be aggregated" "$output" "unable to inspect disallowed payload tree: /opt/datadog-agent/embedded/share/system-probe"
   rm -rf "$root"
 }
 
@@ -1205,7 +1261,10 @@ testValidateIotInstallLayoutAllowsEmptyExcludedDirectoriesAndDanglingLinks() {
     /opt/datadog-agent/embedded/msodbcsql
     /opt/datadog-agent/embedded/sbin
     /opt/datadog-agent/embedded/share/ebpf
+    /opt/datadog-agent/embedded/share/msodbcsql18
     /opt/datadog-agent/embedded/share/system-probe
+    /opt/datadog-agent/python-scripts
+    /opt/datadog-agent/requirements
     /opt/datadog-agent/compliance
     /opt/datadog-agent/runtime-security.d
     /etc/datadog-agent/compliance.d
