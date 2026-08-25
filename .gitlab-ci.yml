@@ -199,7 +199,7 @@ test_iot_filtered_debian_12_pinned:
   variables:
     IMAGE: mirror/debian:12.1
     MAJOR_VERSION: 7
-    MINOR_VERSION: 82
+    DD_AGENT_MINOR_VERSION: 82
     SCRIPT: install_script_agent7_iot.sh
 
 # These tests should not be launched on pipelines triggered by datadog-agent pipelines, but in the future we will trigger

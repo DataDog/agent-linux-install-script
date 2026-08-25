@@ -95,6 +95,13 @@ grep -q '^test_iot_filtered_ubuntu_22_04:' "$repo_root/.gitlab-ci.yml" ||
   fail "GitLab CI is missing the filtered IoT Ubuntu 22.04 job"
 grep -q '^test_iot_filtered_debian_12_pinned:' "$repo_root/.gitlab-ci.yml" ||
   fail "GitLab CI is missing the pinned filtered IoT Debian 12 job"
+if ! awk '
+  /^test_iot_filtered_debian_12_pinned:/ { in_job=1; next }
+  in_job && /^[^[:space:]]/ { exit }
+  in_job { print }
+' "$repo_root/.gitlab-ci.yml" | grep -Fqx '    DD_AGENT_MINOR_VERSION: 82'; then
+  fail "filtered IoT Debian 12 CI does not pin DD_AGENT_MINOR_VERSION=82"
+fi
 
 if awk '/^deploy:/{in_deploy=1} /^deploy_deprecated:/{in_deploy=0} in_deploy' "$repo_root/.gitlab-ci.yml" |
    grep -Fq install_script_agent7_iot.sh; then
