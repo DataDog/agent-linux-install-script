@@ -481,6 +481,9 @@ createIotRetainedLayout() {
     "$root/opt/datadog-agent/embedded/bin/agent-data-plane" \
     "$root/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so" \
     "$root/etc/datadog-agent/datadog.yaml.example"
+  chmod +x \
+    "$root/opt/datadog-agent/bin/agent/agent" \
+    "$root/opt/datadog-agent/embedded/bin/agent-data-plane"
 
   for check_name in "${check_names[@]}"; do
     mkdir -p "$root/etc/datadog-agent/conf.d/$check_name.d"
@@ -627,6 +630,89 @@ path-include=/etc/datadog-agent/conf.d/jetson.d/*'
 
   duplicate_count=$(sort "$filter_path" | uniq -d | wc -l | tr -d ' ')
   assertEquals "each DEB filter rule should be unique" 0 "$duplicate_count"
+  assertEquals "DEB filter mode" 644 "$(stat -c '%a' "$filter_path")"
+  rm -rf "$test_dir"
+}
+
+testDebIotFilterConfigPreservesFilterAndCleansTempOnWriteFailure() {
+  local test_dir
+  local filter_path
+  local output
+  local status
+  local temp_count
+
+  test_dir=$(mktemp -d)
+  filter_path="$test_dir/99-datadog-iot"
+  mkdir "$test_dir/bin"
+  printf 'existing complete filter\n' > "$filter_path"
+  cat > "$test_dir/bin/cat" <<'EOF'
+#!/bin/sh
+exit 1
+EOF
+  chmod +x "$test_dir/bin/cat"
+
+  output=$(PATH="$test_dir/bin:$PATH" write_deb_iot_filter_config "$filter_path" 2>&1)
+  status=$?
+
+  assertNotEquals "failed temporary filter write should return nonzero" 0 "$status"
+  assertIotContains "write failure should be actionable" "$output" "temporary filtered IoT dpkg configuration"
+  assertEquals "failed write should preserve the complete filter" "existing complete filter" "$(cat "$filter_path")"
+  temp_count=$(find "$test_dir" -maxdepth 1 -name '.datadog_iot_filter.tmp.*' | wc -l | tr -d ' ')
+  assertEquals "failed write should clean its temporary file" 0 "$temp_count"
+  rm -rf "$test_dir"
+}
+
+testDebIotFilterConfigPreservesFilterAndCleansTempOnReplaceFailure() {
+  local test_dir
+  local filter_path
+  local arguments_path
+  local output
+  local status
+  local temp_count
+
+  test_dir=$(mktemp -d)
+  filter_path="$test_dir/99-datadog-iot"
+  arguments_path="$test_dir/mv-arguments"
+  printf 'existing complete filter\n' > "$filter_path"
+  # shellcheck disable=SC2329
+  mv() {
+    printf '%s\n' "$@" > "$arguments_path"
+    return 1
+  }
+
+  output=$(write_deb_iot_filter_config "$filter_path" 2>&1)
+  status=$?
+  unset -f mv
+
+  assertNotEquals "failed filter replacement should return nonzero" 0 "$status"
+  assertIotContains "replacement failure should be actionable" "$output" "atomically replace"
+  assertEquals "failed replacement should preserve the complete filter" "existing complete filter" "$(cat "$filter_path")"
+  assertEquals "filter replacement should use no-target-directory semantics" "-fT
+--" "$(head -n 2 "$arguments_path")"
+  assertEquals "filter replacement destination should be exact" "$filter_path" "$(tail -n 1 "$arguments_path")"
+  temp_count=$(find "$test_dir" -maxdepth 1 -name '.datadog_iot_filter.tmp.*' | wc -l | tr -d ' ')
+  assertEquals "failed replacement should clean its temporary file" 0 "$temp_count"
+  rm -rf "$test_dir"
+}
+
+testDebIotFilterConfigRejectsDirectoryDestination() {
+  local test_dir
+  local filter_path
+  local output
+  local status
+  local nested_count
+
+  test_dir=$(mktemp -d)
+  filter_path="$test_dir/99-datadog-iot"
+  mkdir "$filter_path"
+
+  output=$(write_deb_iot_filter_config "$filter_path" 2>&1)
+  status=$?
+
+  assertNotEquals "directory filter destination should fail closed" 0 "$status"
+  assertTrue "directory destination should remain a directory" "[ -d '$filter_path' ]"
+  nested_count=$(find "$filter_path" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')
+  assertEquals "no filter temporary file should be moved into the destination directory" 0 "$nested_count"
   rm -rf "$test_dir"
 }
 
@@ -791,6 +877,37 @@ $package_path"
   rm -rf "$test_dir"
 }
 
+testRpmIotExcludePathsRunsUnderSystemBashWithoutAssociativeArrays() {
+  local test_dir
+  local package_path
+  local helper_definition
+  local output
+  local status
+
+  test_dir=$(mktemp -d)
+  package_path="$test_dir/agent.rpm"
+  mkdir "$test_dir/bin"
+  : > "$package_path"
+  cat > "$test_dir/bin/rpm" <<'EOF'
+#!/bin/sh
+printf '%s\n' \
+  /opt/datadog-agent/embedded/bin/process-agent \
+  /opt/datadog-agent/embedded/bin/process-agent
+EOF
+  chmod +x "$test_dir/bin/rpm"
+
+  helper_definition=$(declare -f rpm_iot_exclude_paths)
+  assertIotNotContains "RPM helper should not declare a local associative array" "$helper_definition" "local -A"
+  assertIotNotContains "RPM helper should not declare an associative array" "$helper_definition" "declare -A"
+
+  output=$(PATH="$test_dir/bin:$PATH" /bin/bash -c 'source "$1"; rpm_iot_exclude_paths "$2"' _ "$dir_path/extracted_functions.sh" "$package_path" 2>&1)
+  status=$?
+
+  assertEquals "RPM helper should run under the system Bash" 0 "$status"
+  assertEquals "Bash-compatible deduplication should emit one prefix" "/opt/datadog-agent/embedded/bin/process-agent" "$output"
+  rm -rf "$test_dir"
+}
+
 testRpmIotExcludePathsRejectsAgentDataPlanePrefixCollisionWithoutOutput() {
   local test_dir
   local output_path
@@ -943,16 +1060,22 @@ testValidateIotInstallLayoutAggregatesPrunedPayloadClasses() {
   local status
   local payload_path
   local -a disallowed_payloads=(
+    /opt/datadog-agent/bin/process-agent/process-agent
+    /opt/datadog-agent/bin/agent/dist/checks/check.py
+    /opt/datadog-agent/bin/agent/dist/config/config.py
+    /opt/datadog-agent/bin/agent/dist/utils/util.py
+    /opt/datadog-agent/bin/agent/dist/jmx/jmxfetch.jar
     /opt/datadog-agent/embedded/bin/process-agent
     /opt/datadog-agent/embedded/bin/trace-agent
     /opt/datadog-agent/embedded/bin/security-agent
     /opt/datadog-agent/embedded/bin/privateactionrunner
     /opt/datadog-agent/embedded/bin/installer
     /opt/datadog-agent/embedded/bin/system-probe
+    /opt/datadog-agent/embedded/bin/unexpected-helper
     /opt/datadog-agent/embedded/bin/python3
     /opt/datadog-agent/embedded/lib/libpython3.13.so.1.0
+    /opt/datadog-agent/embedded/lib/python3.13/os.py
     /opt/datadog-agent/embedded/lib/python3.13/site-packages/yaml/__init__.py
-    /opt/datadog-agent/bin/agent/dist/jmx/jmxfetch.jar
     /opt/datadog-agent/embedded/share/system-probe/ebpf.o
     /opt/datadog-agent/embedded/share/ebpf/co-re.o
     /opt/datadog-agent/embedded/include/Python.h
@@ -964,6 +1087,7 @@ testValidateIotInstallLayoutAggregatesPrunedPayloadClasses() {
     /opt/datadog-agent/runtime-security.d/policy.policy
     /etc/datadog-agent/runtime-security.d/default.policy
     /etc/datadog-agent/conf.d/docker.d/conf.yaml.example
+    /etc/datadog-agent/conf.d/kubelet.d/conf.yaml.example
   )
 
   root=$(mktemp -d)
@@ -978,6 +1102,95 @@ testValidateIotInstallLayoutAggregatesPrunedPayloadClasses() {
   assertNotEquals "a layout containing pruned payload classes should fail" 0 "$status"
   for payload_path in "${disallowed_payloads[@]}"; do
     assertIotContains "$payload_path should be reported" "$output" "$payload_path"
+  done
+  rm -rf "$root"
+}
+
+testValidateIotInstallLayoutRequiresExecutableRegularBinaries() {
+  local root
+  local output
+  local status
+
+  root=$(mktemp -d)
+  createIotRetainedLayout "$root"
+  chmod -x \
+    "$root/opt/datadog-agent/bin/agent/agent" \
+    "$root/opt/datadog-agent/embedded/bin/agent-data-plane"
+
+  output=$(validate_iot_install_layout "$root" 2>&1)
+  status=$?
+
+  assertNotEquals "non-executable retained binaries should fail" 0 "$status"
+  assertIotContains "normal Agent error should require an executable regular file" "$output" "/opt/datadog-agent/bin/agent/agent"
+  assertIotContains "agent-data-plane error should require an executable regular file" "$output" "/opt/datadog-agent/embedded/bin/agent-data-plane"
+  rm -rf "$root"
+}
+
+testValidateIotInstallLayoutRejectsWrongRetainedTypes() {
+  local root
+  local output
+  local status
+
+  root=$(mktemp -d)
+  createIotRetainedLayout "$root"
+  rm "$root/opt/datadog-agent/bin/agent/agent"
+  mkdir "$root/opt/datadog-agent/bin/agent/agent"
+  rm "$root/opt/datadog-agent/embedded/bin/agent-data-plane"
+  mkdir "$root/opt/datadog-agent/embedded/bin/agent-data-plane"
+  rm "$root/etc/datadog-agent/datadog.yaml.example"
+  mkdir "$root/etc/datadog-agent/datadog.yaml.example"
+  rm -rf "$root/opt/datadog-agent/bin/agent/dist/views"
+  touch "$root/opt/datadog-agent/bin/agent/dist/views"
+  rm -rf "$root/etc/datadog-agent/conf.d/cpu.d"
+  touch "$root/etc/datadog-agent/conf.d/cpu.d"
+  mv "$root/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so" "$root/opt/datadog-agent/embedded/lib/rtloader-target"
+  ln -s rtloader-target "$root/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so"
+
+  output=$(validate_iot_install_layout "$root" 2>&1)
+  status=$?
+
+  assertNotEquals "wrong retained path types should fail" 0 "$status"
+  assertIotContains "normal Agent should reject a directory" "$output" "/opt/datadog-agent/bin/agent/agent"
+  assertIotContains "agent-data-plane should reject a directory" "$output" "/opt/datadog-agent/embedded/bin/agent-data-plane"
+  assertIotContains "configuration example should reject a directory" "$output" "/etc/datadog-agent/datadog.yaml.example"
+  assertIotContains "views should reject a regular file" "$output" "/opt/datadog-agent/bin/agent/dist/views"
+  assertIotContains "check directory should reject a regular file" "$output" "/etc/datadog-agent/conf.d/cpu.d"
+  assertIotContains "rtloader should reject a live symlink" "$output" "/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*"
+  rm -rf "$root"
+}
+
+testValidateIotInstallLayoutRejectsLiveLinksInDisallowedTrees() {
+  local root
+  local output
+  local status
+  local link_path
+  local -a link_paths=(
+    /opt/datadog-agent/bin/process-agent
+    /opt/datadog-agent/embedded/bin/python3
+    /opt/datadog-agent/embedded/lib/python3.13/os.py
+    /opt/datadog-agent/embedded/share/system-probe/live-data
+    /etc/datadog-agent/conf.d/kubelet.d
+  )
+
+  root=$(mktemp -d)
+  createIotRetainedLayout "$root"
+  mkdir -p \
+    "$root/live-target-directory" \
+    "$root/opt/datadog-agent/embedded/lib/python3.13" \
+    "$root/opt/datadog-agent/embedded/share/system-probe"
+  touch "$root/live-target-file"
+  ln -s "$root/live-target-file" "$root/opt/datadog-agent/bin/process-agent"
+  ln -s "$root/live-target-directory" "$root/opt/datadog-agent/embedded/bin/python3"
+  ln -s "$root/live-target-file" "$root/opt/datadog-agent/embedded/lib/python3.13/os.py"
+  ln -s "$root/live-target-directory" "$root/opt/datadog-agent/embedded/share/system-probe/live-data"
+  ln -s "$root/live-target-directory" "$root/etc/datadog-agent/conf.d/kubelet.d"
+
+  output=$(validate_iot_install_layout "$root" 2>&1)
+  status=$?
+
+  assertNotEquals "live links in disallowed trees should fail" 0 "$status"
+  for link_path in "${link_paths[@]}"; do
+    assertIotContains "$link_path should be reported" "$output" "$link_path"
   done
   rm -rf "$root"
 }
@@ -1058,6 +1271,76 @@ testWriteIotInstallProfilePreservesMarkerAndCleansTempOnFailure() {
   assertEquals "existing marker should remain intact" "existing marker" "$(cat "$marker_path")"
   temp_count=$(find "$test_dir" -maxdepth 1 -name '.install_profile.tmp.*' | wc -l | tr -d ' ')
   assertEquals "failed replacement should clean its temporary file" 0 "$temp_count"
+  rm -rf "$test_dir"
+}
+
+testWriteIotInstallProfileRejectsDirectoryDestinations() {
+  local test_dir
+  local marker_path
+  local output
+  local status
+  local nested_count
+
+  test_dir=$(mktemp -d)
+  marker_path="$test_dir/install_profile"
+  mkdir "$marker_path"
+
+  output=$(write_iot_install_profile "$marker_path" "7.72.1-1" 2>&1)
+  status=$?
+
+  assertNotEquals "directory marker destination should fail closed" 0 "$status"
+  assertTrue "marker destination should remain a directory" "[ -d '$marker_path' ]"
+  nested_count=$(find "$marker_path" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')
+  assertEquals "no marker temporary file should be moved into the destination directory" 0 "$nested_count"
+  rm -rf "$test_dir"
+}
+
+testWriteIotInstallProfileRejectsSymlinkToDirectoryDestinations() {
+  local test_dir
+  local target_directory
+  local marker_path
+  local output
+  local status
+  local nested_count
+
+  test_dir=$(mktemp -d)
+  target_directory="$test_dir/marker-target"
+  marker_path="$test_dir/install_profile"
+  mkdir "$target_directory"
+  ln -s "$target_directory" "$marker_path"
+
+  output=$(write_iot_install_profile "$marker_path" "7.72.1-1" 2>&1)
+  status=$?
+
+  assertNotEquals "symlink-to-directory marker destination should fail closed" 0 "$status"
+  assertTrue "marker destination should remain a symlink" "[ -L '$marker_path' ]"
+  nested_count=$(find "$target_directory" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')
+  assertEquals "no marker temporary file should be moved through the destination symlink" 0 "$nested_count"
+  rm -rf "$test_dir"
+}
+
+testWriteIotInstallProfileVerifiesExactDestinationAfterReplacement() {
+  local test_dir
+  local marker_path
+  local output
+  local status
+  local temp_count
+
+  test_dir=$(mktemp -d)
+  marker_path="$test_dir/install_profile"
+  # shellcheck disable=SC2329
+  mv() {
+    return 0
+  }
+
+  output=$(write_iot_install_profile "$marker_path" "7.72.1-1" 2>&1)
+  status=$?
+  unset -f mv
+
+  assertNotEquals "replacement without an exact regular marker should fail" 0 "$status"
+  assertFalse "missing exact marker should not be accepted" "[ -e '$marker_path' ]"
+  temp_count=$(find "$test_dir" -maxdepth 1 -name '.install_profile.tmp.*' | wc -l | tr -d ' ')
+  assertEquals "failed post-replacement verification should clean its temporary file" 0 "$temp_count"
   rm -rf "$test_dir"
 }
 
