@@ -40,6 +40,50 @@ function dpkg_path_is_excluded() {
   [ "$decision" = exclude ]
 }
 
+function verify_iot_dpkg_policy() {
+  local filter_path=$1
+  local package_path
+  local result=0
+  local -a included_paths=(
+    /opt/datadog-agent/bin/agent/agent
+    /opt/datadog-agent/embedded/bin/agent-data-plane
+    /opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so
+    /opt/datadog-agent/bin/agent/dist/views/index.html
+    /etc/datadog-agent/conf.d/cpu.d/conf.yaml.example
+  )
+  local -a excluded_paths=(
+    /opt/datadog-agent/embedded/bin/python3
+    /opt/datadog-agent/bin/process-agent/process-agent
+    /opt/datadog-agent/embedded/bin/system-probe
+    /opt/datadog-agent/embedded/share/ebpf/co-re.o
+    /opt/datadog-agent/bin/agent/dist/jmx/jmxfetch.jar
+    /etc/datadog-agent/conf.d/docker.d/conf.yaml.example
+  )
+
+  for package_path in "${included_paths[@]}"; do
+    if dpkg_path_is_excluded "$package_path"; then
+      echo "[FAIL] Persistent filtered IoT dpkg policy excludes required path $package_path"
+      result=1
+    fi
+  done
+  for package_path in "${excluded_paths[@]}"; do
+    if ! dpkg_path_is_excluded "$package_path"; then
+      echo "[FAIL] Persistent filtered IoT dpkg policy includes disallowed path $package_path"
+      result=1
+    fi
+  done
+  if [ -f "$filter_path" ] && grep -Fqx 'path-include=/opt/datadog-agent/embedded/bin/installer' "$filter_path"; then
+    echo "[FAIL] Persistent filtered IoT dpkg policy retains the transient installer rule"
+    result=1
+  fi
+  if [ -e /opt/datadog-agent/embedded/bin/installer ] || [ -L /opt/datadog-agent/embedded/bin/installer ]; then
+    echo "[FAIL] Filtered IoT install retains the package installer binary"
+    result=1
+  fi
+
+  return "$result"
+}
+
 function verify_iot_debsums() {
   local package_name=$1
   local output_path
@@ -367,6 +411,11 @@ if [ "${SCRIPT_FLAVOR}" = "agent7_iot" ] && [ -z "$DD_NO_AGENT_INSTALL" ]; then
     RESULT=1
   else
     echo "[OK] Persistent filtered IoT dpkg configuration has the expected ownership and mode"
+  fi
+  if ! verify_iot_dpkg_policy "$iot_filter"; then
+    RESULT=1
+  else
+    echo "[OK] Persistent filtered IoT dpkg policy has the expected effective decisions"
   fi
 
   if ! grep -q '^infrastructure_mode: iot$' /etc/datadog-agent/datadog.yaml; then

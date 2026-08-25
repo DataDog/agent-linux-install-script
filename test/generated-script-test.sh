@@ -89,6 +89,8 @@ grep -Fq 'verify_iot_debsums' "$localtest" || fail "localtest is missing fail-cl
 grep -Fq 'infrastructure_mode: iot' "$localtest" || fail "localtest does not verify filtered IoT infrastructure mode"
 grep -Fq 'iot-installed-bytes.txt' "$localtest" || fail "localtest does not record filtered IoT logical bytes"
 grep -Fq '/etc/dpkg/dpkg.cfg.d/99-datadog-iot' "$localtest" || fail "localtest does not verify the persistent dpkg filter"
+# shellcheck disable=SC2016
+grep -Fq 'if ! verify_iot_dpkg_policy "$iot_filter"; then' "$localtest" || fail "localtest does not exercise the installed filtered IoT dpkg policy"
 grep -Fq '/etc/datadog-agent/install_profile' "$localtest" || fail "localtest does not verify that the final profile marker is absent"
 
 grep -q '^test_iot_filtered_ubuntu_22_04:' "$repo_root/.gitlab-ci.yml" ||
