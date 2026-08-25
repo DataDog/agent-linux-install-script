@@ -15,6 +15,12 @@ support_email=support@datadoghq.com
 variant=install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
 # shellcheck disable=SC2034
 iot_filtered_install=IOT_FILTERED_INSTALL_PLACEHOLDER
+# BEGIN GENERATED FILTERED IOT ONLY
+iot_deb_filter_rollback_active=
+iot_deb_filter_rollback_sudo_cmd=
+iot_deb_filter_rollback_destination=
+iot_deb_filter_rollback_directory=
+# END GENERATED FILTERED IOT ONLY
 
 LEGACY_ETCDIR="/etc/dd-agent"
 LEGACY_CONF="$LEGACY_ETCDIR/datadog.conf"
@@ -113,6 +119,9 @@ DISTRIBUTION=$(lsb_release -d 2>/dev/null | grep -Eo "$KNOWN_DISTRIBUTION" || gr
 
 function on_exit() {
     exit_code=$?
+# BEGIN GENERATED FILTERED IOT ONLY
+    rollback_deb_iot_filter_transaction || true
+# END GENERATED FILTERED IOT ONLY
     rm -f $npipe
 
     # Handle any remaining active stage
@@ -568,6 +577,191 @@ function install_deb_iot_filter_config() {
     fi
 }
 
+function begin_deb_iot_filter_transaction() {
+    local sudo_cmd="${1-}"
+    local destination_path="${2-}"
+    local rollback_directory
+    local -a root_context_command=()
+
+    if [ -z "$destination_path" ]; then
+        printf 'A destination path is required to begin the filtered IoT dpkg transaction.\n' >&2
+        return 1
+    fi
+    if [ "$iot_deb_filter_rollback_active" = true ]; then
+        printf 'A filtered IoT dpkg transaction is already active.\n' >&2
+        return 1
+    fi
+    if ! rollback_directory="$(mktemp -d "${TMPDIR:-/tmp}/datadog-iot-filter-rollback.XXXXXX")"; then
+        printf 'Unable to create private rollback storage for the filtered IoT dpkg configuration.\n' >&2
+        return 1
+    fi
+    if ! chmod 0700 "$rollback_directory"; then
+        rm -rf "$rollback_directory"
+        printf 'Unable to make filtered IoT dpkg rollback storage private.\n' >&2
+        return 1
+    fi
+    if [ -n "$sudo_cmd" ]; then
+        root_context_command=("$sudo_cmd")
+    fi
+    # shellcheck disable=SC2016
+    if ! "${root_context_command[@]}" sh -c '
+        set -e
+        destination_path=$1
+        rollback_directory=$2
+        umask 077
+        if [ -e "$destination_path" ] || [ -L "$destination_path" ]; then
+            [ -f "$destination_path" ] && [ ! -L "$destination_path" ]
+            printf "present\n" > "$rollback_directory/state"
+            cat -- "$destination_path" > "$rollback_directory/content"
+            stat -c "%a" "$destination_path" > "$rollback_directory/mode"
+            stat -c "%u" "$destination_path" > "$rollback_directory/uid"
+            stat -c "%g" "$destination_path" > "$rollback_directory/gid"
+        else
+            printf "absent\n" > "$rollback_directory/state"
+        fi
+    ' sh "$destination_path" "$rollback_directory"; then
+        "${root_context_command[@]}" rm -rf -- "$rollback_directory" || true
+        printf 'Unable to snapshot the prior filtered IoT dpkg configuration at %s.\n' "$destination_path" >&2
+        return 1
+    fi
+
+    iot_deb_filter_rollback_sudo_cmd=$sudo_cmd
+    iot_deb_filter_rollback_destination=$destination_path
+    iot_deb_filter_rollback_directory=$rollback_directory
+    iot_deb_filter_rollback_active=true
+}
+
+function rollback_deb_iot_filter_transaction() {
+    local sudo_cmd="${iot_deb_filter_rollback_sudo_cmd-}"
+    local destination_path="${iot_deb_filter_rollback_destination-}"
+    local rollback_directory="${iot_deb_filter_rollback_directory-}"
+    local -a root_context_command=()
+
+    [ "${iot_deb_filter_rollback_active-}" = true ] || return 0
+    if [ -n "$sudo_cmd" ]; then
+        root_context_command=("$sudo_cmd")
+    fi
+    # shellcheck disable=SC2016
+    if ! "${root_context_command[@]}" sh -c '
+        set -e
+        destination_path=$1
+        rollback_directory=$2
+        state=$(cat "$rollback_directory/state")
+        case "$state" in
+            present)
+                destination_directory=${destination_path%/*}
+                [ -n "$destination_directory" ] || destination_directory=/
+                temporary_path=$(mktemp "$destination_directory/.datadog_iot_filter.rollback.XXXXXX")
+                trap '\''rm -f -- "$temporary_path"'\'' EXIT HUP INT TERM
+                cat -- "$rollback_directory/content" > "$temporary_path"
+                chown "$(cat "$rollback_directory/uid"):$(cat "$rollback_directory/gid")" "$temporary_path"
+                chmod "$(cat "$rollback_directory/mode")" "$temporary_path"
+                mv -fT -- "$temporary_path" "$destination_path"
+                temporary_path=
+                trap - EXIT HUP INT TERM
+                cmp -s -- "$rollback_directory/content" "$destination_path"
+                [ "$(stat -c "%a" "$destination_path")" = "$(cat "$rollback_directory/mode")" ]
+                [ "$(stat -c "%u" "$destination_path")" = "$(cat "$rollback_directory/uid")" ]
+                [ "$(stat -c "%g" "$destination_path")" = "$(cat "$rollback_directory/gid")" ]
+                ;;
+            absent)
+                [ ! -d "$destination_path" ]
+                rm -f -- "$destination_path"
+                [ ! -e "$destination_path" ] && [ ! -L "$destination_path" ]
+                ;;
+            *)
+                exit 1
+                ;;
+        esac
+    ' sh "$destination_path" "$rollback_directory"; then
+        printf 'Unable to restore the prior filtered IoT dpkg configuration at %s.\n' "$destination_path" >&2
+        return 1
+    fi
+    if ! "${root_context_command[@]}" rm -rf -- "$rollback_directory"; then
+        printf 'Unable to remove private filtered IoT dpkg rollback storage.\n' >&2
+        return 1
+    fi
+
+    iot_deb_filter_rollback_active=
+    iot_deb_filter_rollback_sudo_cmd=
+    iot_deb_filter_rollback_destination=
+    iot_deb_filter_rollback_directory=
+}
+
+function commit_deb_iot_filter_transaction() {
+    local sudo_cmd="${iot_deb_filter_rollback_sudo_cmd-}"
+    local rollback_directory="${iot_deb_filter_rollback_directory-}"
+    local -a root_context_command=()
+
+    [ "${iot_deb_filter_rollback_active-}" = true ] || return 0
+    if [ -n "$sudo_cmd" ]; then
+        root_context_command=("$sudo_cmd")
+    fi
+    if ! "${root_context_command[@]}" rm -rf -- "$rollback_directory"; then
+        printf 'Unable to remove private filtered IoT dpkg rollback storage before commit.\n' >&2
+        return 1
+    fi
+
+    iot_deb_filter_rollback_active=
+    iot_deb_filter_rollback_sudo_cmd=
+    iot_deb_filter_rollback_destination=
+    iot_deb_filter_rollback_directory=
+}
+
+function finish_deb_iot_apt_install() {
+    local apt_status="${1-}"
+
+    if [ -z "$apt_status" ]; then
+        printf 'An APT status is required to finish the filtered IoT dpkg transaction.\n' >&2
+        return 1
+    fi
+    [ "$apt_status" -ne 0 ] || return 0
+    if ! rollback_deb_iot_filter_transaction; then
+        printf 'APT failed with status %s and the filtered IoT dpkg configuration could not be rolled back.\n' "$apt_status" >&2
+        return 1
+    fi
+    return "$apt_status"
+}
+
+function ensure_iot_infrastructure_mode_config() {
+    local sudo_cmd="${1-}"
+    local config_path="${2-}"
+    local -a root_context_command=()
+
+    if [ -z "$config_path" ]; then
+        printf 'An Agent configuration path is required to force filtered IoT infrastructure mode.\n' >&2
+        return 1
+    fi
+    if [ -n "$sudo_cmd" ]; then
+        root_context_command=("$sudo_cmd")
+    fi
+    # shellcheck disable=SC2016
+    if ! "${root_context_command[@]}" sh -c '
+        set -e
+        config_path=$1
+        [ -f "$config_path" ] && [ ! -L "$config_path" ]
+        config_directory=${config_path%/*}
+        [ -n "$config_directory" ] || config_directory=/
+        temporary_path=$(mktemp "$config_directory/.datadog_iot_config.XXXXXX")
+        trap '\''rm -f -- "$temporary_path"'\'' EXIT HUP INT TERM
+        awk '\''
+            /^(#[[:space:]]*)?infrastructure_mode:[[:space:]]*/ { next }
+            { print }
+            END { print "infrastructure_mode: iot" }
+        '\'' "$config_path" > "$temporary_path"
+        chown --reference="$config_path" "$temporary_path"
+        chmod --reference="$config_path" "$temporary_path"
+        mv -fT -- "$temporary_path" "$config_path"
+        temporary_path=
+        trap - EXIT HUP INT TERM
+        [ "$(grep -Fxc "infrastructure_mode: iot" "$config_path")" = 1 ]
+        [ "$(grep -Ec "^(#[[:space:]]*)?infrastructure_mode:" "$config_path")" = 1 ]
+    ' sh "$config_path"; then
+        printf 'Unable to set and verify infrastructure_mode: iot in %s.\n' "$config_path" >&2
+        return 1
+    fi
+}
+
 function activate_iot_install_mode() {
     local filtered_install="${1-}"
     local resolved_agent_major_version="${2-}"
@@ -598,12 +792,9 @@ function activate_iot_install_mode() {
 
     for package_name in datadog-agent datadog-iot-agent; do
         package_status=
-        if command -v dpkg-query >/dev/null 2>&1; then
-            package_status=$(dpkg-query --show '--showformat=${db:Status-Status}\n' "$package_name" 2>/dev/null) || true
-            if [ "$package_status" = installed ]; then
-                printf 'Filtered IoT installation is fresh-install-only and found existing package %s; remove it and its configuration before retrying.\n' "$package_name" >&2
-                return 1
-            fi
+        if command -v dpkg-query >/dev/null 2>&1 && package_status=$(dpkg-query --show '--showformat=${db:Status-Status}\n' "$package_name" 2>/dev/null); then
+            printf 'Filtered IoT installation is fresh-install-only and found existing package %s in dpkg state %s; purge it and its configuration before retrying.\n' "$package_name" "${package_status:-unknown}" >&2
+            return 1
         fi
         if command -v rpm >/dev/null 2>&1 && rpm -q "$package_name" >/dev/null 2>&1; then
             printf 'Filtered IoT installation is fresh-install-only and found existing package %s; remove it and its configuration before retrying.\n' "$package_name" >&2
@@ -2468,11 +2659,16 @@ END
 )"
     start_stage "install_agent_packages"
 # BEGIN GENERATED FILTERED IOT ONLY
+    begin_deb_iot_filter_transaction "$sudo_cmd" /etc/dpkg/dpkg.cfg.d/99-datadog-iot
     # The DEB post-install script invokes this binary, so retain it only while dpkg configures the package.
     install_deb_iot_filter_config "$sudo_cmd" /etc/dpkg/dpkg.cfg.d/99-datadog-iot retain-installer
+    iot_apt_exit_code=0
 # END GENERATED FILTERED IOT ONLY
 
-    $sudo_cmd bash -c "DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' DD_INSTALLER_REGISTRY_URL='${DD_INSTALLER_REGISTRY_URL}' POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
+    $sudo_cmd bash -c "DD_INFRASTRUCTURE_MODE_APT_PLACEHOLDERDD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' DD_INSTALLER_REGISTRY_URL='${DD_INSTALLER_REGISTRY_URL}' POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"IOT_APT_FAILURE_PLACEHOLDER
+# BEGIN GENERATED FILTERED IOT ONLY
+    finish_deb_iot_apt_install "$iot_apt_exit_code" || exit $?
+# END GENERATED FILTERED IOT ONLY
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$ddot_installed_by_agent" ]; then
       $sudo_cmd mv /etc/apt/sources.list.d/datadog-ddot.list.disabled /etc/apt/sources.list.d/datadog-ddot.list
       $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${ddot_package} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
@@ -2487,6 +2683,7 @@ END
         ERROR_CODE=$UNABLE_TO_INSTALL_DEPENDENCY_CODE
         exit 1
     fi
+    commit_deb_iot_filter_transaction
     if ! installed_agent_package_version=$(get_installed_agent_package_version deb) || [ -z "$installed_agent_package_version" ]; then
         ERROR_MESSAGE="Unable to query the installed datadog-agent package version after filtered IoT installation."
         ERROR_CODE=$UNABLE_TO_INSTALL_DEPENDENCY_CODE
@@ -3166,6 +3363,9 @@ elif [ ! "$no_agent" ]; then
   manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
   manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED" "$DD_PRIVILEGED_LOGS_ENABLED" "$usm_enabled"
 fi
+# BEGIN GENERATED FILTERED IOT ONLY
+  ensure_iot_infrastructure_mode_config "$sudo_cmd" "$config_file"
+# END GENERATED FILTERED IOT ONLY
 
 # DDOT configuration update
 # Even if DDOT is installed by the agent, update_ddot still needs to run

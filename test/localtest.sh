@@ -86,12 +86,18 @@ function verify_iot_dpkg_policy() {
 
 function verify_iot_debsums() {
   local package_name=$1
+  local md5_manifest=${2:-/var/lib/dpkg/info/${package_name}.md5sums}
   local output_path
   local debsums_status=0
   local line
   local missing_path
   local missing_count=0
   local failure_count=0
+
+  if [ ! -f "$md5_manifest" ] || ! grep -q '[^[:space:]]' "$md5_manifest"; then
+    echo "[FAIL] Expected a nonempty dpkg md5 manifest at $md5_manifest"
+    return 1
+  fi
 
   output_path=$(mktemp)
   debsums -as "$package_name" > "$output_path" 2>&1 || debsums_status=$?
@@ -123,7 +129,7 @@ function verify_iot_debsums() {
     echo "[FAIL] debsums failed without reporting an excluded missing path (status $debsums_status)"
     return 1
   fi
-  echo "[OK] All $missing_count reported missing package paths are excluded by installed dpkg rules; retained checksums are valid"
+  echo "[OK] debsums checked retained installed files from a nonempty dpkg md5 manifest; $missing_count filtered manifest paths were reported missing and validated separately against installed dpkg policy"
 }
 
 function verify_iot_filtered_layout() {

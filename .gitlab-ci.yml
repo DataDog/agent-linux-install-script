@@ -95,6 +95,7 @@ unit_tests:
     - DD_API_KEY=123 DD_SITE="datadoghq.com" DD_INSTALL_ONLY=true bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script_agent7.sh)"
     - python3 unit_tests/extract_functions.py
     - ./unit_tests/test_install_script.sh
+    - ./unit_tests/test_iot_deb_orchestration.sh
 
 .test:
   image: registry.ddbuild.io/images/${IMAGE}
@@ -196,6 +197,8 @@ test_iot_filtered_ubuntu_22_04:
 
 test_iot_filtered_debian_12_pinned:
   extends: .test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
   variables:
     IMAGE: mirror/debian:12.1
     MAJOR_VERSION: 7

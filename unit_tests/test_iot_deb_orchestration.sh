@@ -35,12 +35,23 @@ setUp() {
   agent_flavor=unexpected-internal-flavor
   infrastructure_mode=unexpected-internal-mode
   nice_flavor=Unexpected
+  iot_deb_filter_rollback_active=
+  # Referenced by the sourced transaction helpers.
+  # shellcheck disable=SC2034
+  iot_deb_filter_rollback_sudo_cmd=
+  # shellcheck disable=SC2034
+  iot_deb_filter_rollback_destination=
+  iot_deb_filter_rollback_directory=
 }
 
 tearDown() {
   unset -f dpkg-query 2>/dev/null || true
   unset -f rpm 2>/dev/null || true
   unset -f sudo 2>/dev/null || true
+  unset -f debsums 2>/dev/null || true
+  if [ "${iot_deb_filter_rollback_active-}" = true ]; then
+    rollback_deb_iot_filter_transaction >/dev/null 2>&1 || true
+  fi
   unset_iot_options
   rm -rf "$TEST_ROOT"
 }
@@ -93,27 +104,52 @@ testFilteredModeValidatesExplicitOptionsBeforeForcingValues() {
   assertContains "the rejection should name the explicit option" "$output" DD_AGENT_FLAVOR
 }
 
-testFilteredModeRejectsEachExistingDebAgentPackage() {
+testFilteredModeRejectsEveryExistingDpkgState() {
   local existing_package
+  local package_state
   local output
   local status
+  local -a package_states=(
+    not-installed
+    config-files
+    half-installed
+    unpacked
+    half-configured
+    triggers-awaited
+    triggers-pending
+    installed
+  )
 
   for existing_package in datadog-agent datadog-iot-agent; do
-    # shellcheck disable=SC2329
-    dpkg-query() {
-      if [ "${*: -1}" = "$existing_package" ]; then
-        printf 'installed\n'
-        return 0
-      fi
-      return 1
-    }
+    for package_state in "${package_states[@]}"; do
+      # shellcheck disable=SC2329
+      dpkg-query() {
+        if [ "${*: -1}" = "$existing_package" ]; then
+          printf '%s\n' "$package_state"
+          return 0
+        fi
+        return 1
+      }
 
-    output=$(activate_iot_install_mode true 7 "$TEST_ROOT/etc/datadog-agent" "$TEST_ROOT/etc/dd-agent" 2>&1)
-    status=$?
-    assertNotEquals "$existing_package should make the filtered draft fail closed" 0 "$status"
-    assertContains "the package rejection should identify $existing_package" "$output" "$existing_package"
-    unset -f dpkg-query
+      output=$(activate_iot_install_mode true 7 "$TEST_ROOT/etc/datadog-agent" "$TEST_ROOT/etc/dd-agent" 2>&1)
+      status=$?
+      assertNotEquals "$existing_package in $package_state state should fail closed" 0 "$status"
+      assertContains "the package rejection should identify $existing_package" "$output" "$existing_package"
+      assertContains "the package rejection should identify $package_state" "$output" "$package_state"
+      unset -f dpkg-query
+    done
   done
+}
+
+
+testFilteredModeAcceptsOnlyAbsentDpkgPackages() {
+  # shellcheck disable=SC2329
+  dpkg-query() { return 1; }
+  # shellcheck disable=SC2329
+  rpm() { return 1; }
+
+  activate_iot_install_mode true 7 "$TEST_ROOT/etc/datadog-agent" "$TEST_ROOT/etc/dd-agent"
+  assertEquals "only absent dpkg packages should be accepted" 0 $?
 }
 
 testFilteredModeRejectsPreExistingConfigurationTrees() {
@@ -136,11 +172,31 @@ testFilteredModeRejectsPreExistingConfigurationTrees() {
   done
 }
 
+testUnsetInfrastructureModeIsForcedThroughPostinstAndCommonConfig() {
+  local config_file=$TEST_ROOT/etc/datadog-agent/datadog.yaml
+
+  mkdir -p "$(dirname "$config_file")"
+  cat > "$config_file" <<'EOF'
+api_key: package-created
+infrastructure_mode: full
+# infrastructure_mode: legacy-comment
+EOF
+
+  ensure_iot_infrastructure_mode_config "" "$config_file"
+  assertEquals "a package-created config should be updated" 0 $?
+  assertEquals "the forced mode should have one active key" 1 "$(grep -Fxc 'infrastructure_mode: iot' "$config_file")"
+  assertEquals "prior active and commented values should be removed" 1 "$(grep -Ec '^(# ?)?infrastructure_mode:' "$config_file")"
+  assertEquals "unrelated package-created config should remain" "api_key: package-created" "$(head -n 1 "$config_file")"
+}
+
+
 testIotDebsumsAcceptsOnlyMissingPathsCoveredByDpkgRules() {
   local original_matcher
+  local manifest=$TEST_ROOT/datadog-agent.md5sums
   local output
   local status
 
+  printf '%s\n' '0123456789abcdef0123456789abcdef  opt/datadog-agent/bin/agent/agent' > "$manifest"
   original_matcher=$(declare -f dpkg_path_is_excluded)
   # shellcheck disable=SC2329
   debsums() {
@@ -157,20 +213,24 @@ testIotDebsumsAcceptsOnlyMissingPathsCoveredByDpkgRules() {
     esac
   }
 
-  output=$(verify_iot_debsums datadog-agent 2>&1)
+  output=$(verify_iot_debsums datadog-agent "$manifest" 2>&1)
   status=$?
   eval "$original_matcher"
   unset -f debsums
 
   assertEquals "excluded missing paths should be accepted" 0 "$status"
-  assertContains "the result should count every classified missing path" "$output" "All 2 reported missing package paths"
+  assertContains "the result should classify every reported missing path" "$output" "2 filtered manifest paths"
+  assertContains "the result should accurately describe retained checks" "$output" "retained installed files"
 }
+
 
 testIotDebsumsRejectsUnexcludedMissingPathsAndRetainedChecksumErrors() {
   local original_matcher
+  local manifest=$TEST_ROOT/datadog-agent.md5sums
   local output
   local status
 
+  printf '%s\n' '0123456789abcdef0123456789abcdef  opt/datadog-agent/bin/agent/agent' > "$manifest"
   original_matcher=$(declare -f dpkg_path_is_excluded)
   # shellcheck disable=SC2329
   debsums() {
@@ -182,7 +242,7 @@ testIotDebsumsRejectsUnexcludedMissingPathsAndRetainedChecksumErrors() {
   # shellcheck disable=SC2329
   dpkg_path_is_excluded() { return 1; }
 
-  output=$(verify_iot_debsums datadog-agent 2>&1)
+  output=$(verify_iot_debsums datadog-agent "$manifest" 2>&1)
   status=$?
   eval "$original_matcher"
   unset -f debsums
@@ -190,6 +250,46 @@ testIotDebsumsRejectsUnexcludedMissingPathsAndRetainedChecksumErrors() {
   assertNotEquals "unexcluded or retained checksum failures should fail closed" 0 "$status"
   assertContains "unexcluded missing path should be reported" "$output" "not excluded"
   assertContains "changed retained content should be fatal" "$output" "Retained package checksum error"
+}
+
+
+testIotDebsumsRejectsEmptyDpkgManifestBeforeRunningDebsums() {
+  local manifest=$TEST_ROOT/datadog-agent.md5sums
+  local output
+  local status
+
+  : > "$manifest"
+  # shellcheck disable=SC2329
+  debsums() {
+    fail "debsums must not run without checksum evidence"
+  }
+
+  output=$(verify_iot_debsums datadog-agent "$manifest" 2>&1)
+  status=$?
+
+  assertNotEquals "an empty dpkg md5 manifest should fail closed" 0 "$status"
+  assertContains "the missing evidence should be identified" "$output" "nonempty dpkg md5 manifest"
+}
+
+
+testIotDebsumsAcceptsEmptySuccessWithNonemptyManifestWithoutClaimingMissingPaths() {
+  local manifest=$TEST_ROOT/datadog-agent.md5sums
+  local output
+  local status
+
+  printf '%s\n' '0123456789abcdef0123456789abcdef  opt/datadog-agent/bin/agent/agent' > "$manifest"
+  # shellcheck disable=SC2329
+  debsums() { return 0; }
+
+  output=$(verify_iot_debsums datadog-agent "$manifest" 2>&1)
+  status=$?
+
+  assertEquals "silent debsums success with a manifest should pass" 0 "$status"
+  assertContains "silent success should report retained checksum evidence" "$output" "retained installed files"
+  assertContains "silent success should say no filtered paths were reported" "$output" "0 filtered manifest paths"
+  case "$output" in
+    *"All 0 reported missing package paths"*) fail "empty success must not claim missing-path evidence" ;;
+  esac
 }
 
 testDebFilterRootInstallerUsesShellWrapperAndProducesRootMode0644File() {
@@ -227,6 +327,78 @@ testDebFilterRootInstallerCanRetainInstallerOnlyDuringPackageConfiguration() {
   assertFalse "the persistent filter should not retain the package installer" \
     "grep -q '^path-include=/opt/datadog-agent/embedded/bin/installer$' '$destination'"
 }
+
+testAptFailureRemovesTransientFilterWhenNoPriorFilterExisted() {
+  local destination=$TEST_ROOT/etc/dpkg/dpkg.cfg.d/99-datadog-iot
+  local rollback_directory
+  local status
+
+  mkdir -p "$(dirname "$destination")"
+  begin_deb_iot_filter_transaction "" "$destination"
+  assertEquals "filter transaction should begin" 0 $?
+  rollback_directory=$iot_deb_filter_rollback_directory
+  assertEquals "rollback evidence should be private" 700 "$(stat -c '%a' "$rollback_directory")"
+  install_deb_iot_filter_config "" "$destination" retain-installer
+
+  finish_deb_iot_apt_install 42
+  status=$?
+
+  assertEquals "the apt failure status should be preserved" 42 "$status"
+  assertFalse "a transient filter with no predecessor should be removed" "[ -e '$destination' ] || [ -L '$destination' ]"
+  assertFalse "rollback evidence should be removed" "[ -e '$rollback_directory' ]"
+  assertEquals "rollback should be disarmed after restoration" "" "${iot_deb_filter_rollback_active-}"
+}
+
+
+testAptFailureRestoresPriorFilterContentModeAndOwnership() {
+  local destination=$TEST_ROOT/etc/dpkg/dpkg.cfg.d/99-datadog-iot
+  local expected=$TEST_ROOT/prior-filter
+  local prior_identity
+  local rollback_directory
+  local status
+
+  mkdir -p "$(dirname "$destination")"
+  printf 'prior filter first line\nprior filter final line without newline' > "$expected"
+  cp "$expected" "$destination"
+  chmod 0600 "$destination"
+  if [ "$(id -u)" -eq 0 ]; then
+    chown 123:456 "$destination"
+  fi
+  prior_identity=$(stat -c '%u:%g:%a' "$destination")
+
+  begin_deb_iot_filter_transaction "" "$destination"
+  assertEquals "existing filter transaction should begin" 0 $?
+  rollback_directory=$iot_deb_filter_rollback_directory
+  install_deb_iot_filter_config "" "$destination" retain-installer
+
+  finish_deb_iot_apt_install 73
+  status=$?
+
+  assertEquals "the apt failure status should be preserved" 73 "$status"
+  assertTrue "the exact prior filter content should be restored" "cmp -s '$expected' '$destination'"
+  assertEquals "prior ownership and mode should be restored" "$prior_identity" "$(stat -c '%u:%g:%a' "$destination")"
+  assertFalse "rollback evidence should be removed" "[ -e '$rollback_directory' ]"
+}
+
+
+testSuccessfulFilterCommitDisarmsRollbackOnlyAfterFinalValidation() {
+  local destination=$TEST_ROOT/etc/dpkg/dpkg.cfg.d/99-datadog-iot
+  local rollback_directory
+
+  mkdir -p "$(dirname "$destination")"
+  begin_deb_iot_filter_transaction "" "$destination"
+  rollback_directory=$iot_deb_filter_rollback_directory
+  install_deb_iot_filter_config "" "$destination" retain-installer
+  install_deb_iot_filter_config "" "$destination"
+
+  commit_deb_iot_filter_transaction
+  assertEquals "a validated final filter should commit" 0 $?
+  assertTrue "the persistent filter should remain" "[ -f '$destination' ]"
+  assertFalse "the transient installer rule should not persist" "grep -q '^path-include=/opt/datadog-agent/embedded/bin/installer$' '$destination'"
+  assertFalse "committed rollback evidence should be removed" "[ -e '$rollback_directory' ]"
+  assertEquals "commit should disarm EXIT rollback" "" "${iot_deb_filter_rollback_active-}"
+}
+
 
 testDebFilterRootInstallerPreservesExistingFilterUntilReplacementSucceeds() {
   local destination=$TEST_ROOT/etc/dpkg/dpkg.cfg.d/99-datadog-iot

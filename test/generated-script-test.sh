@@ -59,10 +59,22 @@ grep -Fq 'Datadog Agent 7 IoT Filtered install script' "$iot_script" ||
 # shellcheck disable=SC2016
 assert_line "$iot_script" 'activate_iot_install_mode "$iot_filtered_install" "$agent_major_version" "$etcdir" "$LEGACY_ETCDIR"'
 # shellcheck disable=SC2016
+assert_line "$iot_script" '    begin_deb_iot_filter_transaction "$sudo_cmd" /etc/dpkg/dpkg.cfg.d/99-datadog-iot'
+# shellcheck disable=SC2016
 assert_line "$iot_script" '    install_deb_iot_filter_config "$sudo_cmd" /etc/dpkg/dpkg.cfg.d/99-datadog-iot retain-installer'
 # shellcheck disable=SC2016
 assert_line "$iot_script" '    install_deb_iot_filter_config "$sudo_cmd" /etc/dpkg/dpkg.cfg.d/99-datadog-iot'
 assert_line "$iot_script" '    if ! validate_iot_install_layout /; then'
+assert_line "$iot_script" '    commit_deb_iot_filter_transaction'
+grep -Fq "DD_INFRASTRUCTURE_MODE='iot'" "$iot_script" ||
+  fail "filtered IoT APT package environment does not force DD_INFRASTRUCTURE_MODE=iot"
+# shellcheck disable=SC2016
+grep -Fq 'finish_deb_iot_apt_install "$iot_apt_exit_code" || exit $?' "$iot_script" ||
+  fail "filtered IoT APT failure does not explicitly invoke rollback"
+grep -Fq 'rollback_deb_iot_filter_transaction || true' "$iot_script" ||
+  fail "filtered IoT EXIT handler does not invoke rollback"
+# shellcheck disable=SC2016
+assert_line "$iot_script" '  ensure_iot_infrastructure_mode_config "$sudo_cmd" "$config_file"'
 # shellcheck disable=SC2016
 assert_line "$iot_script" '    if ! installed_agent_package_version=$(get_installed_agent_package_version deb) || [ -z "$installed_agent_package_version" ]; then'
 # shellcheck disable=SC2016
@@ -70,7 +82,8 @@ assert_order "$iot_script" 'activate_iot_install_mode "$iot_filtered_install"' '
 # shellcheck disable=SC2016
 assert_order "$iot_script" 'install_deb_iot_filter_config "$sudo_cmd"' "apt-get install -o Acquire::Retries='5' -y --force-yes"
 assert_order "$iot_script" "apt-get install -o Acquire::Retries='5' -y --force-yes" 'validate_iot_install_layout /'
-assert_order "$iot_script" 'validate_iot_install_layout /' '# Complete install_agent_packages'
+assert_order "$iot_script" 'validate_iot_install_layout /' '    commit_deb_iot_filter_transaction'
+assert_order "$iot_script" '    commit_deb_iot_filter_transaction' '# Complete install_agent_packages'
 [[ $(grep -Fc 'write_iot_install_profile()' "$iot_script") -eq 1 ]] ||
   fail "install_script_agent7_iot.sh should define but not call the final install profile writer"
 
@@ -79,7 +92,9 @@ for script_name in "${common_scripts[@]}"; do
   assert_line "$script" 'iot_filtered_install=false'
   # shellcheck disable=SC2016
   if grep -Fq 'activate_iot_install_mode "$iot_filtered_install"' "$script" ||
-     grep -Fq 'install_deb_iot_filter_config "$sudo_cmd"' "$script"; then
+     grep -Fq 'install_deb_iot_filter_config "$sudo_cmd"' "$script" ||
+     grep -Fq "DD_INFRASTRUCTURE_MODE='iot'" "$script" ||
+     grep -Fq 'iot_deb_filter_rollback' "$script"; then
     fail "$script_name contains filtered IoT Task 3 orchestration"
   fi
 done
@@ -97,12 +112,31 @@ grep -q '^test_iot_filtered_ubuntu_22_04:' "$repo_root/.gitlab-ci.yml" ||
   fail "GitLab CI is missing the filtered IoT Ubuntu 22.04 job"
 grep -q '^test_iot_filtered_debian_12_pinned:' "$repo_root/.gitlab-ci.yml" ||
   fail "GitLab CI is missing the pinned filtered IoT Debian 12 job"
-if ! awk '
+pinned_iot_job=$(awk '
   /^test_iot_filtered_debian_12_pinned:/ { in_job=1; next }
   in_job && /^[^[:space:]]/ { exit }
   in_job { print }
-' "$repo_root/.gitlab-ci.yml" | grep -Fqx '    DD_AGENT_MINOR_VERSION: 82'; then
+' "$repo_root/.gitlab-ci.yml")
+if ! grep -Fqx '    DD_AGENT_MINOR_VERSION: 82' <<< "$pinned_iot_job"; then
   fail "filtered IoT Debian 12 CI does not pin DD_AGENT_MINOR_VERSION=82"
+fi
+# shellcheck disable=SC2016
+if ! grep -Fqx '    - if: '\''$CI_PIPELINE_SOURCE == "push"'\''' <<< "$pinned_iot_job"; then
+  fail "filtered IoT Debian 12 pinned CI job must be push-only"
+fi
+
+unit_test_job=$(awk '
+  /^unit_tests:/ { in_job=1; next }
+  in_job && /^[^[:space:]]/ { exit }
+  in_job { print }
+' "$repo_root/.gitlab-ci.yml")
+if ! grep -Fqx '    - ./unit_tests/test_iot_deb_orchestration.sh' <<< "$unit_test_job"; then
+  fail "GitLab unit_tests does not run filtered IoT DEB orchestration tests"
+fi
+main_unit_line=$(grep -Fn './unit_tests/test_install_script.sh' <<< "$unit_test_job" | cut -d: -f1)
+iot_unit_line=$(grep -Fn './unit_tests/test_iot_deb_orchestration.sh' <<< "$unit_test_job" | cut -d: -f1)
+if [[ -z $main_unit_line || -z $iot_unit_line || $main_unit_line -ge $iot_unit_line ]]; then
+  fail "GitLab unit_tests must run filtered IoT DEB orchestration after the main shunit suite"
 fi
 
 if awk '/^deploy:/{in_deploy=1} /^deploy_deprecated:/{in_deploy=0} in_deploy' "$repo_root/.gitlab-ci.yml" |
