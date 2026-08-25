@@ -289,6 +289,7 @@ fi
 
 OS_TYPE=$(get_os_type)
 INSTALLED_VERSION=
+INSTALLED_PACKAGE_VERSION=
 RESULT=0
 EXPECTED_MAJOR_VERSION=6
 if [ "${SCRIPT_FLAVOR}" == "agent7" ] || [ "${SCRIPT_FLAVOR}" == "agent7_iot" ] || [ "${EXPECTED_FLAVOR}" != "datadog-agent" ] ; then
@@ -311,7 +312,8 @@ if [[ "$OS_TYPE" == "ubuntu" ]]; then
       elif ! debsums -c "${EXPECTED_FLAVOR}"; then
         RESULT=1
       fi
-      INSTALLED_VERSION=$(dpkg-query -W "${EXPECTED_FLAVOR}" | cut -f2 | cut -d: -f2)
+      INSTALLED_PACKAGE_VERSION=$(dpkg-query --show '--showformat=${Version}\n' "${EXPECTED_FLAVOR}")
+      INSTALLED_VERSION=${INSTALLED_PACKAGE_VERSION#*:}
     elif debsums -c datadog-agent ; then
       echo "[FAIL] datadog-agent should not be installed"
       RESULT=1
@@ -430,11 +432,25 @@ if [ "${SCRIPT_FLAVOR}" = "agent7_iot" ] && [ -z "$DD_NO_AGENT_INSTALL" ]; then
   else
     echo "[OK] Filtered IoT infrastructure mode is configured"
   fi
-  if [ -e /etc/datadog-agent/install_profile ] || [ -L /etc/datadog-agent/install_profile ]; then
-    echo "[FAIL] Final filtered IoT install profile marker must not be written by this draft"
+  iot_install_profile=/etc/datadog-agent/install_profile
+  expected_iot_install_profile="version: 1
+profile: iot-filtered
+manifest: iot-v1
+package: datadog-agent
+package_version: '$INSTALLED_PACKAGE_VERSION'
+installer: install_script_agent7_iot"
+  if [ ! -f "$iot_install_profile" ] || [ -L "$iot_install_profile" ]; then
+    echo "[FAIL] Final filtered IoT install profile is missing or is not a regular file"
+    RESULT=1
+  elif [ "$(stat -c '%u:%g:%a' "$iot_install_profile")" != "0:0:644" ]; then
+    echo "[FAIL] Final filtered IoT install profile must be root:root mode 0644"
+    RESULT=1
+  elif [ "$(cat "$iot_install_profile")" != "$expected_iot_install_profile" ]; then
+    echo "[FAIL] Final filtered IoT install profile does not match the installed package version and reviewed schema"
+    diff -u <(printf '%s\n' "$expected_iot_install_profile") "$iot_install_profile" || true
     RESULT=1
   else
-    echo "[OK] Final filtered IoT install profile marker is absent"
+    echo "[OK] Final filtered IoT install profile matches the installed package version, schema, ownership, and mode"
   fi
   if ! verify_iot_filtered_layout; then
     RESULT=1

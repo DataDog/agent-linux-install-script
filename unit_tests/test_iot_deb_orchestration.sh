@@ -328,6 +328,67 @@ testDebFilterRootInstallerCanRetainInstallerOnlyDuringPackageConfiguration() {
     "grep -q '^path-include=/opt/datadog-agent/embedded/bin/installer$' '$destination'"
 }
 
+testInstallIotProfileUsesRootShellWrapperAndPublishesExactMarker() {
+  local destination=$TEST_ROOT/etc/datadog-agent/install_profile
+  local sudo_arguments=$TEST_ROOT/profile-sudo-arguments
+  local expected
+
+  mkdir -p "$(dirname "$destination")"
+  # shellcheck disable=SC2329
+  sudo() {
+    printf '%s\n' "$@" > "$sudo_arguments"
+    "$@"
+  }
+
+  install_iot_install_profile sudo "$destination" "1:7.82.0-1" install_script_agent7_iot
+  assertEquals "root-context profile publication should succeed" 0 $?
+  assertEquals "the wrapper should invoke a shell, not a shell function" sh "$(head -n 1 "$sudo_arguments")"
+  assertTrue "the profile should be a regular file" "[ -f '$destination' ]"
+  assertFalse "the profile should not be a symlink" "[ -L '$destination' ]"
+  assertEquals "the profile owner and mode" "0:0:644" "$(stat -c '%u:%g:%a' "$destination")"
+  expected='version: 1
+profile: iot-filtered
+manifest: iot-v1
+package: datadog-agent
+package_version: '\''1:7.82.0-1'\''
+installer: install_script_agent7_iot'
+  assertEquals "the published profile should match the reviewed schema" "$expected" "$(cat "$destination")"
+}
+
+testInstallIotProfilePreservesPreviousMarkerWhenRootReplacementFails() {
+  local destination=$TEST_ROOT/etc/datadog-agent/install_profile
+  local fake_bin=$TEST_ROOT/bin
+  local real_mv
+  local output
+  local status
+
+  mkdir -p "$(dirname "$destination")" "$fake_bin"
+  printf 'previous marker\n' > "$destination"
+  chmod 0600 "$destination"
+  real_mv=$(command -v mv)
+  cat > "$fake_bin/mv" <<EOF
+#!/bin/sh
+last_argument=
+for argument do
+  last_argument=\$argument
+done
+case "\$last_argument" in
+  '$destination') exit 73 ;;
+esac
+exec '$real_mv' "\$@"
+EOF
+  chmod +x "$fake_bin/mv"
+
+  output=$(PATH="$fake_bin:$PATH" install_iot_install_profile "" "$destination" "7.82.0-1" install_script_agent7_iot 2>&1)
+  status=$?
+
+  assertNotEquals "a failed root replacement should return nonzero" 0 "$status"
+  assertEquals "a prior marker should remain intact" "previous marker" "$(cat "$destination")"
+  assertEquals "a prior marker should retain its mode" 600 "$(stat -c '%a' "$destination")"
+  assertEquals "same-directory root temporary files should be cleaned" 0 \
+    "$(find "$(dirname "$destination")" -name '.install_profile.root.*' | wc -l | tr -d ' ')"
+}
+
 testAptFailureRemovesTransientFilterWhenNoPriorFilterExisted() {
   local destination=$TEST_ROOT/etc/dpkg/dpkg.cfg.d/99-datadog-iot
   local rollback_directory

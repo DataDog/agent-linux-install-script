@@ -1283,6 +1283,76 @@ function write_iot_install_profile() {
     fi
 }
 
+# BEGIN GENERATED FILTERED IOT ONLY
+function install_iot_install_profile() {
+    local sudo_cmd="${1-}"
+    local destination_path="${2-}"
+    local package_version="${3-}"
+    local installer_identity="${4-}"
+    local staging_directory
+    local staging_path
+    local install_status
+    local -a root_context_command=()
+
+    if [ -z "$destination_path" ]; then
+        printf 'A destination path is required to install the filtered IoT install profile.\n' >&2
+        return 1
+    fi
+    if [ "$installer_identity" != install_script_agent7_iot ]; then
+        printf 'The filtered IoT install profile requires installer identity install_script_agent7_iot.\n' >&2
+        return 1
+    fi
+    if ! staging_directory="$(mktemp -d "${TMPDIR:-/tmp}/datadog-iot-install-profile.XXXXXX")"; then
+        printf 'Unable to create a staging directory for the filtered IoT install profile.\n' >&2
+        return 1
+    fi
+    staging_path="$staging_directory/install_profile"
+    if ! chmod 0755 "$staging_directory" || ! write_iot_install_profile "$staging_path" "$package_version"; then
+        rm -rf "$staging_directory"
+        return 1
+    fi
+
+    if [ -n "$sudo_cmd" ]; then
+        root_context_command=("$sudo_cmd")
+    fi
+    # shellcheck disable=SC2016
+    if "${root_context_command[@]}" sh -c '
+        set -e
+        source_path=$1
+        destination_path=$2
+        destination_directory=${destination_path%/*}
+        [ -n "$destination_directory" ] || destination_directory=/
+        temporary_path=
+        trap '\''[ -z "$temporary_path" ] || rm -f -- "$temporary_path"'\'' EXIT HUP INT TERM
+
+        [ -f "$source_path" ] && [ ! -L "$source_path" ]
+        [ -d "$destination_directory" ] && [ ! -L "$destination_directory" ]
+        [ ! -d "$destination_path" ]
+        temporary_path=$(mktemp "$destination_directory/.install_profile.root.XXXXXX")
+        cat -- "$source_path" > "$temporary_path"
+        chown root:root "$temporary_path"
+        chmod 0644 "$temporary_path"
+        mv -fT -- "$temporary_path" "$destination_path"
+        temporary_path=
+        trap - EXIT HUP INT TERM
+
+        [ -f "$destination_path" ] && [ ! -L "$destination_path" ]
+        [ "$(stat -c "%u:%g:%a" "$destination_path")" = 0:0:644 ]
+        cmp -s -- "$source_path" "$destination_path"
+    ' sh "$staging_path" "$destination_path"; then
+        install_status=0
+    else
+        install_status=$?
+    fi
+
+    rm -rf "$staging_directory"
+    if [ "$install_status" -ne 0 ]; then
+        printf 'Unable to atomically install and verify the filtered IoT install profile at %s.\n' "$destination_path" >&2
+        return "$install_status"
+    fi
+}
+
+# END GENERATED FILTERED IOT ONLY
 function get_installed_agent_package_version() {
     local package_family="${1-}"
 
@@ -3584,5 +3654,9 @@ end_stage 0 "$(cat <<-END | tr -d '\n'
 "suse11_mode": "$([ "$SUSE11" == "yes" ] && echo "true" || echo "false")"
 END
 )"
+# BEGIN GENERATED FILTERED IOT ONLY
+
+install_iot_install_profile "$sudo_cmd" "$etcdir/install_profile" "$installed_agent_package_version" "$variant"
+# END GENERATED FILTERED IOT ONLY
 
 report_telemetry "$install_id" "$install_type" "$install_time"
