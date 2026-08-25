@@ -187,6 +187,21 @@ test:
     paths:
       - artifacts/
 
+test_iot_filtered_ubuntu_22_04:
+  extends: .test
+  variables:
+    IMAGE: mirror/ubuntu:22.04
+    MAJOR_VERSION: 7
+    SCRIPT: install_script_agent7_iot.sh
+
+test_iot_filtered_debian_12_pinned:
+  extends: .test
+  variables:
+    IMAGE: mirror/debian:12.1
+    MAJOR_VERSION: 7
+    MINOR_VERSION: 82
+    SCRIPT: install_script_agent7_iot.sh
+
 # These tests should not be launched on pipelines triggered by datadog-agent pipelines, but in the future we will trigger
 # them from the `6.53.x` branch of the datadog-agent repo
 test_agent6:

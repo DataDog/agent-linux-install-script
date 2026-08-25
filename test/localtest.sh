@@ -8,6 +8,152 @@ function get_os_type() {
   fi
 }
 
+function dpkg_path_is_excluded() {
+  local package_path=$1
+  local config_path
+  local line
+  local directive
+  local pattern
+  local decision=include
+  local -a config_paths=(/etc/dpkg/dpkg.cfg /etc/dpkg/dpkg.cfg.d/*)
+
+  for config_path in "${config_paths[@]}"; do
+    [ -f "$config_path" ] || continue
+    while IFS= read -r line || [ -n "$line" ]; do
+      line=${line#"${line%%[![:space:]]*}"}
+      case "$line" in
+        path-exclude=*|path-include=*)
+          directive=${line%%=*}
+          pattern=${line#*=}
+          # shellcheck disable=SC2053
+          if [[ "$package_path" == $pattern ]]; then
+            case "$directive" in
+              path-exclude) decision=exclude ;;
+              path-include) decision=include ;;
+            esac
+          fi
+          ;;
+      esac
+    done < "$config_path"
+  done
+
+  [ "$decision" = exclude ]
+}
+
+function verify_iot_debsums() {
+  local package_name=$1
+  local output_path
+  local debsums_status=0
+  local line
+  local missing_path
+  local missing_count=0
+  local failure_count=0
+
+  output_path=$(mktemp)
+  debsums -as "$package_name" > "$output_path" 2>&1 || debsums_status=$?
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      "debsums: missing file "*)
+        missing_path=${line#debsums: missing file }
+        missing_path=${missing_path%% (from *}
+        if [[ "$missing_path" != /* ]] || ! dpkg_path_is_excluded "$missing_path"; then
+          echo "[FAIL] Missing package path is not excluded by the installed dpkg rules: $line"
+          failure_count=$((failure_count + 1))
+        else
+          missing_count=$((missing_count + 1))
+        fi
+        ;;
+      "") ;;
+      *)
+        echo "[FAIL] Retained package checksum error: $line"
+        failure_count=$((failure_count + 1))
+        ;;
+    esac
+  done < "$output_path"
+  rm -f "$output_path"
+
+  if [ "$failure_count" -ne 0 ]; then
+    return 1
+  fi
+  if [ "$debsums_status" -ne 0 ] && [ "$missing_count" -eq 0 ]; then
+    echo "[FAIL] debsums failed without reporting an excluded missing path (status $debsums_status)"
+    return 1
+  fi
+  echo "[OK] All $missing_count reported missing package paths are excluded by installed dpkg rules; retained checksums are valid"
+}
+
+function verify_iot_filtered_layout() {
+  local required_path
+  local check_name
+  local unexpected_path
+  local result=0
+  local -a required_executables=(
+    /opt/datadog-agent/bin/agent/agent
+    /opt/datadog-agent/embedded/bin/agent-data-plane
+  )
+  local -a retained_checks=(
+    cpu disk io load memory network ntp uptime system_swap systemd jetson
+  )
+  local -a excluded_roots=(
+    /opt/datadog-agent/embedded/include
+    /opt/datadog-agent/embedded/msodbcsql
+    /opt/datadog-agent/embedded/sbin
+    /opt/datadog-agent/embedded/share/ebpf
+    /opt/datadog-agent/embedded/share/system-probe
+    /opt/datadog-agent/python-scripts
+    /opt/datadog-agent/requirements
+    /opt/datadog-agent/compliance
+    /opt/datadog-agent/runtime-security.d
+    /etc/datadog-agent/compliance.d
+    /etc/datadog-agent/runtime-security.d
+    /etc/datadog-agent/conf.d/docker.d
+  )
+
+  for required_path in "${required_executables[@]}"; do
+    if [ ! -f "$required_path" ] || [ -L "$required_path" ] || [ ! -x "$required_path" ]; then
+      echo "[FAIL] Filtered layout is missing required executable $required_path"
+      result=1
+    fi
+  done
+  if ! compgen -G '/opt/datadog-agent/embedded/lib/libdatadog-agent-rtloader.so*' >/dev/null; then
+    echo "[FAIL] Filtered layout is missing the rtloader library"
+    result=1
+  fi
+  if ! find /opt/datadog-agent/bin/agent/dist/views -type f -print -quit 2>/dev/null | grep -q .; then
+    echo "[FAIL] Filtered layout is missing support view content"
+    result=1
+  fi
+  for check_name in "${retained_checks[@]}"; do
+    if ! find "/etc/datadog-agent/conf.d/$check_name.d" -type f -print -quit 2>/dev/null | grep -q .; then
+      echo "[FAIL] Filtered layout is missing retained $check_name check configuration"
+      result=1
+    fi
+  done
+  for required_path in "${excluded_roots[@]}"; do
+    [ -e "$required_path" ] || [ -L "$required_path" ] || continue
+    unexpected_path=$(find "$required_path" \( -type f -o -type l \) -print -quit 2>/dev/null) || {
+      echo "[FAIL] Unable to inspect excluded payload root $required_path"
+      result=1
+      continue
+    }
+    if [ -n "$unexpected_path" ] && { [ ! -L "$unexpected_path" ] || [ -e "$unexpected_path" ]; }; then
+      echo "[FAIL] Excluded payload remains at $unexpected_path"
+      result=1
+    fi
+  done
+  for required_path in \
+    /opt/datadog-agent/bin/process-agent \
+    /opt/datadog-agent/embedded/bin/python3 \
+    /opt/datadog-agent/requirements-agent-release.txt; do
+    if [ -e "$required_path" ]; then
+      echo "[FAIL] Excluded payload remains at $required_path"
+      result=1
+    fi
+  done
+
+  return "$result"
+}
+
 # Patch the sources.list file for debian. This is a workaround, we should change the image instead
 if [[ "${IMAGE}" =~ "debian:10" ]]; then
   cp ./test/sources10.list /etc/apt/sources.list
@@ -36,7 +182,7 @@ fi
 
 # Override curl to capture trace payloads (only if SHOW_TRACE is enabled)
 if [[ "${SHOW_TRACE}" == "1" ]]; then
-  # shellcheck disable=SC2317
+  # shellcheck disable=SC2317,SC2329
   curl() {
     if [[ "$*" == *"instrumentation-telemetry-intake"* ]]; then
       echo "[TRACE CAPTURE] Intercepting telemetry submission" >&2
@@ -108,7 +254,13 @@ if [[ "$OS_TYPE" == "ubuntu" ]]; then
     apt-get install -y debsums
 
     if [ -z "$DD_NO_AGENT_INSTALL" ]; then
-      debsums -c "${EXPECTED_FLAVOR}"
+      if [ "${SCRIPT_FLAVOR}" = "agent7_iot" ]; then
+        if ! verify_iot_debsums "${EXPECTED_FLAVOR}"; then
+          RESULT=1
+        fi
+      elif ! debsums -c "${EXPECTED_FLAVOR}"; then
+        RESULT=1
+      fi
       INSTALLED_VERSION=$(dpkg-query -W "${EXPECTED_FLAVOR}" | cut -f2 | cut -d: -f2)
     elif debsums -c datadog-agent ; then
       echo "[FAIL] datadog-agent should not be installed"
@@ -200,6 +352,49 @@ if [ "${EXPECTED_FLAVOR}" == "datadog-agent" ] && [ -z "$DD_NO_AGENT_INSTALL" ];
             RESULT=1
         fi
     fi
+fi
+
+if [ "${SCRIPT_FLAVOR}" = "agent7_iot" ] && [ -z "$DD_NO_AGENT_INSTALL" ]; then
+  iot_filter=/etc/dpkg/dpkg.cfg.d/99-datadog-iot
+  if [ ! -f "$iot_filter" ] || [ -L "$iot_filter" ]; then
+    echo "[FAIL] Persistent filtered IoT dpkg configuration is missing or is not a regular file"
+    RESULT=1
+  elif [ "$(stat -c '%u:%g:%a' "$iot_filter")" != "0:0:644" ]; then
+    echo "[FAIL] Persistent filtered IoT dpkg configuration must be root:root mode 0644"
+    RESULT=1
+  elif grep -Ev '^(path-exclude|path-include)=/' "$iot_filter" | grep -q .; then
+    echo "[FAIL] Persistent filtered IoT dpkg configuration contains an invalid directive"
+    RESULT=1
+  else
+    echo "[OK] Persistent filtered IoT dpkg configuration has the expected ownership and mode"
+  fi
+
+  if ! grep -q '^infrastructure_mode: iot$' /etc/datadog-agent/datadog.yaml; then
+    echo "[FAIL] Filtered IoT configuration does not set infrastructure_mode: iot"
+    RESULT=1
+  else
+    echo "[OK] Filtered IoT infrastructure mode is configured"
+  fi
+  if [ -e /etc/datadog-agent/install_profile ] || [ -L /etc/datadog-agent/install_profile ]; then
+    echo "[FAIL] Final filtered IoT install profile marker must not be written by this draft"
+    RESULT=1
+  else
+    echo "[OK] Final filtered IoT install profile marker is absent"
+  fi
+  if ! verify_iot_filtered_layout; then
+    RESULT=1
+  else
+    echo "[OK] Filtered IoT retained and excluded layout is valid"
+  fi
+  if ! /opt/datadog-agent/bin/agent/agent version; then
+    echo "[FAIL] Filtered normal Agent version command failed"
+    RESULT=1
+  fi
+
+  mkdir -p "${TESTING_DIR}/artifacts"
+  iot_logical_bytes=$(du -sb /opt/datadog-agent /etc/datadog-agent | awk '{total += $1} END {print total}')
+  printf '%s\n' "$iot_logical_bytes" | tee "${TESTING_DIR}/artifacts/iot-installed-bytes.txt"
+  echo "[INFO] Filtered IoT installed logical bytes: $iot_logical_bytes"
 fi
 
 # Lint configuration files when they exist

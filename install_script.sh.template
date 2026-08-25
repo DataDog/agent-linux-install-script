@@ -507,6 +507,122 @@ EOF
         return 1
     fi
 }
+# BEGIN GENERATED FILTERED IOT ONLY
+function install_deb_iot_filter_config() {
+    local sudo_cmd="${1-}"
+    local destination_path="${2-}"
+    local retain_installer="${3-}"
+    local staging_directory
+    local staging_path
+    local install_status=0
+    local -a root_context_command=()
+
+    if [ -z "$destination_path" ]; then
+        printf 'A destination path is required to install the filtered IoT dpkg configuration.\n' >&2
+        return 1
+    fi
+    if ! staging_directory="$(mktemp -d "${TMPDIR:-/tmp}/datadog-iot-filter.XXXXXX")"; then
+        printf 'Unable to create a staging directory for the filtered IoT dpkg configuration.\n' >&2
+        return 1
+    fi
+    staging_path="$staging_directory/99-datadog-iot"
+    if ! chmod 0755 "$staging_directory" || ! write_deb_iot_filter_config "$staging_path"; then
+        rm -rf "$staging_directory"
+        return 1
+    fi
+    if [ "$retain_installer" = retain-installer ]; then
+        if ! printf '%s\n' 'path-include=/opt/datadog-agent/embedded/bin/installer' >> "$staging_path"; then
+            rm -rf "$staging_directory"
+            return 1
+        fi
+    fi
+
+    if [ -n "$sudo_cmd" ]; then
+        root_context_command=("$sudo_cmd")
+    fi
+    # shellcheck disable=SC2016
+    "${root_context_command[@]}" sh -c '
+        set -e
+        source_path=$1
+        destination_path=$2
+        destination_directory=${destination_path%/*}
+        [ -n "$destination_directory" ] || destination_directory=/
+        temporary_path=$(mktemp "$destination_directory/.datadog_iot_filter.root.XXXXXX")
+        trap '\''rm -f "$temporary_path"'\'' EXIT HUP INT TERM
+        cat "$source_path" > "$temporary_path"
+        chown root:root "$temporary_path"
+        chmod 0644 "$temporary_path"
+        mv -fT -- "$temporary_path" "$destination_path"
+        temporary_path=
+        trap - EXIT HUP INT TERM
+        [ -f "$destination_path" ] && [ ! -L "$destination_path" ]
+        [ "$(stat -c %u "$destination_path")" = 0 ]
+        [ "$(stat -c %g "$destination_path")" = 0 ]
+        [ "$(stat -c %a "$destination_path")" = 644 ]
+    ' sh "$staging_path" "$destination_path" || install_status=$?
+
+    rm -rf "$staging_directory"
+    if [ "$install_status" -ne 0 ]; then
+        printf 'Unable to atomically install the filtered IoT dpkg configuration at %s.\n' "$destination_path" >&2
+        return "$install_status"
+    fi
+}
+
+function activate_iot_install_mode() {
+    local filtered_install="${1-}"
+    local resolved_agent_major_version="${2-}"
+    local agent_config_path="${3-}"
+    local legacy_config_path="${4-}"
+    local package_name
+    local package_status
+
+    [ "$filtered_install" = true ] || return 0
+
+    validate_iot_installer_options \
+        "${DD_AGENT_FLAVOR-}" \
+        "$resolved_agent_major_version" \
+        "${DD_INFRASTRUCTURE_MODE-}" \
+        "${DD_FIPS_MODE-}" \
+        "${DD_APM_INSTRUMENTATION_ENABLED-}" \
+        "${DD_APM_INSTRUMENTATION_LIBRARIES-}" \
+        "${DD_OTELCOLLECTOR_ENABLED-}" \
+        "${DD_REMOTE_UPDATES-}" \
+        "${DD_NO_AGENT_INSTALL-}" \
+        "${DD_UPGRADE-}" \
+        "${DD_RUNTIME_SECURITY_CONFIG_ENABLED-}" \
+        "${DD_COMPLIANCE_CONFIG_ENABLED-}" \
+        "${DD_DISCOVERY_ENABLED-}" \
+        "${DD_SYSTEM_PROBE_SERVICE_MONITORING_ENABLED-}" \
+        "${DD_PRIVILEGED_LOGS_ENABLED-}" \
+        "${DD_PRIVATE_ACTION_RUNNER_ENABLED-}" || return 1
+
+    for package_name in datadog-agent datadog-iot-agent; do
+        package_status=
+        if command -v dpkg-query >/dev/null 2>&1; then
+            package_status=$(dpkg-query --show '--showformat=${db:Status-Status}\n' "$package_name" 2>/dev/null) || true
+            if [ "$package_status" = installed ]; then
+                printf 'Filtered IoT installation is fresh-install-only and found existing package %s; remove it and its configuration before retrying.\n' "$package_name" >&2
+                return 1
+            fi
+        fi
+        if command -v rpm >/dev/null 2>&1 && rpm -q "$package_name" >/dev/null 2>&1; then
+            printf 'Filtered IoT installation is fresh-install-only and found existing package %s; remove it and its configuration before retrying.\n' "$package_name" >&2
+            return 1
+        fi
+    done
+
+    for agent_config_path in "$agent_config_path" "$legacy_config_path"; do
+        if [ -n "$agent_config_path" ] && { [ -e "$agent_config_path" ] || [ -L "$agent_config_path" ]; }; then
+            printf 'Filtered IoT installation is fresh-install-only and found existing Agent configuration at %s; remove or archive it before retrying.\n' "$agent_config_path" >&2
+            return 1
+        fi
+    done
+
+    agent_flavor=datadog-agent
+    infrastructure_mode=iot
+    nice_flavor="Datadog Agent"
+}
+# END GENERATED FILTERED IOT ONLY
 
 function rpm_iot_exclude_paths() {
     local package_path="${1-}"
@@ -1785,6 +1901,9 @@ elif [ "IS_LEGACY_SCRIPT_PLACEHOLDER" == "true" ]; then
     agent_major_version=7
   fi
 fi
+# BEGIN GENERATED FILTERED IOT ONLY
+activate_iot_install_mode "$iot_filtered_install" "$agent_major_version" "$etcdir" "$LEGACY_ETCDIR"
+# END GENERATED FILTERED IOT ONLY
 
 if [ -n "$DD_AGENT_MINOR_VERSION" ]; then
   # Examples:
@@ -1916,6 +2035,15 @@ elif [ -f /etc/Eos-release ] || [ "$DISTRIBUTION" == "Arista" ]; then
 elif [ -f /etc/SuSE-release ] || [ "$DISTRIBUTION" == "SUSE" ] || [ "$DISTRIBUTION" == "openSUSE" ]; then
     OS="SUSE"
 fi
+# BEGIN GENERATED FILTERED IOT ONLY
+if [ "$OS" != Debian ]; then
+    ERROR_MESSAGE="Filtered IoT installation currently supports Debian and Ubuntu only."
+    ERROR_CODE=$UNSUPPORTED_PLATFORM_CODE
+    printf "\033[31m%s\033[0m\n" "$ERROR_MESSAGE"
+    report_telemetry
+    exit 1
+fi
+# END GENERATED FILTERED IOT ONLY
 
 if [[ "$agent_flavor" == "datadog-dogstatsd" ]]; then
     if [[ $(uname -m) == "armv7l" ]] || { [[ $(uname -m) != "x86_64" ]] && [[ "$OS" != "Debian" ]]; }; then
@@ -2339,6 +2467,10 @@ If the cause is unclear, please contact Datadog support.
 END
 )"
     start_stage "install_agent_packages"
+# BEGIN GENERATED FILTERED IOT ONLY
+    # The DEB post-install script invokes this binary, so retain it only while dpkg configures the package.
+    install_deb_iot_filter_config "$sudo_cmd" /etc/dpkg/dpkg.cfg.d/99-datadog-iot retain-installer
+# END GENERATED FILTERED IOT ONLY
 
     $sudo_cmd bash -c "DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' DD_INSTALLER_REGISTRY_URL='${DD_INSTALLER_REGISTRY_URL}' POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$ddot_installed_by_agent" ]; then
@@ -2346,6 +2478,21 @@ END
       $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${ddot_package} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
       $sudo_cmd mv /etc/apt/sources.list.d/datadog-ddot.list /etc/apt/sources.list.d/datadog-ddot.list.disabled
     fi
+# BEGIN GENERATED FILTERED IOT ONLY
+    # Persist the final filter before removing the package-configuration-only binary.
+    install_deb_iot_filter_config "$sudo_cmd" /etc/dpkg/dpkg.cfg.d/99-datadog-iot
+    $sudo_cmd rm -f /opt/datadog-agent/embedded/bin/installer
+    if ! validate_iot_install_layout /; then
+        ERROR_MESSAGE="Filtered IoT package installation left an incomplete or unfiltered Agent layout."
+        ERROR_CODE=$UNABLE_TO_INSTALL_DEPENDENCY_CODE
+        exit 1
+    fi
+    if ! installed_agent_package_version=$(get_installed_agent_package_version deb) || [ -z "$installed_agent_package_version" ]; then
+        ERROR_MESSAGE="Unable to query the installed datadog-agent package version after filtered IoT installation."
+        ERROR_CODE=$UNABLE_TO_INSTALL_DEPENDENCY_CODE
+        exit 1
+    fi
+# END GENERATED FILTERED IOT ONLY
 
     ERR_SUMMARY=$(grep "No space left on device" -C1 /tmp/ddog_install_error_msg || true)
 
