@@ -452,31 +452,45 @@ https://docs.datadoghq.com/observability_pipelines/setup/"
     exit;
 fi
 
-# Configure the OP Worker via the environment file
-if [ -e "$env_file" ]; then
-    printf "\033[34m\n* Keeping old environment file at: $env_file.\n\033[0m\n"
-else
+# Upsert (replace-or-append) a KEY=VALUE line in $env_file. Used so the script
+# is safe to re-run on top of a previous install that left $env_file behind:
+# values explicitly passed in this invocation overwrite stale ones, while
+# anything the operator added by hand (and that we don't pass) is preserved.
+function upsert_env_var() {
+  local key="$1"
+  local value="$2"
+  $sudo_cmd sed -i "/^${key}=/d" "$env_file"
+  $sudo_cmd sh -c "echo $key=$value >> $env_file"
+}
+
+# Configure the OP Worker via the environment file.
+# The package manager does not own $env_file (we create it here), so an earlier
+# `apt-get remove` / `apt-get purge` may have left it behind. Reuse it when
+# present, but always upsert any DD_* values supplied in the current run so
+# re-running with a new DD_API_KEY / DD_OP_PIPELINE_ID / etc. takes effect.
+if [ ! -e "$env_file" ]; then
   printf "\033[34m\n* Creating $env_file for $worker_flavor.service.\n\033[0m\n"
   $sudo_cmd sh -c "touch $env_file"
-
   $sudo_cmd chmod 640 "$env_file"
-
-  if [ "$apikey" ]; then
-    printf "\033[34m  * Assigning DD_API_KEY.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_API_KEY=$apikey >> $env_file"
-  fi
-
-  if [ "$site" ]; then
-    printf "\033[34m  * Assigning DD_SITE.\n\033[0m\n"
-    $sudo_cmd sh -c "echo DD_SITE=$site >> $env_file"
-  fi
-
-  # All env vars that are defined and used exclusively in OPW, are prefixed with `DD_OP_`
-  for dd_op_var in ${!DD_OP_@}; do
-    printf "\033[34m  * Assigning $dd_op_var.\n\033[0m\n"
-    $sudo_cmd sh -c "echo $dd_op_var=${!dd_op_var} >> $env_file"
-  done
+else
+  printf "\033[34m\n* Reusing existing environment file at: $env_file. Any DD_* values passed in this run will be applied on top of it.\n\033[0m\n"
 fi
+
+if [ "$apikey" ]; then
+  printf "\033[34m  * Assigning DD_API_KEY.\n\033[0m\n"
+  upsert_env_var DD_API_KEY "$apikey"
+fi
+
+if [ "$site" ]; then
+  printf "\033[34m  * Assigning DD_SITE.\n\033[0m\n"
+  upsert_env_var DD_SITE "$site"
+fi
+
+# All env vars that are defined and used exclusively in OPW, are prefixed with `DD_OP_`
+for dd_op_var in ${!DD_OP_@}; do
+  printf "\033[34m  * Assigning $dd_op_var.\n\033[0m\n"
+  upsert_env_var "$dd_op_var" "${!dd_op_var}"
+done
 
 if ! $sudo_cmd grep -q -E '^DD_API_KEY=.+' "$env_file" && \
   ! $sudo_cmd grep -q -E '^api_key: .+' "$bootstrap_file"; then
@@ -490,8 +504,17 @@ if ! $sudo_cmd grep -q -E '^DD_OP_PIPELINE_ID=.+' "$env_file" && \
   no_start=true
 fi
 
-$sudo_cmd chown observability-pipelines-worker:observability-pipelines-worker "$bootstrap_file"
-$sudo_cmd chmod 640 "$bootstrap_file"
+# The bootstrap file is shipped by the package, but a partial prior state
+# (e.g. failed reinstall, or the system user removed by hand after `apt-get
+# purge`) could mean either the file or the owner is missing. Don't let that
+# abort the install under `set -e` -- warn instead.
+if [ -e "$bootstrap_file" ]; then
+  $sudo_cmd chown observability-pipelines-worker:observability-pipelines-worker "$bootstrap_file" || \
+    printf "\033[33m  Warning: could not chown $bootstrap_file (is the observability-pipelines-worker user present?). The $nice_flavor may not start correctly.\033[0m\n"
+  $sudo_cmd chmod 640 "$bootstrap_file"
+else
+  printf "\033[33m  Warning: $bootstrap_file is missing -- the $nice_flavor package may not have installed cleanly.\033[0m\n"
+fi
 
 # Creating or overriding the install information
 install_info_content="---
@@ -514,17 +537,33 @@ fi
 restart_cmd="$sudo_cmd $service_cmd $worker_flavor restart"
 stop_instructions="$sudo_cmd $service_cmd $worker_flavor stop"
 start_instructions="$sudo_cmd $service_cmd $worker_flavor start"
+# `service` only forwards runtime actions (start/stop/restart) to the init script;
+# it cannot register a service to start on boot. Boot-time registration is owned by
+# the init system itself, so we pick the right tool below per init system:
+#   - systemd                       -> systemctl enable          (see further down)
+#   - SysV on Debian/Ubuntu         -> update-rc.d <svc> defaults
+#   - SysV on RHEL/CentOS/Amazon    -> chkconfig <svc> on
+#   - Upstart                       -> nothing to do; the package's .conf file is
+#                                      picked up at boot automatically
+if [ "$OS" == "Debian" ]; then
+  enable_cmd="$sudo_cmd update-rc.d $worker_flavor defaults"
+else
+  enable_cmd="$sudo_cmd chkconfig $worker_flavor on"
+fi
 
 if [[ `$sudo_cmd ps --no-headers -o comm 1 2>&1` == "systemd" ]] && command -v systemctl >/dev/null 2>&1; then
   # Use systemd if systemctl binary exists and systemd is the init process
   restart_cmd="$sudo_cmd systemctl restart ${worker_flavor}.service"
   stop_instructions="$sudo_cmd systemctl stop $worker_flavor"
   start_instructions="$sudo_cmd systemctl start $worker_flavor"
+  enable_cmd="$sudo_cmd systemctl enable ${worker_flavor}.service"
 elif /sbin/init --version 2>&1 | grep -q upstart; then
   # Try to detect Upstart, this works most of the times but still a best effort
   restart_cmd="$sudo_cmd stop $worker_flavor || true ; sleep 2s ; $sudo_cmd start $worker_flavor"
   stop_instructions="$sudo_cmd stop $worker_flavor"
   start_instructions="$sudo_cmd start $worker_flavor"
+  # Upstart services installed via the package are enabled on boot by default.
+  enable_cmd=""
 fi
 
 if [ $no_start ]; then
@@ -534,6 +573,11 @@ if [ $no_start ]; then
   $start_instructions\033[0m\n\n"
 
 else
+  if [ -n "$enable_cmd" ]; then
+    printf "\033[34m* Enabling the ${nice_flavor} to start on host reboot...\n\033[0m\n"
+    eval "$enable_cmd" || printf "\033[33m  Warning: failed to enable the ${nice_flavor} on boot. You may need to enable it manually.\n\033[0m\n"
+  fi
+
   printf "\033[34m* Starting the ${nice_flavor}...\n\033[0m\n"
   ERROR_MESSAGE="Error starting ${nice_flavor}"
 
