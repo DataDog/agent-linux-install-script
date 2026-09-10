@@ -61,7 +61,7 @@ var (
 	}
 	envFile            = "/etc/environment"
 	osConfigByPlatform = map[string]osConfig{
-		"Debian_11":         {osDescriptor: componentsos.NewDescriptor(componentsos.Debian, "11")},
+		"Debian_11":         {osDescriptor: componentsos.NewDescriptor(componentsos.Debian, "11"), ami: "ami-0dc9605952821892f"},
 		"Ubuntu_22_04":      {osDescriptor: componentsos.UbuntuDefault},
 		"RedHat_CentOS_7":   {osDescriptor: componentsos.NewDescriptor(componentsos.CentOS, "7")},
 		"RedHat_8":          {osDescriptor: componentsos.NewDescriptor(componentsos.RedHat, "8"), ami: "ami-06640050dc3f556bb"},
