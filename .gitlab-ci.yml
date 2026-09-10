@@ -435,8 +435,10 @@ e2e:
           - --run TestInstallSuite
           - --run TestUpgrade7Suite
       - FLAVOR: datadog-iot-agent
+        # Debian_11 excluded until the datadog-agent health-platform uninstall
+        # cleanup fix (DataDog/datadog-agent#56042) ships in a stable release.
+        # Re-add once available (targeted 7.85.0, backported to 7.83.x/7.84.x).
         PLATFORM:
-          - Debian_11
           - Ubuntu_22_04
           - RedHat_CentOS_7
           - RedHat_8
