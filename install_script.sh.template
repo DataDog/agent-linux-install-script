@@ -846,6 +846,9 @@ function _install_installer_script() {
 # install_apm_ssi installs APM Single Step Instrumentation.
 function install_apm_ssi() {
   local sudo_cmd="$1"
+  local installer_script="install-ssi.sh"
+  local installer_version
+  local installer_minor_version
 
   if [ -z "$DD_APM_INSTRUMENTATION_ENABLED" ]; then
     return 0
@@ -856,9 +859,25 @@ function install_apm_ssi() {
   # Technical option to test with non-production install-ssi.sh scripts
   if [ -n "$DD_APM_INSTRUMENTATION_PIPELINE_ID" ]; then
     installer_domain="${installer_domain}/pipeline-${DD_APM_INSTRUMENTATION_PIPELINE_ID}"
+  elif [ -n "$agent_version_custom" ]; then
+    # agent_version_custom is the full version resolved by the package manager.
+    # Remove the optional epoch and package revision to match the published
+    # installer script filename.
+    installer_version="${agent_version_custom#*:}"
+    installer_version="${installer_version%-*}"
+    # Package managers can report RC versions as ~rc2, while versioned SSI
+    # scripts use the canonical ~rc.2 spelling.
+    installer_version=$(echo "$installer_version" | sed -E 's/~rc([[:digit:]]+)/~rc.\1/')
+    installer_minor_version="${installer_version#*.}"
+    installer_minor_version="${installer_minor_version%%.*}"
+    # Versioned SSI installer scripts have been published since Agent 7.68.
+    # Keep the existing unversioned behavior for older Agent versions.
+    if [ "$installer_minor_version" -ge 68 ]; then
+      installer_script="install-ssi-${installer_version}.sh"
+    fi
   fi
 
-  installer_url="https://${installer_domain}/scripts/install-ssi.sh" # TODO: support version pinning?
+  installer_url="https://${installer_domain}/scripts/${installer_script}"
   
   _install_installer_script "$installer_url" || true
 }
