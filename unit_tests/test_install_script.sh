@@ -418,5 +418,58 @@ testParEnabledWithoutApiKeyOnlyEnrollment() {
   assertEquals "$(sudo yq eval '.private_action_runner.api_key_only_enrollment' $config_file)" "null"
 }
 
+### install_apm_ssi
+getApmSsiInstallerURL() {
+  (
+    export DD_APM_INSTRUMENTATION_ENABLED=host
+    export DD_SITE="${1:-datadoghq.com}"
+    export DD_INSTALLER_REGISTRY_URL_INSTALLER_PACKAGE="${2:-}"
+    export DD_APM_INSTRUMENTATION_PIPELINE_ID="${3:-}"
+    export agent_version_custom="${4:-}"
+    # shellcheck disable=SC2329 # Called indirectly by install_apm_ssi.
+    _install_installer_script() {
+      # shellcheck disable=SC2317 # Function is invoked indirectly.
+      printf '%s' "$1"
+    }
+    install_apm_ssi ""
+  )
+}
+
+testApmSsiInstallerUsesLatestVersionByDefault() {
+  assertEquals \
+    "https://install.datadoghq.com/scripts/install-ssi.sh" \
+    "$(getApmSsiInstallerURL)"
+}
+
+testApmSsiInstallerUsesResolvedPinnedVersion() {
+  assertEquals \
+    "https://install.datadoghq.com/scripts/install-ssi-7.80.1.sh" \
+    "$(getApmSsiInstallerURL "datadoghq.com" "" "" "1:7.80.1-1")"
+}
+
+testApmSsiInstallerPreservesPrereleaseVersion() {
+  assertEquals \
+    "https://install.datad0g.com/scripts/install-ssi-7.80.0~rc.2.sh" \
+    "$(getApmSsiInstallerURL "datad0g.com" "" "" "7.80.0~rc.2-1")"
+}
+
+testApmSsiInstallerPreservesFutureRcVersion() {
+  assertEquals \
+    "https://install.datad0g.com/scripts/install-ssi-7.84.0~rc.2.sh" \
+    "$(getApmSsiInstallerURL "datad0g.com" "" "" "1:7.84.0~rc2-1")"
+}
+
+testApmSsiInstallerUsesLatestForVersionsBeforePinnedScripts() {
+  assertEquals \
+    "https://install.datadoghq.com/scripts/install-ssi.sh" \
+    "$(getApmSsiInstallerURL "datadoghq.com" "" "" "7.67.2-1")"
+}
+
+testApmSsiInstallerPipelineOverridesVersionPinning() {
+  assertEquals \
+    "https://installtesting.datad0g.com/pipeline-123/scripts/install-ssi.sh" \
+    "$(getApmSsiInstallerURL "datadoghq.com" "installtesting.datad0g.com" "123" "7.80.1-1")"
+}
+
 # shellcheck source=/dev/null
 . shunit2
