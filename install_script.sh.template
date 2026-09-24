@@ -923,6 +923,11 @@ if [ -n "$DD_NO_AGENT_INSTALL" ]; then
     no_agent=true
 fi
 
+no_security_agent=
+if [ -n "$DD_NO_SECURITY_AGENT_INSTALL" ]; then
+    no_security_agent=true
+fi
+
 infrastructure_mode=
 if [ -n "$DD_INFRASTRUCTURE_MODE" ]; then
     infrastructure_mode=$DD_INFRASTRUCTURE_MODE
@@ -2275,13 +2280,68 @@ function update_par(){
 ${par_config}
 EOF
 }
+function set_config_option(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+  local section="$3"
+  local option="$4"
+  local value="$5"
+  if ! $sudo_cmd grep -q "^$section:" "$config_file"; then
+    printf "\033[34m\n* Setting $section.$option to $value in $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "cat >> '$config_file'" <<EOF
+
+$section:
+  $option: $value
+EOF
+    return
+  fi
+  # Look for the option in the section only, the same option name can be used in other sections
+  if $sudo_cmd sed -n "/^$section:/,/^[^[:space:]#]/p" "$config_file" | grep -qE "^[[:space:]]+$option:"; then
+    printf "\033[34m\n* $section.$option is already set in $config_file, skipping the update.\n\033[0m\n"
+    return
+  fi
+  printf "\033[34m\n* Setting $section.$option to $value in $config_file\n\033[0m\n"
+  $sudo_cmd sh -c "sed -i '0,/^$section:/s//$section:\n  $option: $value/' $config_file"
+}
+function run_security_in_system_probe(){
+  local sudo_cmd="$1"
+  local core_config_file="$2"
+  local security_config_file="$3"
+  local probe_config_file="$4"
+  local enable_compliance="$5"
+  # The security Agent service starts as soon as its configuration file exists, so it needs to
+  # know that both CWS and CSPM run in system-probe to stop right away. The file is only updated
+  # when it already exists, it must never be created.
+  if $sudo_cmd test -e "$security_config_file"; then
+    set_config_option "$sudo_cmd" "$security_config_file" "runtime_security_config" "direct_send_from_system_probe" "true"
+    set_config_option "$sudo_cmd" "$security_config_file" "compliance_config" "run_in_system_probe" "true"
+  fi
+  if $sudo_cmd test -e "$core_config_file"; then
+    if [ "$enable_compliance" == "true" ]; then
+      set_config_option "$sudo_cmd" "$core_config_file" "compliance_config" "enabled" "true"
+      set_config_option "$sudo_cmd" "$core_config_file" "compliance_config" "run_in_system_probe" "true"
+    elif $sudo_cmd grep -q "^compliance_config:" "$core_config_file"; then
+      # CSPM enabled by a previous installation has to run in system-probe too
+      set_config_option "$sudo_cmd" "$core_config_file" "compliance_config" "run_in_system_probe" "true"
+    fi
+  fi
+  # Only set the option when CWS is configured, it would have no effect otherwise
+  if $sudo_cmd test -e "$probe_config_file" && $sudo_cmd grep -q "^runtime_security_config:" "$probe_config_file"; then
+    set_config_option "$sudo_cmd" "$probe_config_file" "runtime_security_config" "direct_send_from_system_probe" "true"
+  fi
+}
 function manage_security_config(){
   local sudo_cmd="$1"
   local security_config_file="$2"
   local enable_security="$3"
   local enable_compliance="$4"
+  local no_security_agent="$5"
   if [ "$enable_security" == "true" ] || [ "$enable_compliance" == "true" ]; then
-    if ensure_config_file_exists "$sudo_cmd" "$security_config_file" "root"; then
+    if [ "$no_security_agent" == "true" ]; then
+      # CWS and CSPM run in system-probe, see run_security_in_system_probe, so the security
+      # Agent configuration file must not be created
+      printf "\033[34m\n* Not creating $security_config_file: CWS and CSPM run in system-probe\n\033[0m\n"
+    elif ensure_config_file_exists "$sudo_cmd" "$security_config_file" "root"; then
       update_security_and_or_compliance "$sudo_cmd" "$security_config_file" "$enable_security" "$enable_compliance"
     fi
   fi
@@ -2389,7 +2449,7 @@ elif [ ! "$no_agent" ]; then
     fi
   fi
 
-  manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
+  manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED" "$no_security_agent"
   manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED" "$DD_PRIVILEGED_LOGS_ENABLED" "$usm_enabled"
 fi
 
@@ -2420,6 +2480,12 @@ fi
 # set the system-probe configuration
 if [ -n "$system_probe_ensure_config" ]; then
   ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
+fi
+
+# Make sure the security Agent doesn't run when DD_NO_SECURITY_AGENT_INSTALL is set, even when
+# the configuration files were kept from a previous installation
+if [ -n "$no_security_agent" ]; then
+  run_security_in_system_probe "$sudo_cmd" "$config_file" "$security_agent_config_file" "$system_probe_config_file" "$DD_COMPLIANCE_CONFIG_ENABLED"
 fi
 
 # Install APM SSI if needed
@@ -2502,6 +2568,7 @@ end_stage 0 "$(cat <<-END | tr -d '\n'
 "apm_enabled": "$([ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] && echo "$DD_APM_INSTRUMENTATION_ENABLED" || echo "false")",
 "security_enabled": "$([ -n "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" ] && echo "true" || echo "false")",
 "compliance_enabled": "$([ -n "$DD_COMPLIANCE_CONFIG_ENABLED" ] && echo "true" || echo "false")",
+"no_security_agent": "$([ -n "$no_security_agent" ] && echo "true" || echo "false")",
 "logs_collection_enabled": "$([ "$DD_LOGS_CONFIG_PROCESS_COLLECT_ALL" == "true" ] && echo "true" || echo "false")",
 "hostname_override": "$([ -n "$hostname" ] && echo "true" || echo "false")",
 "tags_configured": "$([ -n "$host_tags" ] && echo "true" || echo "false")",
