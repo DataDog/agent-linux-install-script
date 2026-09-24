@@ -1553,7 +1553,7 @@ elif [ "$OS" == "Debian" ]; then
     for i in $(seq 1 $MAX_RETRY_NB)
     do
         printf "\033[34m\n* Installing ${APT_DEPS[*]}\n\033[0m\n"
-        $sudo_cmd apt-get update || printf "\033[31m'apt-get update' failed, the script will not install the latest version of apt-transport-https.\033[0m\n"
+        $sudo_cmd apt-get update -o DPkg::Lock::Timeout="60" || printf "\033[31m'apt-get update' failed, the script will not install the latest version of apt-transport-https.\033[0m\n"
         # installing curl might trigger install of additional version of libssl; this will fail the installation process,
         # see https://unix.stackexchange.com/q/146283 for reference - we use DEBIAN_FRONTEND=noninteractive to fix that
         apt_exit_code=0
@@ -1561,9 +1561,9 @@ elif [ "$OS" == "Debian" ]; then
             # if $sudo_cmd is empty, doing `$sudo_cmd X=Y command` fails with
             # `X=Y: command not found`; therefore we don't prefix the command with
             # $sudo_cmd at all in this case
-            DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y "${APT_DEPS[@]}" 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
+            DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -o DPkg::Lock::Timeout="60" -y "${APT_DEPS[@]}" 2>$DD_APT_INSTALL_ERROR_MSG  || apt_exit_code=$?
         else
-            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -y "${APT_DEPS[@]}" 2> >($sudo_cmd tee $DD_APT_INSTALL_ERROR_MSG >&2) || apt_exit_code=$?
+            $sudo_cmd DEBIAN_FRONTEND=noninteractive apt-get install -o Acquire::Retries="5" -o DPkg::Lock::Timeout="60" -y "${APT_DEPS[@]}" 2> >($sudo_cmd tee $DD_APT_INSTALL_ERROR_MSG >&2) || apt_exit_code=$?
         fi
 
         if grep "Could not get lock" $DD_APT_INSTALL_ERROR_MSG; then
@@ -1649,9 +1649,9 @@ see the logs above to determine the cause.
 If the failing repository is Datadog, please contact Datadog support.
 *****
 "
-    $sudo_cmd apt-get update -o Dir::Etc::sourcelist="sources.list.d/datadog.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
+    $sudo_cmd apt-get update -o DPkg::Lock::Timeout="60" -o Dir::Etc::sourcelist="sources.list.d/datadog.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$ddot_installed_by_agent" ]; then
-      $sudo_cmd apt-get update -o Dir::Etc::sourcelist="sources.list.d/datadog-ddot.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
+      $sudo_cmd apt-get update -o DPkg::Lock::Timeout="60" -o Dir::Etc::sourcelist="sources.list.d/datadog-ddot.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
       $sudo_cmd mv /etc/apt/sources.list.d/datadog-ddot.list /etc/apt/sources.list.d/datadog-ddot.list.disabled
     fi
     ERROR_MESSAGE="ERROR
@@ -1713,10 +1713,10 @@ END
 )"
     start_stage "install_agent_packages"
 
-    $sudo_cmd bash -c "DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' DD_INSTALLER_REGISTRY_URL='${DD_INSTALLER_REGISTRY_URL}' POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
+    $sudo_cmd bash -c "DD_OTELCOLLECTOR_ENABLED='${DD_OTELCOLLECTOR_ENABLED}' DD_API_KEY='${apikey}' DD_SITE='${site}' DD_INSTALLER_REGISTRY_URL='${DD_INSTALLER_REGISTRY_URL}' POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -o DPkg::Lock::Timeout='60' -y --force-yes ${packages[*]} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
     if [ -n "$DD_OTELCOLLECTOR_ENABLED" ] && [ -z "$ddot_installed_by_agent" ]; then
       $sudo_cmd mv /etc/apt/sources.list.d/datadog-ddot.list.disabled /etc/apt/sources.list.d/datadog-ddot.list
-      $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -y --force-yes ${ddot_package} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
+      $sudo_cmd bash -c "POLICYRCD='${POLICYRCD}' apt-get install -o Acquire::Retries='5' -o DPkg::Lock::Timeout='60' -y --force-yes ${ddot_package} 2> >($sudo_cmd tee /tmp/ddog_install_error_msg >&2)"
       $sudo_cmd mv /etc/apt/sources.list.d/datadog-ddot.list /etc/apt/sources.list.d/datadog-ddot.list.disabled
     fi
 
