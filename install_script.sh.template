@@ -1601,7 +1601,7 @@ elif [ "$OS" == "Debian" ]; then
     # Download all GPG keys in parallel
     key_pids=()
     for key in "${APT_GPG_KEYS[@]}"; do
-        $sudo_cmd curl -sSL --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}" &
+        $sudo_cmd curl -sSL -f --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}" &
         key_pids+=($!)
     done
     key_fail=0
