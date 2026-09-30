@@ -1424,7 +1424,7 @@ if [ "$OS" == "Red Hat" ]; then
     fi
     # NOTE: CentOS/RHEL 6 don't have /etc/os-release. /etc/centos-release and /etc/redhat-release
     # aren't necessarily on the system, so this is not 100 % reliable, but best we can do
-    release_version=$(get_redhat_release_version)
+    release_version=$(get_redhat_release_version /etc/redhat-release /etc/system-release /etc/os-release /usr/lib/os-release)
     if { [ "$DISTRIBUTION" == "Red Hat" ] || [ "$DISTRIBUTION" == "CentOS" ]; } && [ "$release_version" -lt 7 ]; then
         if [ -n "$agent_minor_version_without_patch" ]; then
             if [ "$agent_minor_version_without_patch" -ge "52" ]; then
