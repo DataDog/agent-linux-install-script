@@ -418,6 +418,59 @@ testParEnabledWithoutApiKeyOnlyEnrollment() {
   assertEquals "$(sudo yq eval '.private_action_runner.api_key_only_enrollment' $config_file)" "null"
 }
 
+### get_redhat_release_version
+setUpReleaseFiles() {
+  release_dir=$(mktemp -d)
+  missing="$release_dir/missing"
+  redhat_release="$release_dir/redhat-release"
+  system_release="$release_dir/system-release"
+  os_release="$release_dir/os-release"
+  usr_lib_os_release="$release_dir/usr-lib-os-release"
+}
+testRedhatReleasePreferred() {
+  setUpReleaseFiles
+  echo "CentOS Linux release 7.9.2009 (Core)" > "$redhat_release"
+  echo "Amazon Linux release 2 (Karoo)" > "$system_release"
+  echo 'VERSION_ID="9.4"' > "$os_release"
+  assertEquals "7" "$(get_redhat_release_version "$redhat_release" "$system_release" "$os_release" "$usr_lib_os_release")"
+}
+testSystemReleaseUsedWhenRedhatReleaseMissing() {
+  setUpReleaseFiles
+  echo "Amazon Linux release 2 (Karoo)" > "$system_release"
+  echo 'VERSION_ID="9.4"' > "$os_release"
+  assertEquals "2" "$(get_redhat_release_version "$missing" "$system_release" "$os_release" "$usr_lib_os_release")"
+}
+testOsReleaseUsedWhenReleaseFilesMissing() {
+  setUpReleaseFiles
+  echo 'VERSION_ID="9.4"' > "$os_release"
+  assertEquals "9" "$(get_redhat_release_version "$missing" "$missing" "$os_release" "$usr_lib_os_release")"
+}
+testUsrLibOsReleaseUsedAsLastSource() {
+  setUpReleaseFiles
+  echo 'VERSION_ID=8' > "$usr_lib_os_release"
+  assertEquals "8" "$(get_redhat_release_version "$missing" "$missing" "$missing" "$usr_lib_os_release")"
+}
+testFallsBackToSevenWhenNothingAvailable() {
+  setUpReleaseFiles
+  assertEquals "7" "$(get_redhat_release_version "$missing" "$missing" "$missing" "$missing")"
+}
+testEmptyFilesFallThroughToNextSource() {
+  setUpReleaseFiles
+  : > "$redhat_release"
+  : > "$system_release"
+  echo 'VERSION_ID="9.4"' > "$os_release"
+  assertEquals "9" "$(get_redhat_release_version "$redhat_release" "$system_release" "$os_release" "$usr_lib_os_release")"
+}
+testNonNumericOsReleaseFallsBack() {
+  setUpReleaseFiles
+  echo 'VERSION_ID=rawhide' > "$os_release"
+  assertEquals "7" "$(get_redhat_release_version "$missing" "$missing" "$os_release" "$missing")"
+}
+testMissingRedhatReleaseIsSilent() {
+  setUpReleaseFiles
+  assertEquals "" "$(get_redhat_release_version "$missing" "$missing" "$missing" "$missing" 2>&1 >/dev/null)"
+}
+
 ### install_apm_ssi
 getApmSsiInstallerURL() {
   (

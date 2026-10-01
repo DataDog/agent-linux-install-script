@@ -347,6 +347,33 @@ function remove_rpm_gpg_keys() {
     done
 }
 
+function get_redhat_release_version() {
+    local release_file
+    local version=""
+
+    for release_file in "${1:-/etc/redhat-release}" "${2:-/etc/system-release}"; do
+        if [ -r "$release_file" ]; then
+            version=$(grep -oE '[0-9]+' <"$release_file" | head -1)
+            if [ -n "$version" ]; then
+                printf '%s' "$version"
+                return 0
+            fi
+        fi
+    done
+
+    for release_file in "${3:-/etc/os-release}" "${4:-/usr/lib/os-release}"; do
+        if [ -r "$release_file" ]; then
+            version=$(grep -E '^VERSION_ID=' <"$release_file" | head -1 | cut -d = -f 2 | grep -oE '[0-9]+' | head -1)
+            if [ -n "$version" ]; then
+                printf '%s' "$version"
+                return 0
+            fi
+        fi
+    done
+
+    printf '7'
+}
+
 # Emulate hashmap with simple switch case
 function getMapData() {
 
@@ -1397,10 +1424,7 @@ if [ "$OS" == "Red Hat" ]; then
     fi
     # NOTE: CentOS/RHEL 6 don't have /etc/os-release. /etc/centos-release and /etc/redhat-release
     # aren't necessarily on the system, so this is not 100 % reliable, but best we can do
-    release_version=$(grep -oE '[0-9]+' </etc/redhat-release 2>/dev/null | head -1)
-    if [ -z "$release_version" ]; then
-        release_version=7
-    fi
+    release_version=$(get_redhat_release_version /etc/redhat-release /etc/system-release /etc/os-release /usr/lib/os-release)
     if { [ "$DISTRIBUTION" == "Red Hat" ] || [ "$DISTRIBUTION" == "CentOS" ]; } && [ "$release_version" -lt 7 ]; then
         if [ -n "$agent_minor_version_without_patch" ]; then
             if [ "$agent_minor_version_without_patch" -ge "52" ]; then
