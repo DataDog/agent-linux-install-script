@@ -417,6 +417,31 @@ testParEnabledWithoutApiKeyOnlyEnrollment() {
   # Should not add api_key_only_enrollment when not provided
   assertEquals "$(sudo yq eval '.private_action_runner.api_key_only_enrollment' $config_file)" "null"
 }
+testParEnabledWithSplitMode() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_par "sudo" $config_file "true" "" "" "true"
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.private_action_runner.split_enabled' $config_file)" "true"
+}
+testParEnabledWithoutSplitMode() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_par "sudo" $config_file "true" "" "" "false"
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.private_action_runner.split_enabled' $config_file)" "false"
+}
+testParEnabledWithDefaultSplitMode() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_par "sudo" $config_file "true" ""
+  # Should not add split_enabled when not provided, preserving the Agent's platform default
+  assertEquals "$(sudo yq eval '.private_action_runner.split_enabled' $config_file)" "null"
+}
 
 ### get_redhat_release_version
 setUpReleaseFiles() {
