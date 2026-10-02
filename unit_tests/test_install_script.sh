@@ -329,6 +329,99 @@ testSystemProbeConfigPrivilegedLogsExplicitlyDisabled(){
   assertEquals "$(sudo yq eval '.privileged_logs.enabled' $system_probe_config_file)" "false"
 }
 
+### DD_NO_SECURITY_AGENT_INSTALL
+testNoSecurityAgentDoesNotCreateSecurityAgentConfig(){
+  sudo rm $security_agent_config_file 2> /dev/null
+  manage_security_config "sudo" $security_agent_config_file true true true
+  sudo test -e $security_agent_config_file
+  assertEquals 1 $?
+}
+testNoSecurityAgentFullInstall(){
+  # What the install script does on a fresh install with CWS and CSPM enabled
+  sudo rm $security_agent_config_file $system_probe_config_file 2> /dev/null
+  sudo cp ${config_file}.example $config_file
+  manage_security_config "sudo" $security_agent_config_file true true true
+  manage_system_probe_config "sudo" $system_probe_config_file true false "" false
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file true
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $system_probe_config_file)" "true"
+  sudo test -e $security_agent_config_file
+  assertEquals 1 $?
+}
+testSecurityAgentSystemProbeNoDirectSend(){
+  sudo rm $system_probe_config_file 2> /dev/null
+  manage_system_probe_config "sudo" $system_probe_config_file true false "" false
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $system_probe_config_file)" "null"
+}
+
+### Run security in system-probe
+testRunSecurityInSystemProbeExistingSecurityAgentConfig(){
+  # A security Agent configuration file kept from a previous installation must tell the security
+  # Agent that both CWS and CSPM run in system-probe
+  sudo cp ${security_agent_config_file}.example $security_agent_config_file
+  sudo cp ${config_file}.example $config_file
+  sudo rm $system_probe_config_file 2> /dev/null
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file false
+  yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $security_agent_config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $security_agent_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $security_agent_config_file)" "null"
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $security_agent_config_file)" "null"
+  # CSPM is not enabled, the Agent configuration file must not be updated
+  assertEquals "$(sudo yq eval '.compliance_config' $config_file)" "null"
+}
+testRunSecurityInSystemProbeKeptConfiguration(){
+  # CWS and CSPM enabled by a previous installation must now run in system-probe
+  printf 'apm_config:\n  enabled: true\n' | sudo tee $config_file > /dev/null
+  printf 'runtime_security_config:\n  enabled: true\n' | sudo tee $system_probe_config_file > /dev/null
+  printf 'runtime_security_config:\n  enabled: true\ncompliance_config:\n  enabled: true\n' | sudo tee $security_agent_config_file > /dev/null
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file true
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  # compliance_config must be added even though the Agent configuration file was kept
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.apm_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $security_agent_config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $security_agent_config_file)" "true"
+  # Running it again must not add the options a second time
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file true
+  assertEquals 1 "$(sudo grep -c "direct_send_from_system_probe" $security_agent_config_file)"
+  assertEquals 1 "$(sudo grep -c "run_in_system_probe" $security_agent_config_file)"
+  assertEquals 1 "$(sudo grep -c "run_in_system_probe" $config_file)"
+}
+testRunSecurityInSystemProbeComplianceAlreadyEnabled(){
+  # CSPM enabled by a previous installation must run in system-probe, even when
+  # DD_COMPLIANCE_CONFIG_ENABLED is not set again
+  printf 'compliance_config:\n  enabled: true\n' | sudo tee $config_file > /dev/null
+  sudo rm $security_agent_config_file $system_probe_config_file 2> /dev/null
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file false
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $config_file)" "true"
+}
+testRunSecurityInSystemProbeCreatesNothing(){
+  sudo rm $security_agent_config_file $system_probe_config_file $config_file 2> /dev/null
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file true
+  sudo test -e $security_agent_config_file
+  assertEquals 1 $?
+  sudo test -e $system_probe_config_file
+  assertEquals 1 $?
+  sudo test -e $config_file
+  assertEquals 1 $?
+}
+
 ### Test logs config process collect all function
 testLogsConfigProcessCollectAll() {
   sudo rm $config_file 2> /dev/null
