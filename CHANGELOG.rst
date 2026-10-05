@@ -2,8 +2,23 @@
 Release Notes
 =============
 
-Unreleased
+1.47.0
 ================
+
+- Add DD_PRIVATE_ACTION_RUNNER_SPLIT_ENABLED env var (#462)
+- Handle Red Hat-family hosts without /etc/redhat-release (#461)
+- Fail installation when downloading APT GPG keys returns an HTTP error (#460)
+- Re-add debian_11 platform for iot agent since the fix has been released (#458)
+- ADMS: vuln minor: go.opentelemetry.io/otel/exporters/otlp/otlptrace, golang.org/x/crypto [test/e2e/go.mod] (#456)
+- fix(install-ssi): respect custom version (#454)
+- ADMS: vuln golang.org/x/crypto (minor → v0.56.0) [test/e2e/go.mod] (#451)
+- ADMS: vuln google.golang.org/grpc (patch → v1.83.2) [test/e2e/go.mod] (#453)
+- Update ami for debian 11 (EOL) (#452)
+- [ACIX-1926] chore(ci): pin GitHub Actions to commit SHAs (#443)
+- ADMS: vuln minor upgrades — 7 packages (minor: 5 · patch: 2) [test/e2e/go.mod] (#447)
+- CI: use xz -T instead of pxz (#450)
+- [INCIDENT-58783] fix: bump datadog-agent-buildimages to v128862929-880822bc (#442)
+- Revert "Make sure we keep the testing params when extra params does not override minor version" (#436)
 
 1.46.0
 ================
