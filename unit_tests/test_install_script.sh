@@ -411,6 +411,32 @@ testRunSecurityInSystemProbeComplianceAlreadyEnabled(){
   assertEquals "$(sudo yq eval '.compliance_config.enabled' $config_file)" "true"
   assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $config_file)" "true"
 }
+testRunSecurityInSystemProbeOverridesDisabledOptions(){
+  # Options explicitly disabled by a previous installation must be forced to true
+  printf 'compliance_config:\n  enabled: false\n  run_in_system_probe: false\n  host_benchmarks:\n    enabled: false\napm_config:\n  enabled: false\n' | sudo tee $config_file > /dev/null
+  printf 'runtime_security_config:\n    enabled: true\n    direct_send_from_system_probe: false # comment\n' | sudo tee $system_probe_config_file > /dev/null
+  printf 'runtime_security_config:\n  direct_send_from_system_probe: false\ncompliance_config:\n  run_in_system_probe: false\n' | sudo tee $security_agent_config_file > /dev/null
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file true
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $config_file)" "true"
+  # Nested and other sections options with the same name must be left alone
+  assertEquals "$(sudo yq eval '.compliance_config.host_benchmarks.enabled' $config_file)" "false"
+  assertEquals "$(sudo yq eval '.apm_config.enabled' $config_file)" "false"
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $security_agent_config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $security_agent_config_file)" "true"
+  assertEquals 1 "$(sudo grep -c "run_in_system_probe" $config_file)"
+}
+testSetConfigOptionKeepsSectionIndentation(){
+  printf 'compliance_config:\n    host_benchmarks:\n        enabled: false\n' | sudo tee $config_file > /dev/null
+  set_config_option "sudo" $config_file "compliance_config" "enabled" "true"
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.host_benchmarks.enabled' $config_file)" "false"
+}
 testRunSecurityInSystemProbeCreatesNothing(){
   sudo rm $security_agent_config_file $system_probe_config_file $config_file 2> /dev/null
   run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file true

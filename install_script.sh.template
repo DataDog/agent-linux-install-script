@@ -2330,12 +2330,22 @@ EOF
     return
   fi
   # Look for the option in the section only, the same option name can be used in other sections
-  if $sudo_cmd sed -n "/^$section:/,/^[^[:space:]#]/p" "$config_file" | grep -qE "^[[:space:]]+$option:"; then
-    printf "\033[34m\n* $section.$option is already set in $config_file, skipping the update.\n\033[0m\n"
+  # or in nested sections, so only consider the keys at the first indentation level of the section
+  local section_content indent
+  section_content=$($sudo_cmd sed -n "/^$section:/,/^[^[:space:]#]/p" "$config_file")
+  indent=$(echo "$section_content" | grep -E "^[[:space:]]+[^[:space:]#]" | head -n 1 | sed -E "s/^([[:space:]]+).*/\1/")
+  if [ -n "$indent" ] && echo "$section_content" | grep -qE "^$indent$option:"; then
+    if echo "$section_content" | grep -qE "^$indent$option:[[:space:]]*$value[[:space:]]*(#.*)?$"; then
+      printf "\033[34m\n* $section.$option is already set to $value in $config_file, skipping the update.\n\033[0m\n"
+      return
+    fi
+    # The existing value conflicts with the required one, replace it
+    printf "\033[34m\n* Updating $section.$option to $value in $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i -E '/^$section:/,/^[^[:space:]#]/s/^($indent$option:).*/\\1 $value/' $config_file"
     return
   fi
   printf "\033[34m\n* Setting $section.$option to $value in $config_file\n\033[0m\n"
-  $sudo_cmd sh -c "sed -i '0,/^$section:/s//$section:\n  $option: $value/' $config_file"
+  $sudo_cmd sh -c "sed -i '0,/^$section:/s//$section:\n${indent:-  }$option: $value/' $config_file"
 }
 function run_security_in_system_probe(){
   local sudo_cmd="$1"
