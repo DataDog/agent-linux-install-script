@@ -2335,7 +2335,7 @@ EOF
   section_content=$($sudo_cmd sed -n "/^$section:/,/^[^[:space:]#]/p" "$config_file")
   indent=$(echo "$section_content" | grep -E "^[[:space:]]+[^[:space:]#]" | head -n 1 | sed -E "s/^([[:space:]]+).*/\1/")
   if [ -n "$indent" ] && echo "$section_content" | grep -qE "^$indent$option:"; then
-    if echo "$section_content" | grep -qE "^$indent$option:[[:space:]]*$value[[:space:]]*(#.*)?$"; then
+    if echo "$section_content" | grep -qE "^${indent}${option}:[[:space:]]*${value}[[:space:]]*(#.*)?$"; then
       printf "\033[34m\n* $section.$option is already set to $value in $config_file, skipping the update.\n\033[0m\n"
       return
     fi
