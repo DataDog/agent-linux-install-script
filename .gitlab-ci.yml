@@ -1,5 +1,5 @@
 include:
-  - remote: https://gitlab-templates.ddbuild.io/libdatadog/include/single-step-instrumentation-tests.yml
+  - remote: https://gitlab-templates.ddbuild.io/libdatadog/include-wip/robertomonteromiguel/ssi-secrets-update-v3/single-step-instrumentation-tests.yml
 stages:
   - generate
   - deps_fetch
@@ -514,13 +514,13 @@ configure_system_tests:
   - when: on_success
   variables:
     SYSTEM_TESTS_SCENARIOS_GROUPS: "simple_onboarding"
-    SYSTEM_TESTS_REF: main
+    SYSTEM_TESTS_REF: robertomonteromiguel/ssi-secrets-vault-templates
     SYSTEM_TESTS_LIBRARY: auto_inject
     S3_AGENT_LINUX_INSTALL_SCRIPT_BUCKET: system-tests-aws-agent-linux-install-script
     DD_INSTALL_SCRIPT_VERSION: $CI_PIPELINE_ID
   before_script:
     - mkdir -p ~/.aws
-    - aws ssm get-parameter --region us-east-1 --name ci.${CI_PROJECT_NAME}.apm-ecosystems-reliability-profile --with-decryption --query "Parameter.Value" --out text > ~/.aws/config
+    - vault kv get -field=config "kv/k8s/gitlab-runner/${CI_PROJECT_NAME}/system-tests/apm-ecosystems-reliability-profile" > ~/.aws/config
     - export AWS_PROFILE=apm-ecosystems-reliability-ci
     - |
       echo "Uploading the install script to S3...."
