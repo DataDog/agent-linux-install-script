@@ -506,7 +506,7 @@ deploy_deprecated:
     - aws --region "us-east-1" cloudfront create-invalidation --distribution-id "E2VSER0FO39KRV" --paths "/scripts/*"
 
 configure_system_tests:
-  image: registry.ddbuild.io/ci/libdatadog-build/system-tests:100425777
+  image: registry.ddbuild.io/ci/libdatadog-build/system-tests:144237924
   tags: ["arch:amd64"]
   stage: system_tests
   needs: [generate-scripts]
@@ -520,7 +520,7 @@ configure_system_tests:
     DD_INSTALL_SCRIPT_VERSION: $CI_PIPELINE_ID
   before_script:
     - mkdir -p ~/.aws
-    - vault kv get -field=config "kv/k8s/gitlab-runner/${CI_PROJECT_NAME}/system-tests/apm-ecosystems-reliability-profile" > ~/.aws/config
+    - read-system-tests-secret apm-ecosystems-reliability-profile config > ~/.aws/config
     - export AWS_PROFILE=apm-ecosystems-reliability-ci
     - |
       echo "Uploading the install script to S3...."
