@@ -1,5 +1,5 @@
 include:
-  - remote: https://gitlab-templates.ddbuild.io/libdatadog/include-wip/robertomonteromiguel/ssi-secrets-update-v3/single-step-instrumentation-tests.yml
+  - remote: https://gitlab-templates.ddbuild.io/libdatadog/include/versions/1.10.0/single-step-instrumentation-tests.yml
 stages:
   - generate
   - deps_fetch
@@ -506,7 +506,7 @@ deploy_deprecated:
     - aws --region "us-east-1" cloudfront create-invalidation --distribution-id "E2VSER0FO39KRV" --paths "/scripts/*"
 
 configure_system_tests:
-  image: registry.ddbuild.io/ci/libdatadog-build/system-tests:144237924
+  image: registry.ddbuild.io/ci/libdatadog-build/system-tests:144846811
   tags: ["arch:amd64"]
   stage: system_tests
   needs: [generate-scripts]
@@ -514,7 +514,7 @@ configure_system_tests:
   - when: on_success
   variables:
     SYSTEM_TESTS_SCENARIOS_GROUPS: "simple_onboarding"
-    SYSTEM_TESTS_REF: robertomonteromiguel/ssi-secrets-vault-templates
+    SYSTEM_TESTS_REF: main
     SYSTEM_TESTS_LIBRARY: auto_inject
     S3_AGENT_LINUX_INSTALL_SCRIPT_BUCKET: system-tests-aws-agent-linux-install-script
     DD_INSTALL_SCRIPT_VERSION: $CI_PIPELINE_ID
