@@ -1,5 +1,5 @@
 include:
-  - remote: https://gitlab-templates.ddbuild.io/libdatadog/include/single-step-instrumentation-tests.yml
+  - remote: https://gitlab-templates.ddbuild.io/libdatadog/include/versions/1.10.0/single-step-instrumentation-tests.yml
 stages:
   - generate
   - deps_fetch
@@ -506,7 +506,7 @@ deploy_deprecated:
     - aws --region "us-east-1" cloudfront create-invalidation --distribution-id "E2VSER0FO39KRV" --paths "/scripts/*"
 
 configure_system_tests:
-  image: registry.ddbuild.io/ci/libdatadog-build/system-tests:100425777
+  image: registry.ddbuild.io/ci/libdatadog-build/system-tests:144846811
   tags: ["arch:amd64"]
   stage: system_tests
   needs: [generate-scripts]
@@ -520,7 +520,7 @@ configure_system_tests:
     DD_INSTALL_SCRIPT_VERSION: $CI_PIPELINE_ID
   before_script:
     - mkdir -p ~/.aws
-    - aws ssm get-parameter --region us-east-1 --name ci.${CI_PROJECT_NAME}.apm-ecosystems-reliability-profile --with-decryption --query "Parameter.Value" --out text > ~/.aws/config
+    - read-system-tests-secret apm-ecosystems-reliability-profile config > ~/.aws/config
     - export AWS_PROFILE=apm-ecosystems-reliability-ci
     - |
       echo "Uploading the install script to S3...."
