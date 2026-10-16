@@ -169,7 +169,7 @@ test:
       - IMAGE: mirror/rockylinux:9.0
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
       - IMAGE: mirror/amazonlinux:2
-      - IMAGE: mirror/amazonlinux:2022
+      - IMAGE: mirror/amazonlinux:2023
       - IMAGE: mirror/ubuntu:14.04
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
       - IMAGE: mirror/debian:10.9
@@ -200,7 +200,7 @@ test_agent6:
       - IMAGE: base:v38221072-2485f17-centos7
       - IMAGE: mirror/rockylinux:9.0
       - IMAGE: mirror/amazonlinux:2
-      - IMAGE: mirror/amazonlinux:2022
+      - IMAGE: mirror/amazonlinux:2023
       - IMAGE: mirror/ubuntu:14.04
       - IMAGE: mirror/debian:10.9
       - IMAGE: mirror/ubuntu:22.04
