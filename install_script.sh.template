@@ -820,7 +820,7 @@ function _install_installer_script() {
   # substitution (bash <(...)) lets us inspect PIPESTATUS to detect download
   # failures that process substitution would silently swallow.
   if command -v curl >/dev/null; then
-    local curl_retry_options=(--retry-delay 2)
+    local curl_retry_options=()
     if curl --retry-connrefused --version >/dev/null 2>&1; then
       curl_retry_options+=(--retry-connrefused)
     fi
