@@ -907,8 +907,8 @@ function install_apm_ssi() {
   installer_url="https://${installer_domain}/scripts/${installer_script}"
   
   if ! _install_installer_script "$installer_url"; then
-    if [ "$DD_APM_INSTRUMENTATION_STRICT" = "true" ]; then
-      ERROR_MESSAGE="APM Single Step Instrumentation installation failed with DD_APM_INSTRUMENTATION_STRICT=true."
+    if [ -n "$DD_APM_INSTRUMENTATION_STRICT" ]; then
+      ERROR_MESSAGE="APM Single Step Instrumentation installation failed with DD_APM_INSTRUMENTATION_STRICT=$DD_APM_INSTRUMENTATION_STRICT."
       ERROR_CODE=$GENERAL_ERROR_CODE
       printf '\033[31m%s\033[0m\n' "$ERROR_MESSAGE"
       report_telemetry
@@ -1095,6 +1095,7 @@ fi
 # APM SPECIFIC CONFIGURATION
 ##
 DD_APM_INSTRUMENTATION_ENABLED_DOCKER_PLACEHOLDER
+export DD_APM_INSTRUMENTATION_ENABLED="${DD_APM_INSTRUMENTATION_STRICT:-$DD_APM_INSTRUMENTATION_ENABLED}"
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "docker" ] ; then
   export DD_NO_AGENT_INSTALL=true
   install_type="linux_single_step_dkr"
