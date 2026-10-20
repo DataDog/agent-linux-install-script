@@ -132,22 +132,8 @@ with the contents of $logfile and any information you think would be
 useful and we will do our very best to help you solve your problem.\n"
 }
 
-function curl_with_retry() {
-  local sudo_cmd="$1"
-  local retry_count="$2"
-  shift 2
-  local retry_options=(--retry "$retry_count" --retry-delay 2)
-
-  # Probe the actual binary, including vendor backports and sudo's PATH.
-  if $sudo_cmd curl --retry-connrefused --version >/dev/null 2>&1; then
-    retry_options+=(--retry-connrefused)
-  fi
-
-  $sudo_cmd curl "${retry_options[@]}" "$@"
-}
-
 function report(){
-  if curl_with_retry "" 5 -f -sSL \
+  if curl -f -sSL --retry 5 \
     --data-urlencode "os=${OS}" \
     --data-urlencode "version=${agent_major_version}" \
     --data-urlencode "log=$(cat $logfile)" \
@@ -241,7 +227,7 @@ function report_telemetry() {
   if ! (cat <<END
        $telemetry_event
 END
-       ) | curl_with_retry "" 5 -f -sSL -o /dev/null \
+       ) | curl -f -sSL --retry 5 -o /dev/null \
     "$telemetry_url" \
     --header 'Content-Type: application/json' \
     --header "DD-Api-Key: $apikey" \
@@ -643,14 +629,14 @@ END
 
     # Send both telemetry payloads in parallel
     local tel_pids=()
-    (echo "$telemetry_logs" | curl_with_retry "" 5 --max-time 10 -f -sSL -o /dev/null \
+    (echo "$telemetry_logs" | curl --max-time 10 -f -sSL --retry 5 -o /dev/null \
         "$telemetry_url" \
         --header 'Content-Type: application/json' \
         --header "DD-Api-Key: $apikey" \
         --data @- || echo "Unable to send logs telemetry\n") &
     tel_pids+=($!)
 
-    (echo "$telemetry_trace" | curl_with_retry "" 5 --max-time 10 -f -sSL -o /dev/null \
+    (echo "$telemetry_trace" | curl --max-time 10 -f -sSL --retry 5 -o /dev/null \
         "$telemetry_url" \
         --header 'Content-Type: application/json' \
         --header "DD-Api-Key: $apikey" \
@@ -834,8 +820,12 @@ function _install_installer_script() {
   # substitution (bash <(...)) lets us inspect PIPESTATUS to detect download
   # failures that process substitution would silently swallow.
   if command -v curl >/dev/null; then
+    local curl_retry_options=(--retry-delay 2)
+    if curl --retry-connrefused --version >/dev/null 2>&1; then
+      curl_retry_options+=(--retry-connrefused)
+    fi
     set +e
-    curl_with_retry "" 3 -L -s -f "$installer_url" \
+    curl -L -s -f --retry 3 "${curl_retry_options[@]}" "$installer_url" \
       | DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} bash 2> >(tee /tmp/datadog-installer-stderr.log >&2 || true > /dev/null) > >(tee /tmp/datadog-installer-stdout.log || true > /dev/null)
     local pipestatus=("${PIPESTATUS[@]}")
     set -e
@@ -1649,7 +1639,7 @@ elif [ "$OS" == "Debian" ]; then
     # Download all GPG keys in parallel
     key_pids=()
     for key in "${APT_GPG_KEYS[@]}"; do
-        curl_with_retry "$sudo_cmd" 5 -sSL -f -o "/tmp/${key}" "https://${keys_url}/${key}" &
+        $sudo_cmd curl -sSL -f --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}" &
         key_pids+=($!)
     done
     key_fail=0
@@ -1823,7 +1813,7 @@ elif [ "$OS" == "SUSE" ]; then
     # SUSE 11 special case - download all keys in parallel, then import
     suse_pids=()
     for key_path in "${RPM_GPG_KEYS[@]}"; do
-      curl_with_retry "$sudo_cmd" 5 -sSL -o "/tmp/${key_path}" "https://${keys_url}/${key_path}" &
+      $sudo_cmd curl -sSL --retry 5 -o "/tmp/${key_path}" "https://${keys_url}/${key_path}" &
       suse_pids+=($!)
     done
     key_fail=0

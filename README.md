@@ -83,21 +83,7 @@ This repository contains 2 basic files, `install_script.sh.template` and `Makefi
 
 The generated files must never be committed to this repository. All changes must be done by modifications of the template file and Makefile.
 
-### Curl retries
-
-The Agent install scripts retain their existing retry counts and wait two seconds between retries with `--retry-delay 2` (available since curl 7.12.3, like `--retry`). This replaces curl's default exponential backoff; curl 7.66.0 and later still honor the server's `Retry-After` header.
-
-They also enable `--retry-connrefused` when the installed curl accepts it. This option was introduced in curl 7.52.0; older versions retain standard retries. Capability detection uses the same command and privilege context as the transfer, so vendor backports and curl installed during setup are supported.
-
-`--retry-all-errors` (curl 7.71.0+) is intentionally excluded: the SSI installer is streamed into Bash, and curl cannot rewind a pipe after a partial transfer. Retrying it could execute duplicated script content. Broad retries can also duplicate telemetry POSTs and retry permanent failures such as invalid certificates or HTTP 404. See the [curl retry documentation](https://curl.se/docs/manpage.html#--retry-all-errors) and [option version history](https://curl.se/docs/optionswhen.html).
-
 ## Running tests
-
-Run the focused regression tests with Python 3, Bash, and curl (no Agent installation is required):
-
-```sh
-python3 -B -m unittest discover -s unit_tests -p 'test_*.py'
-```
 
 Tests can be run using Docker; for example to test installation of latest Agent 6 release with the `install_script_agent6.sh` file on Ubuntu 22.04 run:
 
