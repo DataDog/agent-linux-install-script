@@ -93,6 +93,7 @@ unit_tests:
     - DD_API_KEY=123 DD_SITE="datadoghq.com" DD_INSTALL_ONLY=true bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script_agent7.sh)"
     - python3 unit_tests/extract_functions.py
     - ./unit_tests/test_install_script.sh
+    - python3 -B -m unittest discover -s unit_tests -p 'test_*.py'
 
 .test:
   image: registry.ddbuild.io/images/${IMAGE}

@@ -55,6 +55,7 @@ The install script also comes with its own configuration options.
 
 | Variable | Description|
 |-|-|
+|`DD_APM_INSTRUMENTATION_STRICT`|Set to `true` to fail the install script if the requested APM Single Step Instrumentation (SSI) cannot be downloaded or installed. Only applies when `DD_APM_INSTRUMENTATION_ENABLED` is set. Defaults to `false`, which allows Agent installation to continue after an SSI failure. Strict mode stops before the installation success message and does not roll back Agent packages or configuration already installed.|
 |`DD_INSTRUMENTATION_TELEMETRY_ENABLED`|`true` if not set. When `false`, doesn't report telemetry to Datadog in case of a script issue.|
 |`DD_REPO_URL`|Domain name of the package S3 bucket to target. Default to `datadoghq.com`.|
 |`REPO_URL`|Deprecated, use `DD_REPO_URL` instead.|
@@ -84,6 +85,12 @@ This repository contains 2 basic files, `install_script.sh.template` and `Makefi
 The generated files must never be committed to this repository. All changes must be done by modifications of the template file and Makefile.
 
 ## Running tests
+
+Run the focused regression tests with Python 3, Bash, and curl (no Agent installation is required):
+
+```sh
+python3 -B -m unittest discover -s unit_tests -p 'test_*.py'
+```
 
 Tests can be run using Docker; for example to test installation of latest Agent 6 release with the `install_script_agent6.sh` file on Ubuntu 22.04 run:
 
