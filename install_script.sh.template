@@ -820,8 +820,12 @@ function _install_installer_script() {
   # substitution (bash <(...)) lets us inspect PIPESTATUS to detect download
   # failures that process substitution would silently swallow.
   if command -v curl >/dev/null; then
+    local curl_retry_options=()
+    if curl --retry-connrefused --version >/dev/null 2>&1; then
+      curl_retry_options+=(--retry-connrefused)
+    fi
     set +e
-    curl -L -s -f --retry 3 "$installer_url" \
+    curl -L -s -f --retry 3 "${curl_retry_options[@]}" "$installer_url" \
       | DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} bash 2> >(tee /tmp/datadog-installer-stderr.log >&2 || true > /dev/null) > >(tee /tmp/datadog-installer-stdout.log || true > /dev/null)
     local pipestatus=("${PIPESTATUS[@]}")
     set -e
