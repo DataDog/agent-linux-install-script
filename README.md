@@ -31,7 +31,7 @@ The install script allows installation of different flavors of the Agent binarie
 |`DD_FIPS_MODE`|Set to any value to enable the use of the FIPS proxy to send data to the DataDog backend. Enabling this option forces all outgoing traffic from the Agent to the local proxy. It's important to note that enabling this will not make the Datadog Agent FIPS compliant, but will force all outgoing traffic to a local FIPS compliant proxy. By-pass `DD_SITE` and `DD_URL` when enabled. For more information on FIPS compliance, see [FIPS Compliance](https://docs.datadoghq.com/agent/configuration/agent-fips-proxy/).|
 |`DD_ENV`|The environment name where the Agent is running. The environment name is attached in-app to every metric, event, log, trace, and service check emitted by this Agent.|
 |`DD_APM_INSTRUMENTATION_ENABLED`|Automatically instrument all your application processes alongside Agent installation. Possible values are `host`, `docker` or `all` (`all` is both `host` and `docker`). The `docker` value checks if Docker is installed and sets `DD_NO_INSTALL` to `true`. If `DD_APM_INSTRUMENTATION_LIBRARIES` is not set, it enables all libraries: `java`, `js`, `python`, `dotnet` and `ruby`. `host` injection is not compatible with the `DD_NO_AGENT_INSTALL` option. Only supported on Agent v7. Not supported on SUSE.|
-|`DD_APM_INSTRUMENTATION_LIBRARIES`|Specify the APM library to be installed. Possible values are `all`, `java`, `js`, `python`, `dotnet` and `ruby`. Does not run the APM injection script, which is triggered by `DD_APM_INSTRUMENTATION_ENABLED`.|
+|`DD_APM_INSTRUMENTATION_LIBRARIES`|Specify the APM library to be installed. Possible values are `all`, `java`, `js`, `python`, `dotnet` and `ruby`. Does not run the APM injection script, which is triggered by `DD_APM_INSTRUMENTATION_ENABLED` or `DD_APM_INSTRUMENTATION_STRICT`.|
 |`DD_APM_ERROR_TRACKING_STANDALONE`|Enable Error Tracking standalone for backend services.|
 |`DD_SYSTEM_PROBE_ENSURE_CONFIG`|Create the system probe configuration file from a template if it does not already exist.|
 |`DD_RUNTIME_SECURITY_CONFIG_ENABLED`|If set to `true`, ensure creation of security Agent and system probe configuration file (if they don't already exist), and enable Cloud Workload Security (CWS).|
@@ -43,7 +43,7 @@ The install script allows installation of different flavors of the Agent binarie
 |`DD_OTELCOLLECTOR_ENABLED`|If set to `true`, and an OTel Collector configuration file does not already exist, creates an OTel Collector configuration file and installs/enables Datadog Distribution of OpenTelemetry (DDOT).
 |`DD_LOGS_CONFIG_PROCESS_COLLECT_ALL`|Enable process log collection.|
 |`DD_INSTALL_ONLY`|Set to any value to prevent starting the Agent after installation.|
-|`DD_NO_AGENT_INSTALL`|Do not install the Agent. Instead, installs package signature keys and creates configuration files if they don't already exist. Automatically set to `true` when `DD_APM_INSTRUMENTATION_ENABLED=docker`.|
+|`DD_NO_AGENT_INSTALL`|Do not install the Agent. Instead, installs package signature keys and creates configuration files if they don't already exist. Automatically set to `true` when `DD_APM_INSTRUMENTATION_ENABLED=docker` or `DD_APM_INSTRUMENTATION_STRICT=docker`.|
 |`DD_INFRASTRUCTURE_MODE`|The monitoring mode the agent is configured in, each mode offers different amount of feature.|
 
 
@@ -55,6 +55,7 @@ The install script also comes with its own configuration options.
 
 | Variable | Description|
 |-|-|
+|`DD_APM_INSTRUMENTATION_STRICT`|Install APM Single Step Instrumentation (SSI) and fail the install script if SSI cannot be downloaded or installed. Accepts `host`, `docker`, or `all`, like `DD_APM_INSTRUMENTATION_ENABLED`, and can be used on its own (for example, `DD_APM_INSTRUMENTATION_STRICT=host`). When both variables are set, this variable takes precedence. Leave unset or empty to use the permissive behavior of `DD_APM_INSTRUMENTATION_ENABLED`. Strict mode stops before the installation success message and does not roll back Agent packages or configuration already installed.|
 |`DD_INSTRUMENTATION_TELEMETRY_ENABLED`|`true` if not set. When `false`, doesn't report telemetry to Datadog in case of a script issue.|
 |`DD_REPO_URL`|Domain name of the package S3 bucket to target. Default to `datadoghq.com`.|
 |`REPO_URL`|Deprecated, use `DD_REPO_URL` instead.|
@@ -84,6 +85,12 @@ This repository contains 2 basic files, `install_script.sh.template` and `Makefi
 The generated files must never be committed to this repository. All changes must be done by modifications of the template file and Makefile.
 
 ## Running tests
+
+Run the focused regression tests with Python 3, Bash, and curl (no Agent installation is required):
+
+```sh
+python3 -B -m unittest discover -s unit_tests -p 'test_*.py'
+```
 
 Tests can be run using Docker; for example to test installation of latest Agent 6 release with the `install_script_agent6.sh` file on Ubuntu 22.04 run:
 
