@@ -328,6 +328,29 @@ testSystemProbeConfigPrivilegedLogsExplicitlyDisabled(){
   assertEquals "$(sudo yq eval '.discovery.enabled' $system_probe_config_file)" "null"
   assertEquals "$(sudo yq eval '.privileged_logs.enabled' $system_probe_config_file)" "false"
 }
+testSystemProbeConfigNetworkOn(){
+  sudo rm $system_probe_config_file 2> /dev/null
+  manage_system_probe_config "sudo" $system_probe_config_file false false "" false true
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.network_config.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "null"
+  assertEquals "$(sudo yq eval '.service_monitoring_config.enabled' $system_probe_config_file)" "null"
+}
+testSystemProbeConfigNetworkAndUSM(){
+  sudo rm $system_probe_config_file 2> /dev/null
+  manage_system_probe_config "sudo" $system_probe_config_file false false "" true true
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.network_config.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.service_monitoring_config.enabled' $system_probe_config_file)" "true"
+}
+testSystemProbeConfigNetworkAlreadyConfigured(){
+  sudo rm $system_probe_config_file 2> /dev/null
+  printf "network_config:\n  enabled: false\n" | sudo tee $system_probe_config_file > /dev/null
+  manage_system_probe_config "sudo" $system_probe_config_file false false "" false true
+  assertEquals "$(sudo yq eval '.network_config.enabled' $system_probe_config_file)" "false"
+}
 
 ### DD_NO_SECURITY_AGENT_INSTALL
 testNoSecurityAgentDoesNotCreateSecurityAgentConfig(){

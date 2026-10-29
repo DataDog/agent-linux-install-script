@@ -1021,6 +1021,11 @@ if [ -n "$DD_SYSTEM_PROBE_SERVICE_MONITORING_ENABLED" ]; then
   usm_enabled=$DD_SYSTEM_PROBE_SERVICE_MONITORING_ENABLED
 fi
 
+npm_enabled=
+if [ -n "$DD_SYSTEM_PROBE_NETWORK_ENABLED" ]; then
+  npm_enabled=$DD_SYSTEM_PROBE_NETWORK_ENABLED
+fi
+
 agent_flavor="datadog-agent"
 if [ -n "$DD_AGENT_FLAVOR" ]; then
     agent_flavor=$DD_AGENT_FLAVOR #Eg: datadog-iot-agent
@@ -2231,6 +2236,21 @@ EOF
     printf "\033[34m\n* service_monitoring_config configuration already exists in $config_file, skipping the update.\n\033[0m\n"
   fi
 }
+function update_npm(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+
+  if ! $sudo_cmd grep -q "^network_config:" "$config_file"; then
+    $sudo_cmd cp "$config_file" "${config_file}.orig"
+    $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+network_config:
+  enabled: true
+EOF
+    printf "\033[34m\n* Adding network_config to the Datadog Agent configuration: $config_file\n\033[0m\n"
+  else
+    printf "\033[34m\n* network_config configuration already exists in $config_file, skipping the update.\n\033[0m\n"
+  fi
+}
 function update_logs_config_process_collect_all(){
   local sudo_cmd="$1"
   local config_file="$2"
@@ -2412,7 +2432,8 @@ function manage_system_probe_config(){
   local enable_discovery="$4"
   local enable_privileged_logs="$5"
   local enable_usm="$6"
-  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ] || [ "$enable_privileged_logs" == "true" ] || [ "$enable_privileged_logs" == "false" ] || [ "$enable_usm" == "true" ]; then
+  local enable_npm="$7"
+  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ] || [ "$enable_privileged_logs" == "true" ] || [ "$enable_privileged_logs" == "false" ] || [ "$enable_usm" == "true" ] || [ "$enable_npm" == "true" ]; then
     if ensure_config_file_exists "$sudo_cmd" "$probe_config_file" "root"; then
       update_security_and_or_compliance "$sudo_cmd" "$probe_config_file" "$enable_security" "false"
       if [ "$enable_discovery" == "true" ]; then
@@ -2423,6 +2444,9 @@ function manage_system_probe_config(){
       fi
       if [ "$enable_usm" == "true" ]; then
         update_usm "$sudo_cmd" "$probe_config_file"
+      fi
+      if [ "$enable_npm" == "true" ]; then
+        update_npm "$sudo_cmd" "$probe_config_file"
       fi
     fi
   fi
@@ -2509,7 +2533,7 @@ elif [ ! "$no_agent" ]; then
   fi
 
   manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED" "$no_security_agent"
-  manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED" "$DD_PRIVILEGED_LOGS_ENABLED" "$usm_enabled"
+  manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED" "$DD_PRIVILEGED_LOGS_ENABLED" "$usm_enabled" "$npm_enabled"
 fi
 
 # DDOT configuration update
