@@ -5,6 +5,8 @@ Release Notes
 Unreleased
 ================
 
+- Preserve explicit PAR opt-outs and options when Agent packages enable PAR by default.
+
 1.48.0
 ================
 

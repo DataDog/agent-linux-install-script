@@ -16,7 +16,7 @@ The install script allows installation of different flavors of the Agent binarie
 > All variables are optional except `DD_API_KEY`, which is required unless `DD_UPGRADE` (upgrade from datadog-agent 5) is set.
 
 > [!WARNING]
-> The install script input options are only considered at initial installation and they don't overwrite pre-existing configuration files.
+> The install script input options are only considered at initial installation and they don't overwrite pre-existing configuration files, except that an explicit `DD_PRIVATE_ACTION_RUNNER_ENABLED=false` disables PAR on an existing installation.
 
 | Variable | Description|
 |-|-|
@@ -43,6 +43,7 @@ The install script allows installation of different flavors of the Agent binarie
 |`DD_SYSTEM_PROBE_NETWORK_ENABLED`|If set to `true`, and a system probe configuration file does not already exist, creates a system probe configuration file and enables Cloud Network Monitoring (CNM).
 |`DD_OTELCOLLECTOR_ENABLED`|If set to `true`, and an OTel Collector configuration file does not already exist, creates an OTel Collector configuration file and installs/enables Datadog Distribution of OpenTelemetry (DDOT).
 |`DD_LOGS_CONFIG_PROCESS_COLLECT_ALL`|Enable process log collection.|
+|`DD_PRIVATE_ACTION_RUNNER_ENABLED`|Set to `false` to opt out of the PAR default provided by supported Agent packages, including on existing installations. Set to `true` to enable explicitly on a fresh installation.|
 |`DD_INSTALL_ONLY`|Set to any value to prevent starting the Agent after installation.|
 |`DD_NO_AGENT_INSTALL`|Do not install the Agent. Instead, installs package signature keys and creates configuration files if they don't already exist. Automatically set to `true` when `DD_APM_INSTRUMENTATION_ENABLED=docker` or `DD_APM_INSTRUMENTATION_STRICT=docker`.|
 |`DD_INFRASTRUCTURE_MODE`|The monitoring mode the agent is configured in, each mode offers different amount of feature.|
