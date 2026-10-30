@@ -2,8 +2,16 @@
 Release Notes
 =============
 
-Unreleased
+1.48.0
 ================
+
+- Support enabling Cloud Network Monitoring in the agent script (#474)
+- Add strict SSI installation as an alternative instrumentation mode (#471)
+- ci(unit_tests): install yq from Depot GitHub releases mirror (#472)
+- Improve retries for the SSI installer download (#470)
+- update amazonlinux tag to 2023 (#469)
+- ADMS: minor: golang.org/x/crypto, golang.org/x/net [test/e2e/go.mod] (#467)
+- Add DD_NO_SECURITY_AGENT_INSTALL option (#459)
 
 1.47.0
 ================
