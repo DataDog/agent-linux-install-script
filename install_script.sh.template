@@ -2307,48 +2307,38 @@ function update_par(){
   local par_api_key_only_enrollment="$5"
   local par_split_enabled="$6"
 
-  if [ "$par_enabled" != "true" ]; then
-    return
-  fi
-
-  printf "\033[34m\n* Setting $nice_flavor configuration for Private Action Runner: $config_file\n\033[0m\n"
-  if $sudo_cmd grep -q "^private_action_runner:" "$config_file"; then
-    printf "\033[34m\n* private_action_runner configuration already exists in $config_file, skipping the update.\n\033[0m\n"
-    return
-  fi
-
-  if [ -n "$par_actions_allowlist" ]; then
-    if ! echo "$par_actions_allowlist" | grep -qE '^[a-zA-Z0-9._]+(,[a-zA-Z0-9._]+)*$'; then
-      printf "\033[31m\nError: DD_PRIVATE_ACTION_RUNNER_ACTIONS_ALLOWLIST must be a comma-separated list of actions containing only letters, digits, dots and underscores\n\033[0m\n"
+  # This function is used only when creating the configuration. New packages
+  # may already supply a PAR section in the template; merge explicit options
+  # into it instead of skipping them or emitting a duplicate YAML section.
+  case "$par_enabled" in
+    false|FALSE|0)
+      set_config_option "$sudo_cmd" "$config_file" private_action_runner enabled false
       return
-    fi
-  fi
+      ;;
+    true|TRUE|1) ;;
+    *) return ;;
+  esac
 
-  local par_config="private_action_runner:
-  enabled: true"
+  if [ -n "$par_actions_allowlist" ] && ! echo "$par_actions_allowlist" | grep -qE '^[a-zA-Z0-9._]+(,[a-zA-Z0-9._]+)*$'; then
+    printf "Invalid DD_PRIVATE_ACTION_RUNNER_ACTIONS_ALLOWLIST\n" >&2
+    return 1
+  fi
+  for value in "$par_api_key_only_enrollment" "$par_split_enabled"; do
+    case "$value" in ""|true|false) ;; *) printf "Invalid PAR boolean option\n" >&2; return 1 ;; esac
+  done
+
+  set_config_option "$sudo_cmd" "$config_file" private_action_runner enabled true
   if [ -n "$par_actions_allowlist" ]; then
-    local actions_append=""
-    IFS=',' read -ra ACTIONS <<< "$par_actions_allowlist"
-    for action in "${ACTIONS[@]}"; do
-      actions_append="${actions_append}
-    - ${action}"
-    done
-    par_config="${par_config}
-  actions_allowlist:${actions_append}"
+    set_config_option "$sudo_cmd" "$config_file" private_action_runner actions_allowlist "[$par_actions_allowlist]"
   fi
   if [ -n "$par_api_key_only_enrollment" ]; then
-    par_config="${par_config}
-  api_key_only_enrollment: ${par_api_key_only_enrollment}"
+    set_config_option "$sudo_cmd" "$config_file" private_action_runner api_key_only_enrollment "$par_api_key_only_enrollment"
   fi
   if [ -n "$par_split_enabled" ]; then
-    par_config="${par_config}
-  split_enabled: ${par_split_enabled}"
+    set_config_option "$sudo_cmd" "$config_file" private_action_runner split_enabled "$par_split_enabled"
   fi
-  $sudo_cmd sh -c "cat >> '$config_file'" <<EOF
-
-${par_config}
-EOF
 }
+
 function set_config_option(){
   local sudo_cmd="$1"
   local config_file="$2"
@@ -2534,6 +2524,14 @@ elif [ ! "$no_agent" ]; then
 
   manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED" "$no_security_agent"
   manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED" "$DD_PRIVILEGED_LOGS_ENABLED" "$usm_enabled" "$npm_enabled"
+fi
+
+# An explicit PAR opt-out also applies to an existing installation. Preserve
+# all other operator settings, and do not create a config in no-agent mode.
+if [ -z "$no_agent" ] && [ -e "$config_file" ]; then
+  case "$par_enabled" in
+    false|FALSE|0) set_config_option "$sudo_cmd" "$config_file" private_action_runner enabled false ;;
+  esac
 fi
 
 # DDOT configuration update
