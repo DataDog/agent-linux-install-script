@@ -9,7 +9,7 @@ set -e
 
 DEPRECATION_MESSAGE_PLACEHOLDER
 
-install_script_version=1.46.0.post
+install_script_version=1.48.0.post
 logfile="ddagent-install.log"
 support_email=support@datadoghq.com
 variant=install_scriptINSTALL_INFO_VERSION_PLACEHOLDER
@@ -345,6 +345,33 @@ function remove_rpm_gpg_keys() {
             $sudo_cmd rpm --erase "$key"
         fi
     done
+}
+
+function get_redhat_release_version() {
+    local release_file
+    local version=""
+
+    for release_file in "${1:-/etc/redhat-release}" "${2:-/etc/system-release}"; do
+        if [ -r "$release_file" ]; then
+            version=$(grep -oE '[0-9]+' <"$release_file" | head -1)
+            if [ -n "$version" ]; then
+                printf '%s' "$version"
+                return 0
+            fi
+        fi
+    done
+
+    for release_file in "${3:-/etc/os-release}" "${4:-/usr/lib/os-release}"; do
+        if [ -r "$release_file" ]; then
+            version=$(grep -E '^VERSION_ID=' <"$release_file" | head -1 | cut -d = -f 2 | grep -oE '[0-9]+' | head -1)
+            if [ -n "$version" ]; then
+                printf '%s' "$version"
+                return 0
+            fi
+        fi
+    done
+
+    printf '7'
 }
 
 # Emulate hashmap with simple switch case
@@ -793,8 +820,12 @@ function _install_installer_script() {
   # substitution (bash <(...)) lets us inspect PIPESTATUS to detect download
   # failures that process substitution would silently swallow.
   if command -v curl >/dev/null; then
+    local curl_retry_options=()
+    if curl --retry-connrefused --version >/dev/null 2>&1; then
+      curl_retry_options+=(--retry-connrefused)
+    fi
     set +e
-    curl -L -s -f --retry 3 "$installer_url" \
+    curl -L -s -f --retry 3 "${curl_retry_options[@]}" "$installer_url" \
       | DATADOG_TRACE_ID=${DATADOG_TRACE_ID} DATADOG_PARENT_ID=${DATADOG_PARENT_ID} bash 2> >(tee /tmp/datadog-installer-stderr.log >&2 || true > /dev/null) > >(tee /tmp/datadog-installer-stdout.log || true > /dev/null)
     local pipestatus=("${PIPESTATUS[@]}")
     set -e
@@ -879,7 +910,17 @@ function install_apm_ssi() {
 
   installer_url="https://${installer_domain}/scripts/${installer_script}"
   
-  _install_installer_script "$installer_url" || true
+  if ! _install_installer_script "$installer_url"; then
+    if [ -n "$DD_APM_INSTRUMENTATION_STRICT" ]; then
+      ERROR_MESSAGE="APM Single Step Instrumentation installation failed with DD_APM_INSTRUMENTATION_STRICT=$DD_APM_INSTRUMENTATION_STRICT."
+      ERROR_CODE=$GENERAL_ERROR_CODE
+      printf '\033[31m%s\033[0m\n' "$ERROR_MESSAGE"
+      report_telemetry
+      return 1
+    fi
+    echo "Warning: APM Single Step Instrumentation installation failed; continuing Agent installation."
+  fi
+  return 0
 }
 
 start_stage "initialization"
@@ -921,6 +962,11 @@ fi
 no_agent=
 if [ -n "$DD_NO_AGENT_INSTALL" ]; then
     no_agent=true
+fi
+
+no_security_agent=
+if [ -n "$DD_NO_SECURITY_AGENT_INSTALL" ]; then
+    no_security_agent=true
 fi
 
 infrastructure_mode=
@@ -975,6 +1021,11 @@ if [ -n "$DD_SYSTEM_PROBE_SERVICE_MONITORING_ENABLED" ]; then
   usm_enabled=$DD_SYSTEM_PROBE_SERVICE_MONITORING_ENABLED
 fi
 
+npm_enabled=
+if [ -n "$DD_SYSTEM_PROBE_NETWORK_ENABLED" ]; then
+  npm_enabled=$DD_SYSTEM_PROBE_NETWORK_ENABLED
+fi
+
 agent_flavor="datadog-agent"
 if [ -n "$DD_AGENT_FLAVOR" ]; then
     agent_flavor=$DD_AGENT_FLAVOR #Eg: datadog-iot-agent
@@ -998,6 +1049,11 @@ fi
 par_api_key_only_enrollment=
 if [ -n "$DD_PRIVATE_ACTION_RUNNER_API_KEY_ONLY_ENROLLMENT" ]; then
   par_api_key_only_enrollment=$DD_PRIVATE_ACTION_RUNNER_API_KEY_ONLY_ENROLLMENT
+fi
+
+par_split_enabled=
+if [ -n "$DD_PRIVATE_ACTION_RUNNER_SPLIT_ENABLED" ]; then
+  par_split_enabled=$DD_PRIVATE_ACTION_RUNNER_SPLIT_ENABLED
 fi
 
 ##
@@ -1048,6 +1104,7 @@ fi
 # APM SPECIFIC CONFIGURATION
 ##
 DD_APM_INSTRUMENTATION_ENABLED_DOCKER_PLACEHOLDER
+export DD_APM_INSTRUMENTATION_ENABLED="${DD_APM_INSTRUMENTATION_STRICT:-$DD_APM_INSTRUMENTATION_ENABLED}"
 if [ "$DD_APM_INSTRUMENTATION_ENABLED" = "docker" ] ; then
   export DD_NO_AGENT_INSTALL=true
   install_type="linux_single_step_dkr"
@@ -1397,10 +1454,7 @@ if [ "$OS" == "Red Hat" ]; then
     fi
     # NOTE: CentOS/RHEL 6 don't have /etc/os-release. /etc/centos-release and /etc/redhat-release
     # aren't necessarily on the system, so this is not 100 % reliable, but best we can do
-    release_version=$(grep -oE '[0-9]+' </etc/redhat-release 2>/dev/null | head -1)
-    if [ -z "$release_version" ]; then
-        release_version=7
-    fi
+    release_version=$(get_redhat_release_version /etc/redhat-release /etc/system-release /etc/os-release /usr/lib/os-release)
     if { [ "$DISTRIBUTION" == "Red Hat" ] || [ "$DISTRIBUTION" == "CentOS" ]; } && [ "$release_version" -lt 7 ]; then
         if [ -n "$agent_minor_version_without_patch" ]; then
             if [ "$agent_minor_version_without_patch" -ge "52" ]; then
@@ -1601,7 +1655,7 @@ elif [ "$OS" == "Debian" ]; then
     # Download all GPG keys in parallel
     key_pids=()
     for key in "${APT_GPG_KEYS[@]}"; do
-        $sudo_cmd curl -sSL --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}" &
+        $sudo_cmd curl -sSL -f --retry 5 -o "/tmp/${key}" "https://${keys_url}/${key}" &
         key_pids+=($!)
     done
     key_fail=0
@@ -2182,6 +2236,21 @@ EOF
     printf "\033[34m\n* service_monitoring_config configuration already exists in $config_file, skipping the update.\n\033[0m\n"
   fi
 }
+function update_npm(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+
+  if ! $sudo_cmd grep -q "^network_config:" "$config_file"; then
+    $sudo_cmd cp "$config_file" "${config_file}.orig"
+    $sudo_cmd sh -c "exec cat - '${config_file}.orig' > '$config_file'" <<EOF
+network_config:
+  enabled: true
+EOF
+    printf "\033[34m\n* Adding network_config to the Datadog Agent configuration: $config_file\n\033[0m\n"
+  else
+    printf "\033[34m\n* network_config configuration already exists in $config_file, skipping the update.\n\033[0m\n"
+  fi
+}
 function update_logs_config_process_collect_all(){
   local sudo_cmd="$1"
   local config_file="$2"
@@ -2236,6 +2305,7 @@ function update_par(){
   local par_enabled="$3"
   local par_actions_allowlist="$4"
   local par_api_key_only_enrollment="$5"
+  local par_split_enabled="$6"
 
   if [ "$par_enabled" != "true" ]; then
     return
@@ -2270,18 +2340,87 @@ function update_par(){
     par_config="${par_config}
   api_key_only_enrollment: ${par_api_key_only_enrollment}"
   fi
+  if [ -n "$par_split_enabled" ]; then
+    par_config="${par_config}
+  split_enabled: ${par_split_enabled}"
+  fi
   $sudo_cmd sh -c "cat >> '$config_file'" <<EOF
 
 ${par_config}
 EOF
+}
+function set_config_option(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+  local section="$3"
+  local option="$4"
+  local value="$5"
+  if ! $sudo_cmd grep -q "^$section:" "$config_file"; then
+    printf "\033[34m\n* Setting $section.$option to $value in $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "cat >> '$config_file'" <<EOF
+
+$section:
+  $option: $value
+EOF
+    return
+  fi
+  # Look for the option in the section only, the same option name can be used in other sections
+  # or in nested sections, so only consider the keys at the first indentation level of the section
+  local section_content indent
+  section_content=$($sudo_cmd sed -n "/^$section:/,/^[^[:space:]#]/p" "$config_file")
+  indent=$(echo "$section_content" | grep -E "^[[:space:]]+[^[:space:]#]" | head -n 1 | sed -E "s/^([[:space:]]+).*/\1/")
+  if [ -n "$indent" ] && echo "$section_content" | grep -qE "^$indent$option:"; then
+    if echo "$section_content" | grep -qE "^${indent}${option}:[[:space:]]*${value}[[:space:]]*(#.*)?$"; then
+      printf "\033[34m\n* $section.$option is already set to $value in $config_file, skipping the update.\n\033[0m\n"
+      return
+    fi
+    # The existing value conflicts with the required one, replace it
+    printf "\033[34m\n* Updating $section.$option to $value in $config_file\n\033[0m\n"
+    $sudo_cmd sh -c "sed -i -E '/^$section:/,/^[^[:space:]#]/s/^($indent$option:).*/\\1 $value/' $config_file"
+    return
+  fi
+  printf "\033[34m\n* Setting $section.$option to $value in $config_file\n\033[0m\n"
+  $sudo_cmd sh -c "sed -i '0,/^$section:/s//$section:\n${indent:-  }$option: $value/' $config_file"
+}
+function run_security_in_system_probe(){
+  local sudo_cmd="$1"
+  local core_config_file="$2"
+  local security_config_file="$3"
+  local probe_config_file="$4"
+  local enable_compliance="$5"
+  # The security Agent service starts as soon as its configuration file exists, so it needs to
+  # know that both CWS and CSPM run in system-probe to stop right away. The file is only updated
+  # when it already exists, it must never be created.
+  if $sudo_cmd test -e "$security_config_file"; then
+    set_config_option "$sudo_cmd" "$security_config_file" "runtime_security_config" "direct_send_from_system_probe" "true"
+    set_config_option "$sudo_cmd" "$security_config_file" "compliance_config" "run_in_system_probe" "true"
+  fi
+  if $sudo_cmd test -e "$core_config_file"; then
+    if [ "$enable_compliance" == "true" ]; then
+      set_config_option "$sudo_cmd" "$core_config_file" "compliance_config" "enabled" "true"
+      set_config_option "$sudo_cmd" "$core_config_file" "compliance_config" "run_in_system_probe" "true"
+    elif $sudo_cmd grep -q "^compliance_config:" "$core_config_file"; then
+      # CSPM enabled by a previous installation has to run in system-probe too
+      set_config_option "$sudo_cmd" "$core_config_file" "compliance_config" "run_in_system_probe" "true"
+    fi
+  fi
+  # Only set the option when CWS is configured, it would have no effect otherwise
+  if $sudo_cmd test -e "$probe_config_file" && $sudo_cmd grep -q "^runtime_security_config:" "$probe_config_file"; then
+    set_config_option "$sudo_cmd" "$probe_config_file" "runtime_security_config" "direct_send_from_system_probe" "true"
+  fi
 }
 function manage_security_config(){
   local sudo_cmd="$1"
   local security_config_file="$2"
   local enable_security="$3"
   local enable_compliance="$4"
+  local no_security_agent="$5"
   if [ "$enable_security" == "true" ] || [ "$enable_compliance" == "true" ]; then
-    if ensure_config_file_exists "$sudo_cmd" "$security_config_file" "root"; then
+    if [ "$no_security_agent" == "true" ]; then
+      # CWS and CSPM run in system-probe, see run_security_in_system_probe, so the security
+      # Agent configuration file must not be created
+      printf "\033[34m\n* Not creating $security_config_file: CWS and CSPM run in system-probe\n\033[0m\n"
+    elif ensure_config_file_exists "$sudo_cmd" "$security_config_file" "root"; then
       update_security_and_or_compliance "$sudo_cmd" "$security_config_file" "$enable_security" "$enable_compliance"
     fi
   fi
@@ -2293,7 +2432,8 @@ function manage_system_probe_config(){
   local enable_discovery="$4"
   local enable_privileged_logs="$5"
   local enable_usm="$6"
-  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ] || [ "$enable_privileged_logs" == "true" ] || [ "$enable_privileged_logs" == "false" ] || [ "$enable_usm" == "true" ]; then
+  local enable_npm="$7"
+  if [ "$enable_security" == "true" ] || [ "$enable_discovery" == "true" ] || [ "$enable_privileged_logs" == "true" ] || [ "$enable_privileged_logs" == "false" ] || [ "$enable_usm" == "true" ] || [ "$enable_npm" == "true" ]; then
     if ensure_config_file_exists "$sudo_cmd" "$probe_config_file" "root"; then
       update_security_and_or_compliance "$sudo_cmd" "$probe_config_file" "$enable_security" "false"
       if [ "$enable_discovery" == "true" ]; then
@@ -2304,6 +2444,9 @@ function manage_system_probe_config(){
       fi
       if [ "$enable_usm" == "true" ]; then
         update_usm "$sudo_cmd" "$probe_config_file"
+      fi
+      if [ "$enable_npm" == "true" ]; then
+        update_npm "$sudo_cmd" "$probe_config_file"
       fi
     fi
   fi
@@ -2377,7 +2520,7 @@ elif [ ! "$no_agent" ]; then
       update_logs_config_process_collect_all "$sudo_cmd" "$config_file"
     fi
     update_remote_updates "$sudo_cmd" "$remote_updates" "$config_file"
-    update_par "$sudo_cmd" "$config_file" "$par_enabled" "$par_actions_allowlist" "$par_api_key_only_enrollment"
+    update_par "$sudo_cmd" "$config_file" "$par_enabled" "$par_actions_allowlist" "$par_api_key_only_enrollment" "$par_split_enabled"
   fi
 
   # DD_LOGS_CONFIG_PROCESS_COLLECT_ALL needs discovery to be enabled
@@ -2389,8 +2532,8 @@ elif [ ! "$no_agent" ]; then
     fi
   fi
 
-  manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED"
-  manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED" "$DD_PRIVILEGED_LOGS_ENABLED" "$usm_enabled"
+  manage_security_config "$sudo_cmd" "$security_agent_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_COMPLIANCE_CONFIG_ENABLED" "$no_security_agent"
+  manage_system_probe_config "$sudo_cmd" "$system_probe_config_file" "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" "$DD_DISCOVERY_ENABLED" "$DD_PRIVILEGED_LOGS_ENABLED" "$usm_enabled" "$npm_enabled"
 fi
 
 # DDOT configuration update
@@ -2422,8 +2565,14 @@ if [ -n "$system_probe_ensure_config" ]; then
   ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
 fi
 
+# Make sure the security Agent doesn't run when DD_NO_SECURITY_AGENT_INSTALL is set, even when
+# the configuration files were kept from a previous installation
+if [ -n "$no_security_agent" ]; then
+  run_security_in_system_probe "$sudo_cmd" "$config_file" "$security_agent_config_file" "$system_probe_config_file" "$DD_COMPLIANCE_CONFIG_ENABLED"
+fi
+
 # Install APM SSI if needed
-install_apm_ssi "$sudo_cmd" || true
+install_apm_ssi "$sudo_cmd"
 
 # Creating or overriding the install information
 function generate_install_id() {
@@ -2502,6 +2651,7 @@ end_stage 0 "$(cat <<-END | tr -d '\n'
 "apm_enabled": "$([ -n "$DD_APM_INSTRUMENTATION_ENABLED" ] && echo "$DD_APM_INSTRUMENTATION_ENABLED" || echo "false")",
 "security_enabled": "$([ -n "$DD_RUNTIME_SECURITY_CONFIG_ENABLED" ] && echo "true" || echo "false")",
 "compliance_enabled": "$([ -n "$DD_COMPLIANCE_CONFIG_ENABLED" ] && echo "true" || echo "false")",
+"no_security_agent": "$([ -n "$no_security_agent" ] && echo "true" || echo "false")",
 "logs_collection_enabled": "$([ "$DD_LOGS_CONFIG_PROCESS_COLLECT_ALL" == "true" ] && echo "true" || echo "false")",
 "hostname_override": "$([ -n "$hostname" ] && echo "true" || echo "false")",
 "tags_configured": "$([ -n "$host_tags" ] && echo "true" || echo "false")",

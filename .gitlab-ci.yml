@@ -89,10 +89,13 @@ unit_tests:
   dependencies: ["generate-scripts"]
   script:
     - apt-get update && apt-get install -y shunit2 yamllint curl sudo software-properties-common
-    - sudo add-apt-repository -y ppa:rmescandon/yq && apt-get install -y yq
+    - curl -fsSLo /usr/local/bin/yq https://depot-read-api-github-releases.us1.ddbuild.io/internal/mirror/github-releases/mikefarah/yq/releases/download/v4.16.2/yq_linux_amd64
+    - echo "5c911c4da418ae64af5527b7ee36e77effb85de20c2ce732ed14c7f72743084d  /usr/local/bin/yq" | sha256sum -c -
+    - chmod +x /usr/local/bin/yq
     - DD_API_KEY=123 DD_SITE="datadoghq.com" DD_INSTALL_ONLY=true bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script_agent7.sh)"
     - python3 unit_tests/extract_functions.py
     - ./unit_tests/test_install_script.sh
+    - python3 -B -m unittest discover -s unit_tests -p 'test_*.py'
 
 .test:
   image: registry.ddbuild.io/images/${IMAGE}
@@ -169,7 +172,7 @@ test:
       - IMAGE: mirror/rockylinux:9.0
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
       - IMAGE: mirror/amazonlinux:2
-      - IMAGE: mirror/amazonlinux:2022
+      - IMAGE: mirror/amazonlinux:2023
       - IMAGE: mirror/ubuntu:14.04
         FLAVOR: [datadog-agent, datadog-dogstatsd, datadog-iot-agent]
       - IMAGE: mirror/debian:10.9
@@ -200,7 +203,7 @@ test_agent6:
       - IMAGE: base:v38221072-2485f17-centos7
       - IMAGE: mirror/rockylinux:9.0
       - IMAGE: mirror/amazonlinux:2
-      - IMAGE: mirror/amazonlinux:2022
+      - IMAGE: mirror/amazonlinux:2023
       - IMAGE: mirror/ubuntu:14.04
       - IMAGE: mirror/debian:10.9
       - IMAGE: mirror/ubuntu:22.04
@@ -435,10 +438,8 @@ e2e:
           - --run TestInstallSuite
           - --run TestUpgrade7Suite
       - FLAVOR: datadog-iot-agent
-        # Debian_11 excluded until the datadog-agent health-platform uninstall
-        # cleanup fix (DataDog/datadog-agent#56042) ships in a stable release.
-        # Re-add once available (targeted 7.85.0, backported to 7.83.x/7.84.x).
         PLATFORM:
+          - Debian_11
           - Ubuntu_22_04
           - RedHat_CentOS_7
           - RedHat_8

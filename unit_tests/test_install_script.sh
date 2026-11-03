@@ -328,6 +328,148 @@ testSystemProbeConfigPrivilegedLogsExplicitlyDisabled(){
   assertEquals "$(sudo yq eval '.discovery.enabled' $system_probe_config_file)" "null"
   assertEquals "$(sudo yq eval '.privileged_logs.enabled' $system_probe_config_file)" "false"
 }
+testSystemProbeConfigNetworkOn(){
+  sudo rm $system_probe_config_file 2> /dev/null
+  manage_system_probe_config "sudo" $system_probe_config_file false false "" false true
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.network_config.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "null"
+  assertEquals "$(sudo yq eval '.service_monitoring_config.enabled' $system_probe_config_file)" "null"
+}
+testSystemProbeConfigNetworkAndUSM(){
+  sudo rm $system_probe_config_file 2> /dev/null
+  manage_system_probe_config "sudo" $system_probe_config_file false false "" true true
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.network_config.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.service_monitoring_config.enabled' $system_probe_config_file)" "true"
+}
+testSystemProbeConfigNetworkAlreadyConfigured(){
+  sudo rm $system_probe_config_file 2> /dev/null
+  printf "network_config:\n  enabled: false\n" | sudo tee $system_probe_config_file > /dev/null
+  manage_system_probe_config "sudo" $system_probe_config_file false false "" false true
+  assertEquals "$(sudo yq eval '.network_config.enabled' $system_probe_config_file)" "false"
+}
+
+### DD_NO_SECURITY_AGENT_INSTALL
+testNoSecurityAgentDoesNotCreateSecurityAgentConfig(){
+  sudo rm $security_agent_config_file 2> /dev/null
+  manage_security_config "sudo" $security_agent_config_file true true true
+  sudo test -e $security_agent_config_file
+  assertEquals 1 $?
+}
+testNoSecurityAgentFullInstall(){
+  # What the install script does on a fresh install with CWS and CSPM enabled
+  sudo rm $security_agent_config_file $system_probe_config_file 2> /dev/null
+  sudo cp ${config_file}.example $config_file
+  manage_security_config "sudo" $security_agent_config_file true true true
+  manage_system_probe_config "sudo" $system_probe_config_file true false "" false
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file true
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $system_probe_config_file)" "true"
+  sudo test -e $security_agent_config_file
+  assertEquals 1 $?
+}
+testSecurityAgentSystemProbeNoDirectSend(){
+  sudo rm $system_probe_config_file 2> /dev/null
+  manage_system_probe_config "sudo" $system_probe_config_file true false "" false
+  yamllint -c "$yaml_config" --no-warnings $system_probe_config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $system_probe_config_file)" "null"
+}
+
+### Run security in system-probe
+testRunSecurityInSystemProbeExistingSecurityAgentConfig(){
+  # A security Agent configuration file kept from a previous installation must tell the security
+  # Agent that both CWS and CSPM run in system-probe
+  sudo cp ${security_agent_config_file}.example $security_agent_config_file
+  sudo cp ${config_file}.example $config_file
+  sudo rm $system_probe_config_file 2> /dev/null
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file false
+  yamllint -c "$yaml_config" --no-warnings $security_agent_config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $security_agent_config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $security_agent_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $security_agent_config_file)" "null"
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $security_agent_config_file)" "null"
+  # CSPM is not enabled, the Agent configuration file must not be updated
+  assertEquals "$(sudo yq eval '.compliance_config' $config_file)" "null"
+}
+testRunSecurityInSystemProbeKeptConfiguration(){
+  # CWS and CSPM enabled by a previous installation must now run in system-probe
+  printf 'apm_config:\n  enabled: true\n' | sudo tee $config_file > /dev/null
+  printf 'runtime_security_config:\n  enabled: true\n' | sudo tee $system_probe_config_file > /dev/null
+  printf 'runtime_security_config:\n  enabled: true\ncompliance_config:\n  enabled: true\n' | sudo tee $security_agent_config_file > /dev/null
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file true
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  # compliance_config must be added even though the Agent configuration file was kept
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.apm_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $security_agent_config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $security_agent_config_file)" "true"
+  # Running it again must not add the options a second time
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file true
+  assertEquals 1 "$(sudo grep -c "direct_send_from_system_probe" $security_agent_config_file)"
+  assertEquals 1 "$(sudo grep -c "run_in_system_probe" $security_agent_config_file)"
+  assertEquals 1 "$(sudo grep -c "run_in_system_probe" $config_file)"
+}
+testRunSecurityInSystemProbeComplianceAlreadyEnabled(){
+  # CSPM enabled by a previous installation must run in system-probe, even when
+  # DD_COMPLIANCE_CONFIG_ENABLED is not set again
+  printf 'compliance_config:\n  enabled: true\n' | sudo tee $config_file > /dev/null
+  sudo rm $security_agent_config_file $system_probe_config_file 2> /dev/null
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file false
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $config_file)" "true"
+}
+testRunSecurityInSystemProbeOverridesDisabledOptions(){
+  # Options explicitly disabled by a previous installation must be forced to true
+  printf 'compliance_config:\n  enabled: false\n  run_in_system_probe: false\n  host_benchmarks:\n    enabled: false\napm_config:\n  enabled: false\n' | sudo tee $config_file > /dev/null
+  printf 'runtime_security_config:\n    enabled: true\n    direct_send_from_system_probe: false # comment\n' | sudo tee $system_probe_config_file > /dev/null
+  printf 'runtime_security_config:\n  direct_send_from_system_probe: false\ncompliance_config:\n  run_in_system_probe: false\n' | sudo tee $security_agent_config_file > /dev/null
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file true
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $config_file)" "true"
+  # Nested and other sections options with the same name must be left alone
+  assertEquals "$(sudo yq eval '.compliance_config.host_benchmarks.enabled' $config_file)" "false"
+  assertEquals "$(sudo yq eval '.apm_config.enabled' $config_file)" "false"
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $system_probe_config_file)" "true"
+  assertEquals "$(sudo yq eval '.runtime_security_config.direct_send_from_system_probe' $security_agent_config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $security_agent_config_file)" "true"
+  assertEquals 1 "$(sudo grep -c "run_in_system_probe" $config_file)"
+}
+testSetConfigOptionKeepsSectionIndentation(){
+  printf 'compliance_config:\n    host_benchmarks:\n        enabled: false\n' | sudo tee $config_file > /dev/null
+  set_config_option "sudo" $config_file "compliance_config" "enabled" "true"
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.host_benchmarks.enabled' $config_file)" "false"
+}
+testRunSecurityInSystemProbeCreatesNothing(){
+  sudo rm $security_agent_config_file $system_probe_config_file $config_file 2> /dev/null
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file true
+  sudo test -e $security_agent_config_file
+  assertEquals 1 $?
+  sudo test -e $system_probe_config_file
+  assertEquals 1 $?
+  sudo test -e $config_file
+  assertEquals 1 $?
+}
 
 ### Test logs config process collect all function
 testLogsConfigProcessCollectAll() {
@@ -416,6 +558,84 @@ testParEnabledWithoutApiKeyOnlyEnrollment() {
   update_par "sudo" $config_file "true" ""
   # Should not add api_key_only_enrollment when not provided
   assertEquals "$(sudo yq eval '.private_action_runner.api_key_only_enrollment' $config_file)" "null"
+}
+testParEnabledWithSplitMode() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_par "sudo" $config_file "true" "" "" "true"
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.private_action_runner.split_enabled' $config_file)" "true"
+}
+testParEnabledWithoutSplitMode() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_par "sudo" $config_file "true" "" "" "false"
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.private_action_runner.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.private_action_runner.split_enabled' $config_file)" "false"
+}
+testParEnabledWithDefaultSplitMode() {
+  sudo rm $config_file 2> /dev/null
+  ensure_config_file_exists "sudo" $config_file "dd-agent"
+  update_par "sudo" $config_file "true" ""
+  # Should not add split_enabled when not provided, preserving the Agent's platform default
+  assertEquals "$(sudo yq eval '.private_action_runner.split_enabled' $config_file)" "null"
+}
+
+### get_redhat_release_version
+setUpReleaseFiles() {
+  release_dir=$(mktemp -d)
+  missing="$release_dir/missing"
+  redhat_release="$release_dir/redhat-release"
+  system_release="$release_dir/system-release"
+  os_release="$release_dir/os-release"
+  usr_lib_os_release="$release_dir/usr-lib-os-release"
+}
+testRedhatReleasePreferred() {
+  setUpReleaseFiles
+  echo "CentOS Linux release 7.9.2009 (Core)" > "$redhat_release"
+  echo "Amazon Linux release 2 (Karoo)" > "$system_release"
+  echo 'VERSION_ID="9.4"' > "$os_release"
+  assertEquals "7" "$(get_redhat_release_version "$redhat_release" "$system_release" "$os_release" "$usr_lib_os_release")"
+}
+testSystemReleaseUsedWhenRedhatReleaseMissing() {
+  setUpReleaseFiles
+  echo "Amazon Linux release 2 (Karoo)" > "$system_release"
+  echo 'VERSION_ID="9.4"' > "$os_release"
+  assertEquals "2" "$(get_redhat_release_version "$missing" "$system_release" "$os_release" "$usr_lib_os_release")"
+}
+testOsReleaseUsedWhenReleaseFilesMissing() {
+  setUpReleaseFiles
+  echo 'VERSION_ID="9.4"' > "$os_release"
+  assertEquals "9" "$(get_redhat_release_version "$missing" "$missing" "$os_release" "$usr_lib_os_release")"
+}
+testUsrLibOsReleaseUsedAsLastSource() {
+  setUpReleaseFiles
+  echo 'VERSION_ID=8' > "$usr_lib_os_release"
+  assertEquals "8" "$(get_redhat_release_version "$missing" "$missing" "$missing" "$usr_lib_os_release")"
+}
+testFallsBackToSevenWhenNothingAvailable() {
+  setUpReleaseFiles
+  assertEquals "7" "$(get_redhat_release_version "$missing" "$missing" "$missing" "$missing")"
+}
+testEmptyFilesFallThroughToNextSource() {
+  setUpReleaseFiles
+  : > "$redhat_release"
+  : > "$system_release"
+  echo 'VERSION_ID="9.4"' > "$os_release"
+  assertEquals "9" "$(get_redhat_release_version "$redhat_release" "$system_release" "$os_release" "$usr_lib_os_release")"
+}
+testNonNumericOsReleaseFallsBack() {
+  setUpReleaseFiles
+  echo 'VERSION_ID=rawhide' > "$os_release"
+  assertEquals "7" "$(get_redhat_release_version "$missing" "$missing" "$os_release" "$missing")"
+}
+testMissingRedhatReleaseIsSilent() {
+  setUpReleaseFiles
+  assertEquals "" "$(get_redhat_release_version "$missing" "$missing" "$missing" "$missing" 2>&1 >/dev/null)"
 }
 
 ### install_apm_ssi
