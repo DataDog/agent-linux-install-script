@@ -35,7 +35,7 @@ func TestInstallNoSecurityAgentSuite(t *testing.T) {
 }
 
 func (s *installNoSecurityAgentTestSuite) TestInstallNoSecurityAgent() {
-	s.InstallAgent(7, "DD_NO_SECURITY_AGENT_INSTALL=true DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_SITE=\"datadoghq.com\"", "Install latest Agent 7 without the security agent")
+	s.InstallAgent(7, "DD_RUNTIME_SECURITY_CONFIG_ENABLED=true DD_COMPLIANCE_CONFIG_ENABLED=true DD_SITE=\"datadoghq.com\"", "Install latest Agent 7, without the security agent by default")
 
 	s.assertInstallScript()
 

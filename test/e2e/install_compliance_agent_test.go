@@ -35,7 +35,7 @@ func TestInstallComplianceAgentSuite(t *testing.T) {
 }
 
 func (s *installComplianceAgentTestSuite) TestInstallComplianceAgent() {
-	s.InstallAgent(7, "DD_COMPLIANCE_CONFIG_ENABLED=true DD_SITE=\"datadoghq.com\"", "Install latest Agent 7")
+	s.InstallAgent(7, "DD_NO_SECURITY_AGENT_INSTALL=false DD_COMPLIANCE_CONFIG_ENABLED=true DD_SITE=\"datadoghq.com\"", "Install latest Agent 7")
 
 	s.assertInstallScript()
 

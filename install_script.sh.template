@@ -964,11 +964,6 @@ if [ -n "$DD_NO_AGENT_INSTALL" ]; then
     no_agent=true
 fi
 
-no_security_agent=
-if [ -n "$DD_NO_SECURITY_AGENT_INSTALL" ]; then
-    no_security_agent=true
-fi
-
 infrastructure_mode=
 if [ -n "$DD_INFRASTRUCTURE_MODE" ]; then
     infrastructure_mode=$DD_INFRASTRUCTURE_MODE
@@ -2382,12 +2377,47 @@ EOF
   printf "\033[34m\n* Setting $section.$option to $value in $config_file\n\033[0m\n"
   $sudo_cmd sh -c "sed -i '0,/^$section:/s//$section:\n${indent:-  }$option: $value/' $config_file"
 }
+function is_config_option_true(){
+  local sudo_cmd="$1"
+  local config_file="$2"
+  local section="$3"
+  local option="$4"
+  $sudo_cmd test -e "$config_file" || return 1
+  # Only consider the keys at the first indentation level of the section, see set_config_option
+  local section_content indent
+  section_content=$($sudo_cmd sed -n "/^$section:/,/^[^[:space:]#]/p" "$config_file")
+  indent=$(echo "$section_content" | grep -E "^[[:space:]]+[^[:space:]#]" | head -n 1 | sed -E "s/^([[:space:]]+).*/\1/")
+  [ -n "$indent" ] && echo "$section_content" | grep -qiE "^${indent}${option}:[[:space:]]*true[[:space:]]*(#.*)?$"
+}
+function resolve_no_security_agent(){
+  local no_security_agent_install="$1"
+  local agent_major_version="$2"
+  local agent_minor_version="$3"
+  # Explicitly set: "false" keeps the security Agent, any other value runs CWS and CSPM in system-probe
+  if [ "$no_security_agent_install" == "false" ]; then
+    return
+  elif [ -n "$no_security_agent_install" ]; then
+    echo "true"
+    return
+  fi
+  # By default, CWS and CSPM run in system-probe when the Agent supports it, starting with 7.77.0
+  local minor_without_patch="${agent_minor_version%%.*}"
+  if [ "$agent_major_version" == "7" ] && { [ -z "$minor_without_patch" ] || [ "$minor_without_patch" -ge 77 ] 2>/dev/null; }; then
+    echo "true"
+  fi
+}
 function run_security_in_system_probe(){
   local sudo_cmd="$1"
   local core_config_file="$2"
   local security_config_file="$3"
   local probe_config_file="$4"
   local enable_compliance="$5"
+  # CSPM enabled by a previous installation is usually only configured in the security Agent
+  # configuration file, which stops running it below, so it has to be enabled in the Agent
+  # configuration file for system-probe to run it
+  if is_config_option_true "$sudo_cmd" "$security_config_file" "compliance_config" "enabled"; then
+    enable_compliance="true"
+  fi
   # The security Agent service starts as soon as its configuration file exists, so it needs to
   # know that both CWS and CSPM run in system-probe to stop right away. The file is only updated
   # when it already exists, it must never be created.
@@ -2496,6 +2526,11 @@ function manage_otel_config(){
     $sudo_cmd sh -c "sed -i -e 's/\${env:DD_API_KEY}/$apikey/' -e 's/\${env:DD_SITE}/$site/'  $otel_config_file"
   fi
 }
+# Run CWS and CSPM in system-probe instead of the security Agent, unless
+# DD_NO_SECURITY_AGENT_INSTALL=false or the installed Agent doesn't support it.
+# Resolved here because the minor version may be lowered on old distributions.
+no_security_agent=$(resolve_no_security_agent "$DD_NO_SECURITY_AGENT_INSTALL" "$agent_major_version" "$clean_agent_minor_version")
+
 # "Main" configuration update
 if [ -e "$config_file" ] && [ -z "$upgrade" ]; then
   printf "\033[34m\n* Keeping old $config_file configuration file\n\033[0m\n"
@@ -2565,7 +2600,7 @@ if [ -n "$system_probe_ensure_config" ]; then
   ensure_config_file_exists "$sudo_cmd" "$system_probe_config_file" "root"
 fi
 
-# Make sure the security Agent doesn't run when DD_NO_SECURITY_AGENT_INSTALL is set, even when
+# Make sure the security Agent doesn't run when CWS and CSPM run in system-probe, even when
 # the configuration files were kept from a previous installation
 if [ -n "$no_security_agent" ]; then
   run_security_in_system_probe "$sudo_cmd" "$config_file" "$security_agent_config_file" "$system_probe_config_file" "$DD_COMPLIANCE_CONFIG_ENABLED"
