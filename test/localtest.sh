@@ -33,7 +33,7 @@ fi
 
 # Override curl to capture trace payloads (only if SHOW_TRACE is enabled)
 if [[ "${SHOW_TRACE}" == "1" ]]; then
-  # shellcheck disable=SC2317
+  # shellcheck disable=SC2317,SC2329
   curl() {
     if [[ "$*" == *"instrumentation-telemetry-intake"* ]]; then
       echo "[TRACE CAPTURE] Intercepting telemetry submission" >&2
