@@ -100,12 +100,6 @@ Troubleshooting and basic usage information for the $nice_flavor are available a
       exit 1;
     fi
 
-    # Don't offer to send the install log and API key in a failure report on GovCloud
-    if [ "$site" == "ddog-gov.com" ]; then
-      fallback_msg
-      exit 1;
-    fi
-
     while true; do
         read -t 60 -p  "Do you want to send a failure report to Datadog (including $logfile)? (y/[n]) " -r yn || on_read_error
         case $yn in
@@ -149,8 +143,9 @@ if [ -n "$DD_SITE" ]; then
     site="$DD_SITE"
     if [ "$site" == "ddog-gov.com" ]; then
       echo -e "
-  \033[33mNote: Observability Pipelines on GovCloud is in Preview.
+  \033[33mWarning: Observability Pipelines isn't supported on GovCloud at this time.
 \033[0m"
+      exit 1;
     fi
 fi
 
