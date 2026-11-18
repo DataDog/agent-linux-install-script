@@ -2,8 +2,12 @@
 Release Notes
 =============
 
-Unreleased
+1.49.0
 ================
+
+- Show a Preview note for OP Worker 2 on GovCloud in the install script (#490)
+- Disable the SC2329 false positive in test/localtest.sh (#491)
+- ADMS: golang.org/x/net (minor → v0.62.0) [test/e2e/go.mod] (#479)
 
 1.48.0
 ================
