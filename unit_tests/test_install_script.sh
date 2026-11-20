@@ -353,6 +353,26 @@ testSystemProbeConfigNetworkAlreadyConfigured(){
 }
 
 ### DD_NO_SECURITY_AGENT_INSTALL
+testResolveNoSecurityAgentDefault(){
+  assertEquals "true" "$(resolve_no_security_agent "" 7 "")"
+  assertEquals "true" "$(resolve_no_security_agent "" 7 "77")"
+  assertEquals "true" "$(resolve_no_security_agent "" 7 "77.0")"
+  assertEquals "true" "$(resolve_no_security_agent "" 7 "78.1")"
+  assertEquals "true" "$(resolve_no_security_agent "" 7 "100.0")"
+}
+testResolveNoSecurityAgentDefaultUnsupportedVersion(){
+  assertEquals "" "$(resolve_no_security_agent "" 7 "76.3")"
+  assertEquals "" "$(resolve_no_security_agent "" 7 "51")"
+  assertEquals "" "$(resolve_no_security_agent "" 6 "")"
+  assertEquals "" "$(resolve_no_security_agent "" 6 "77.0")"
+}
+testResolveNoSecurityAgentExplicit(){
+  assertEquals "" "$(resolve_no_security_agent "false" 7 "")"
+  assertEquals "" "$(resolve_no_security_agent "false" 7 "78.0")"
+  assertEquals "true" "$(resolve_no_security_agent "true" 7 "")"
+  assertEquals "true" "$(resolve_no_security_agent "1" 7 "76.0")"
+  assertEquals "true" "$(resolve_no_security_agent "true" 6 "")"
+}
 testNoSecurityAgentDoesNotCreateSecurityAgentConfig(){
   sudo rm $security_agent_config_file 2> /dev/null
   manage_security_config "sudo" $security_agent_config_file true true true
@@ -401,6 +421,27 @@ testRunSecurityInSystemProbeExistingSecurityAgentConfig(){
   assertEquals "$(sudo yq eval '.runtime_security_config.enabled' $security_agent_config_file)" "null"
   assertEquals "$(sudo yq eval '.compliance_config.enabled' $security_agent_config_file)" "null"
   # CSPM is not enabled, the Agent configuration file must not be updated
+  assertEquals "$(sudo yq eval '.compliance_config' $config_file)" "null"
+}
+testRunSecurityInSystemProbeKeptSecurityAgentCompliance(){
+  # CSPM enabled by a previous installation only in the security Agent configuration file must
+  # be enabled in the Agent configuration file, even without DD_COMPLIANCE_CONFIG_ENABLED
+  sudo cp ${config_file}.example $config_file
+  sudo rm $system_probe_config_file 2> /dev/null
+  printf 'compliance_config:\n  enabled: true\n' | sudo tee $security_agent_config_file > /dev/null
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file ""
+  yamllint -c "$yaml_config" --no-warnings $config_file
+  assertEquals 0 $?
+  assertEquals "$(sudo yq eval '.compliance_config.enabled' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $config_file)" "true"
+  assertEquals "$(sudo yq eval '.compliance_config.run_in_system_probe' $security_agent_config_file)" "true"
+}
+testRunSecurityInSystemProbeKeptSecurityAgentComplianceDisabled(){
+  # CSPM disabled, or only enabled in a nested section, must not be enabled
+  sudo cp ${config_file}.example $config_file
+  sudo rm $system_probe_config_file 2> /dev/null
+  printf 'compliance_config:\n  enabled: false\n  database_benchmarks:\n    enabled: true\n' | sudo tee $security_agent_config_file > /dev/null
+  run_security_in_system_probe "sudo" $config_file $security_agent_config_file $system_probe_config_file ""
   assertEquals "$(sudo yq eval '.compliance_config' $config_file)" "null"
 }
 testRunSecurityInSystemProbeKeptConfiguration(){
